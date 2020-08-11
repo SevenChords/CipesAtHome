@@ -16,6 +16,10 @@ typedef struct Item Item;
   - Using the alpha key as the main identifier also negates the need to have a function to obtain the alpha key along with the type key.
 - Each item in the inventory is represented with a struct which contains both its alphabetical and type sort keys, again using
   the alphabetical key as the main item identifier.
+  
+- TODO:
+	- checkRecipe
+	- remainingOutputsCanBeFulfilled
 ====================     ====================*/
 
 Item items[] = {
