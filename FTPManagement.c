@@ -4,6 +4,7 @@
 #include <curl/curl.h>
 #include <sys/stat.h>
 #include "cJSON.h"
+#include "FTPManagement.h"
 
 struct memory {
 	char *data;
@@ -38,7 +39,7 @@ char *handle_get(char* url) {
 		curl_easy_setopt(curl, CURLOPT_HTTPGET, 1);
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &chunk);
-		//curl_easy_setopt(curl, CURLOPT_USERAGENT, "curl/7.68.0");
+		curl_easy_setopt(curl, CURLOPT_USERAGENT, "curl/7.68.0");
 		res = curl_easy_perform(curl);
 		if (res != CURLE_OK) {
 			printf("cURL ERROR!");
@@ -161,10 +162,9 @@ int checkForUpdates() {
 	char *tag_name = cJSON_Print(json);
 	printf("Tag Name: %s\n", tag_name);
 	free(tag_name);
+	// Add logs
 }
 
 int main() {
-	//getFastestRecordOnBlob();
-	//testRecord(4197);
-	checkForUpdates();
+	//checkForUpdates();
 }

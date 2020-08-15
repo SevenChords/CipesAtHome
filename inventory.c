@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <inventory.h>
+#include "inventory.h"
 
 #define INVENTORY_MAX_SIZE 21
 #define NUM_ITEMS 107
