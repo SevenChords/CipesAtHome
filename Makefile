@@ -9,3 +9,6 @@ logmake: logger.c
 
 configmake: config.c
 	gcc -o config config.c -lconfig -g
+
+recipemake: recipes.c
+	gcc -o recipes recipes.c inventory.c -g -Wall
