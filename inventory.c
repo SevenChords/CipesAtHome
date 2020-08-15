@@ -132,7 +132,12 @@ Item items[] = {
 	{Fresh_Pasta, Fresh_Pasta_t}
 };
 
-Type_Sort getTypeKey (Alpha_Sort a_key) {
+struct Item getItem(enum Alpha_Sort a_key) {
+	return items[a_key];
+}
+
+// I don't think we need this function
+/*Type_Sort getTypeKey (Alpha_Sort a_key) {
 	for (int i = Mushroom_t; i <= Mistake_t; i++) {
 		if (items[i].a_key == a_key) {
 			return items[i].t_key;
@@ -140,7 +145,7 @@ Type_Sort getTypeKey (Alpha_Sort a_key) {
 	}
 	
 	return -1;
-}
+}*/
 
 int **getInventoryFrames() {
 	static int *inv_frames[INVENTORY_MAX_SIZE];
@@ -186,9 +191,9 @@ Item *getStartingInventory() {
 	return inventory;
 }
 
-int main()
+/*int main()
 {
-	/* FOR TESTING getInventoryFrames
+	//FOR TESTING getInventoryFrames
 	int **inv_frames;
 	inv_frames = getInventoryFrames();
 	for (int i = 0; i <= INVENTORY_MAX_SIZE; i++) {
@@ -196,25 +201,25 @@ int main()
 			int *frames = inv_frames[i];
 			printf("Inventory size %d:\tIndex %d:\t%d\n", i, j, frames[j]);
 		}
-	}*/
+	}
 	
 	
-	/* FOR TESTING ITEM SORT RETRIEVAL
+	//FOR TESTING ITEM SORT RETRIEVAL
 	printf("Name\t\tAlpha\tType\n");
 	for (int i = 0; i < NUM_ITEMS; i++) {
 		char *name = items[i].name;
 		enum Alpha_Sort a_key = items[i].a_key;
 		enum Type_Sort t_key = items[i].t_key;
 		printf("%s\t%d\t%d\n", name, a_key, t_key);
-	}*/
+	}
 	
 	
-	/* FOR TESTING KEY RETRIEVAL
+	//FOR TESTING KEY RETRIEVAL
 	Item *inventory = getStartingInventory();
 	for (int i = 0; i < 20; i++) {
 		printf("Slot   %d\tAlpha   %d\tType %d\t\n", i+1, inventory[i].a_key, inventory[i].t_key);
 	}
-	*/
+	
 	
 	return 0;
-}
+}*/

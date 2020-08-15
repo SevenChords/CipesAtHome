@@ -226,9 +226,13 @@ struct Item {
 // Return a pointer to an array of length 21 with each index i containing a variable length j which tracks the frameloss to navigate to the jth index in an inventory of size i
 int **getInventoryFrames();
 
+// I don't believe we need this
+/*struct Type_Sort getTypeKey (Alpha_Sort a_key);*/
+
 // Return array of Item structs for the start of cooking recipes
 struct Item *getStartingInventory();
 
-enum Type_Sort getTypeKey (enum Alpha_Sort a_key);
+// Get all item data
+struct Item getItem(enum Alpha_Sort a_key);
 
 int main();
