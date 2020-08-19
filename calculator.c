@@ -49,28 +49,30 @@ int printResults(char *filename, struct BranchPath *path) {
 		struct MoveDescription *desc = curNode->description;
 		enum Action curNodeAction = desc->action;
 		if (curNodeAction == Cook) {
-			fprintf(fp, "Use [%s] in slot %d ", getItemName(desc->item1.a_key), desc->itemIndex1 + 1);
+			struct Cook *cookData = desc->data;
+			fprintf(fp, "Use [%s] in slot %d ", getItemName(cookData->item1.a_key), cookData->itemIndex1 + 1);
 			
-			if (desc->numItems == 2)
-				fprintf(fp, "and [%s] in slot %d ", getItemName(desc->item2.a_key), desc->itemIndex2 + 1);
+			if (cookData->numItems == 2)
+				fprintf(fp, "and [%s] in slot %d ", getItemName(cookData->item2.a_key), cookData->itemIndex2 + 1);
 			
 			fprintf(fp, "to make ");
 			
-			if (desc->handleOutput == Toss)
+			if (cookData->handleOutput == Toss)
 				fprintf(fp, "(and toss) ");
-			else if (desc->handleOutput == Autoplace)
+			else if (cookData->handleOutput == Autoplace)
 				fprintf(fp, "(and auto-place) ");
 			
-			fprintf(fp, "<%s>", getItemName(desc->output.a_key));
+			fprintf(fp, "<%s>", getItemName(cookData->output.a_key));
 			
-			if (desc->handleOutput == TossOther)
-				fprintf(fp, ", toss [%s] in slot %d", getItemName(desc->toss), indexToss + 1);
+			if (cookData->handleOutput == TossOther)
+				fprintf(fp, ", toss [%s] in slot %d", getItemName(cookData->toss.a_key), cookData->indexToss + 1);
 			fprintf(fp, "\t");
 		}
 		else if (curNodeAction == Ch5) {
-			fprintf(fp, "Ch.5 Break: Replace #%d for DB, Replace #%d for CO, Sort (", desc->indexDriedBouquet, desc->indexCoconut);
+			struct CH5 *ch5Data = desc->data;
+			fprintf(fp, "Ch.5 Break: Replace #%d for DB, Replace #%d for CO, Sort (", ch5Data->indexDriedBouquet, ch5Data->indexCoconut);
 			
-			switch (desc->ch5Sort) {
+			switch (ch5Data->ch5Sort) {
 				case Sort_Alpha_Asc :
 					fprintf(fp, "Alpha), ");
 					break;
@@ -87,7 +89,7 @@ int printResults(char *filename, struct BranchPath *path) {
 					fprintf(fp, "ERROR IN CH5SORT SWITCH CASE");
 			};
 			
-			fprintf(fp, "Replace #%d for KM, Replace #%d for CS, Use TR in #%d %d %d\t", desc->indexKeelMango, desc->indexCourageShell, desc->indexThunderRage, desc->framesTaken, desc->totalFramesTaken);
+			fprintf(fp, "Replace #%d for KM, Replace #%d for CS, Use TR in #%d %d %d\t", ch5Data->indexKeelMango, ch5Data->indexCourageShell, ch5Data->indexThunderRage, desc->framesTaken, desc->totalFramesTaken);
 		}
 		else {
 			// Some type of sorting
