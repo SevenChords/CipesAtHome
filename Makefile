@@ -12,3 +12,6 @@ configmake: config.c
 
 recipemake: recipes.c
 	gcc -o recipes recipes.c inventory.c -g -Wall
+
+calculatormake: calculator.c
+	gcc -o calculator calculator.c inventory.c recipes.c FTPManagement.c cJSON.c -lcurl -g -Wall
