@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "recipes.h"
 
-#define NUMRECIPES 58 // Including Dried Bouquet trade
+#define NUM_RECIPES 58 // Including Dried Bouquet trade
 
 struct ItemCombination parseCombo(int itemCount, struct Item item1, struct Item item2) {
 	struct ItemCombination combo;
@@ -11,7 +11,7 @@ struct ItemCombination parseCombo(int itemCount, struct Item item1, struct Item 
 }
 
 struct Recipe *getRecipeList() {
-	struct Recipe *recipes = malloc(sizeof(struct Recipe) * NUMRECIPES);
+	struct Recipe *recipes = malloc(sizeof(struct Recipe) * NUM_RECIPES);
 	
 	// Begin hard-coding recipes
 	
@@ -553,9 +553,10 @@ struct Recipe *getRecipeList() {
 	return recipes;
 }
 
+/*
 int main() {
 	// For testing getRecipeList
-	/*struct Recipe *recipes = getRecipeList();
+	struct Recipe *recipes = getRecipeList();
 
 	end = clock() - start;
 	cpu_time_used = ((double)  end) / CLOCKS_PER_SEC;
@@ -584,5 +585,5 @@ int main() {
 				printf("Item 1: %d\tItem 2: %d\n", combo.item1.a_key, combo.item2.a_key);
 			}
 		}
-	}*/
-}
+	}
+}*/

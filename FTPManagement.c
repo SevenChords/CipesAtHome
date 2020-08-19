@@ -151,6 +151,7 @@ int testRecord(int localRecord) {
 
 	char* data;
 	handle_post("https://hundorecipes.azurewebsites.net/api/uploadAndVerify", fp, localRecord, "C_TEST");
+	return 0;
 }
 
 int checkForUpdates() {
@@ -163,8 +164,12 @@ int checkForUpdates() {
 	printf("Tag Name: %s\n", tag_name);
 	free(tag_name);
 	// Add logs
+	
+	// TODO: Use getConfig to compare tag name with config file
+	return 0;
 }
 
+/*
 int main() {
 	//checkForUpdates();
-}
+}*/
