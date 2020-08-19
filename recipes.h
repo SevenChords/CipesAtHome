@@ -1,3 +1,6 @@
+#ifndef RECIPES_H
+#define RECIPES_H
+
 #include "inventory.h"
 
 struct ItemCombination {
@@ -14,3 +17,5 @@ struct Recipe {
 
 struct ItemCombination parseCombo(int itemCount, struct Item item1, struct Item item2);
 struct Recipe *getRecipeList();
+
+#endif
