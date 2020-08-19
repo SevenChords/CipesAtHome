@@ -56,10 +56,16 @@ int printResults(char *filename, struct BranchPath *path) {
 			
 			fprintf(fp, "to make ");
 			
-			if (desc->output.a_key == desc->toss.a_key)
+			if (desc->handleOutput == Toss)
 				fprintf(fp, "(and toss) ");
+			else if (desc->handleOutput == Autoplace)
+				fprintf(fp, "(and auto-place) ");
 			
-			fprintf(fp, "<%s> %d %d\t", getItemName(desc->output.a_key), desc->framesTaken, desc->totalFramesTaken);
+			fprintf(fp, "<%s>", getItemName(desc->output.a_key));
+			
+			if (desc->handleOutput == TossOther)
+				fprintf(fp, ", toss [%s] in slot %d", getItemName(desc->toss), indexToss + 1);
+			fprintf(fp, "\t");
 		}
 		else if (curNodeAction == Ch5) {
 			fprintf(fp, "Ch.5 Break: Replace #%d for DB, Replace #%d for CO, Sort (", desc->indexDriedBouquet, desc->indexCoconut);

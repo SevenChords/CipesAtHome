@@ -12,7 +12,8 @@ enum Action {
 
 enum HandleOutput {
 	Toss,
-	Autoplace
+	Autoplace,
+	TossOther
 };
 
 struct MoveDescription {
@@ -28,6 +29,7 @@ struct MoveDescription {
 	int totalFramesTaken;		// Cummulative number of frames wasted to perform all actioons thus far
 	enum HandleOutput handleOutput;// Do we toss something or is the output autoplaced?
 	struct Item toss;		// Item that we are tossing
+	int indexToss;			// Index of item we are tossing
 	
 	// The following are only for the Chapter 5 case...
 	// it seems wasteful to put it in here when it won't be used for the other 57 nodes,
