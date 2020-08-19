@@ -1,3 +1,6 @@
+#ifndef INVENTORY_H
+#define INVENTORY_H
+
 enum Alpha_Sort {
 	POW_Block,
 	Icicle_Pop,
@@ -223,6 +226,14 @@ struct Item {
 	enum Type_Sort t_key;
 };
 
+struct ItemName {
+	enum Alpha_Sort a_key;
+	char *name;
+};
+
+// Return the string name for a particular item
+char *getItemName(enum Alpha_Sort a_key);
+
 // Return a pointer to an array of length 21 with each index i containing a variable length j which tracks the frameloss to navigate to the jth index in an inventory of size i
 int **getInventoryFrames();
 
@@ -236,3 +247,5 @@ struct Item *getStartingInventory();
 struct Item getItem(enum Alpha_Sort a_key);
 
 int main();
+
+#endif

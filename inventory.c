@@ -9,6 +9,7 @@
 typedef enum Alpha_Sort Alpha_Sort;
 typedef enum Type_Sort Type_Sort;
 typedef struct Item Item;
+typedef struct ItemName ItemName;
 
 /*====================NOTES====================
 - Items are interpreted based on the Alpha_Sort enumerator value. A function can later be written to conver this to a string.
@@ -135,6 +136,126 @@ Item items[] = {
 struct Item getItem(enum Alpha_Sort a_key) {
 	return items[a_key];
 }
+
+ItemName itemNames[] = {
+	{POW_Block, "POW Block"},
+	{Icicle_Pop, "Icicle Pop"},
+	{Fright_Mask, "Fright Mask"},
+	{Spicy_Soup, "Spicy Soup"},
+	{Ink_Pasta, "Ink Pasta"},
+	{Couples_Cake, "Couples Cake"},
+	{Point_Swap, "Point Swap"},
+	{Space_Food, "Space Food"},
+	{Ultra_Shroom, "Ultra Shroom"},
+	{Golden_Leaf, "Golden Leaf"},
+	{Cake_Mix, "Cake Mix"},
+	{Courage_Shell, "Courage Shell"},
+	{Courage_Meal, "Courage Meal"},
+	{Thunder_Bolt, "Thunder Bolt"},
+	{Thunder_Rage, "Thunder Rage"},
+	{Koopa_Tea, "Koopa Tea"},
+	{Turtley_Leaf, "Turtley Leaf"},
+	{Koopasta, "Koopasta"},
+	{Koopa_Bun, "Koopa Bun"},
+	{Spicy_Pasta, "Spicy Pasta"},
+	{Omelette_Meal, "Omelette Meal"},
+	{Mushroom, "Mushroom"},
+	{Shroom_Fry, "Shroom Fry"},
+	{Shroom_Crepe, "Shroom Crepe"},
+	{Shroom_Cake, "Shroom Cake"},
+	{Shroom_Steak, "Shroom Steak"},
+	{Shroom_Roast, "Shroom Roast"},
+	{Shooting_Star, "Shooting Star"},
+	{Gold_Bar, "Gold Bar"},
+	{Gold_Bar_x_3, "Gold Bar x 3"},
+	{Life_Shroom, "Life Shroom"},
+	{Dizzy_Dial, "Dizzy Dial"},
+	{Shroom_Broth, "Shroom Broth"},
+	{Ice_Storm, "Ice Storm"},
+	{Coconut_Bomb, "Coconut Bomb"},
+	{Coco_Candy, "Coco Candy"},
+	{Spite_Pouch, "Spite Pouch"},
+	{Mistake, "Mistake"},
+	{Dried_Shroom, "Dried Shroom"},
+	{Inn_Coupon, "Inn Coupon"},
+	{Choco_Cake, "Choco Cake"},
+	{Trial_Stew, "Trial Stew"},
+	{Slow_Shroom, "Slow Shroom"},
+	{Gradual_Syrup, "Gradual Syrup"},
+	{Super_Shroom, "Super Shroom"},
+	{HP_Drain, "HP Drain"},
+	{Tasty_Tonic, "Tasty Tonic"},
+	{Stopwatch, "Stopwatch"},
+	{Spaghetti, "Spaghetti"},
+	{Inky_Sauce, "Inky Sauce"},
+	{Whacka_Bump, "Whacka Bump"},
+	{Horsetail, "Horsetail"},
+	{Repel_Cape, "Repel Cape"},
+	{Boos_Sheet, "Boos Sheet"},
+	{Power_Punch, "Power Punch"},
+	{Keel_Mango, "Keel Mango"},
+	{Poison_Shroom, "Poison Shroom"},
+	{Dried_Bouquet, "Dried Bouquet"},
+	{Mystery, "Mystery"},
+	{Zess_Cookie, "Zess Cookie"},
+	{Zess_Special, "Zess Special"},
+	{Zess_Dynamite, "Zess Dynamite"},
+	{Zess_Tea, "Zess Tea"},
+	{Zess_Dinner, "Zess Dinner"},
+	{Zess_Deluxe, "Zess Deluxe"},
+	{Zess_Frappe, "Zess Frappe"},
+	{Sleepy_Sheep, "Sleepy Sheep"},
+	{Love_Pudding, "Love Pudding"},
+	{Honey_Candy, "Honey Candy"},
+	{Honey_Shroom, "Honey Shroom"},
+	{Honey_Super, "Honey Super"},
+	{Honey_Ultra, "Honey Ultra"},
+	{Honey_Syrup, "Honey Syrup"},
+	{Egg_Bomb, "Egg Bomb"},
+	{Volt_Shroom, "Volt Shroom"},
+	{Electro_Pop, "Electro Pop"},
+	{Peach_Tart, "Peach Tart"},
+	{Peachy_Peach, "Peachy Peach"},
+	{Fire_Pop, "Fire Pop"},
+	{Fire_Flower, "Fire Flower"},
+	{Mystic_Egg, "Mystic Egg"},
+	{Mr_Softener, "Mr. Softener"},
+	{Fruit_Parfait, "Fruit Parfait"},
+	{Fresh_Juice, "Fresh Juice"},
+	{Healthy_Salad, "Healthy Salad"},
+	{Meteor_Meal, "Meteor Meal"},
+	{Hot_Dog, "Hot Dog"},
+	{Ruin_Powder, "Ruin Powder"},
+	{Mango_Delight, "Mango Delight"},
+	{Mini_Mr_Mini, "Mini Mr. Mini"},
+	{Mousse_Cake, "Mousse Cake"},
+	{Maple_Shroom, "Maple Shroom"},
+	{Maple_Super, "Maple Super"},
+	{Maple_Ultra, "Maple Ultra"},
+	{Maple_Syrup, "Maple Syrup"},
+	{Fried_Egg, "Fried Egg"},
+	{Heartful_Cake, "Heartful Cake"},
+	{Coconut, "Coconut"},
+	{Snow_Bunny, "Snow Bunny"},
+	{Earth_Quake, "Earth Quake"},
+	{Hot_Sauce, "Hot Sauce"},
+	{Jelly_Shroom, "Jelly Shroom"},
+	{Jelly_Super, "Jelly Super"},
+	{Jelly_Ultra, "Jelly Ultra"},
+	{Jelly_Candy, "Jelly Candy"},
+	{Jammin_Jelly, "Jammin' Jelly"},
+	{Fresh_Pasta, "Fresh Pasta"}
+};
+
+char *getItemName(Alpha_Sort a_key) {
+	for (int i = 0; i < NUM_ITEMS; i++) {
+		if (itemNames[i].a_key == a_key) {
+			return itemNames[i].name;
+		}
+	}
+	
+	return NULL;
+};
 
 // I don't think we need this function
 /*Type_Sort getTypeKey (Alpha_Sort a_key) {
