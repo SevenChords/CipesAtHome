@@ -1,3 +1,5 @@
+#ifndef CALCULATOR_H
+#define CALCULATOR_H
 #include "inventory.h"
 #include "recipes.h"
 
@@ -59,4 +61,14 @@ struct BranchPath {
 // path represents the array of data that contains info for every single action we've done along the roadmap
 int printResults(char *filename, struct BranchPath *path);
 
+int alpha_sort(const void *elem1, const void *elem2);
+int alpha_sort_reverse(const void *elem1, const void *elem2);
+int type_sort(const void *elem1, const void *elem2);
+int type_sort_reverse(const void *elem1, const void *elem2);
+
+// Return a sorted inventory
+// Written in calculator.c instead of inventory.c because it is dependent on enum Action
+struct Item *getSortedInventory(struct Item *inventory, enum Action sort);
+
 int main();
+#endif

@@ -144,6 +144,72 @@ int printResults(char *filename, struct BranchPath *path) {
 	
 	return 0;
 }
+
+int alpha_sort(const void *elem1, const void *elem2) {
+	struct Item item1 = *((struct Item*)elem1);
+	struct Item item2 = *((struct Item*)elem2);
+	// Handle case of null slots
+	if (item1.a_key == -1) return -1;
+	if (item2.a_key == -1) return 1;
+	if (item1.a_key < item2.a_key) return -1;
+	if (item1.a_key > item2.a_key) return 1;
+	return 0;
+}
+
+int alpha_sort_reverse(const void *elem1, const void *elem2) {
+	struct Item item1 = *((struct Item*)elem1);
+	struct Item item2 = *((struct Item*)elem2);
+	// Handle case of null slots
+	if (item1.a_key == -1) return -1;
+	if (item2.a_key == -1) return 1;
+	if (item1.a_key < item2.a_key) return 1;
+	if (item1.a_key > item2.a_key) return -1;
+	return 0;
+}
+
+int type_sort(const void *elem1, const void *elem2) {
+	struct Item item1 = *((struct Item*)elem1);
+	struct Item item2 = *((struct Item*)elem2);
+	// Handle case of null slots
+	if (item1.t_key == -1) return -1;
+	if (item2.t_key == -1) return 1;
+	if (item1.t_key < item2.t_key) return -1;
+	if (item1.t_key > item2.t_key) return 1;
+	return 0;
+}
+
+int type_sort_reverse(const void *elem1, const void *elem2) {
+	struct Item item1 = *((struct Item*)elem1);
+	struct Item item2 = *((struct Item*)elem2);
+	// Handle case of null slots
+	if (item1.t_key == -1) return -1;
+	if (item2.t_key == -1) return 1;
+	if (item1.t_key < item2.t_key) return 1;
+	if (item1.t_key > item2.t_key) return -1;
+	return 0;
+}
+
+struct Item *getSortedInventory(struct Item *inventory, enum Action sort) {
+	// We first need to copy the inventory to a new array
+	struct Item *sorted_inventory = malloc(sizeof(struct Item) * 20);
+	for (int i = 0; i < 20; i++) {
+		sorted_inventory[i] = inventory[i];
+	}
+
+	// Use qsort and execute sort function depending on sort type
+	if (sort == Sort_Alpha_Asc)
+		qsort(sorted_inventory, 20, sizeof(struct Item), alpha_sort);
+	else if (sort == Sort_Alpha_Des)
+		qsort(sorted_inventory, 20, sizeof(struct Item), alpha_sort_reverse);
+	else if (sort == Sort_Type_Asc)
+		qsort(sorted_inventory, 20, sizeof(struct Item), type_sort);
+	else if (sort == Sort_Type_Des)
+		qsort(sorted_inventory, 20, sizeof(struct Item), type_sort_reverse);
+	else
+		return NULL;
+	return sorted_inventory;
+}
+
 /*
 int main() {
 	//In the real main function from Python, we do:
@@ -156,3 +222,41 @@ int main() {
 
 	
 }*/
+
+int main() {
+	struct Item inventory[] = {
+		{POW_Block, POW_Block_t},
+		{Icicle_Pop, Icicle_Pop_t},
+		{Fright_Mask, Fright_Mask_t},
+		{Spicy_Soup, Spicy_Soup_t},
+		{Ink_Pasta, Ink_Pasta_t},
+		{Couples_Cake, Couples_Cake_t},
+		{Point_Swap, Point_Swap_t},
+		{Space_Food, Space_Food_t},
+		{Ultra_Shroom, Ultra_Shroom_t},
+		{Golden_Leaf, Golden_Leaf_t},
+		{Cake_Mix, Cake_Mix_t},
+		{Courage_Shell, Courage_Shell_t},
+		{Courage_Meal, Courage_Meal_t},
+		{Thunder_Bolt, Thunder_Bolt_t},
+		{Thunder_Rage, Thunder_Rage_t},
+		{Koopa_Tea, Koopa_Tea_t},
+		{Turtley_Leaf, Turtley_Leaf_t},
+		{Koopasta, Koopasta_t},
+		{Koopa_Bun, Koopa_Bun_t},
+		{Spicy_Pasta, Spicy_Pasta_t}
+	};
+	
+	struct Item *sorted_inventory = getSortedInventory(inventory, Sort_Type_Asc);
+	printf("Before sort:");
+	for (int i = 0; i < 20; i++) {
+		printf("\nItem in slot %d: %d", i+1, inventory[i].a_key);
+	}
+	
+	printf("\n\nAfter sort:");
+	for (int i = 0; i < 20; i++) {
+		printf("\nItem in slot %d: %d", i+1, sorted_inventory[i].a_key);
+	}
+	
+	return 0;
+}
