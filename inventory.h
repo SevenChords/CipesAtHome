@@ -1,6 +1,6 @@
 #ifndef INVENTORY_H
 #define INVENTORY_H
-
+//#include "calculator.h"
 enum Alpha_Sort {
 	POW_Block,
 	Icicle_Pop,
@@ -245,6 +245,9 @@ struct Item *getStartingInventory();
 
 // Get all item data
 struct Item getItem(enum Alpha_Sort a_key);
+
+// Return a sorted inventory
+//struct Item *getSortedInventory(struct Item *inventory, enum Action sort);
 
 int main();
 
