@@ -14,9 +14,10 @@ config_t *getConfig() {
 	return config;
 }
 
+/*
 int main() {
 	// Example of extracting config information
-	/*config_t *config = getConfig();
+	config_t *config = getConfig();
 	const char *buf = malloc(32);
 	int value;
 
@@ -33,5 +34,5 @@ int main() {
 	if (config_lookup_string(config, "Version", &buf))
 		printf("Version = %s\n", buf);
 
-	return 1;*/
-}
+	return 1;
+}*/
