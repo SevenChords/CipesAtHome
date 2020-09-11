@@ -60,6 +60,8 @@ struct BranchPath {
 	int numLegalMoves;
 };
 
+void freeInvFrames(int **invFrames);
+
 void tryTossInventoryItem(struct BranchPath *curNode, struct Item *tempInventory, struct MoveDescription useDescription, struct Cook *cookBase, int *tempOutputsFulfilled, int tossedIndex, struct Item output, int tempFrames, int viableItems);
 
 void finalizeLegalMove(struct BranchPath *node, int tempFrames, struct MoveDescription useDescription, struct Item *tempInventory, struct Cook *cookBase, int *tempOutputsFulfilled, enum HandleOutput tossType, struct Item toss, int tossIndex);

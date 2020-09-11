@@ -121,6 +121,10 @@ void finalizeChapter5Eval(struct BranchPath *node, struct Item *inventory, enum 
 	// Get the index of where to insert this legal move to
 	int insertIndex = getInsertionIndex(node, temp_frame_sum);
 	
+	// Copy the inventory
+	struct Item *legalInventory = malloc(sizeof(struct Item) * 20);
+	copyInventory(legalInventory, inventory);
+	
 	// Describe how the break should play out
 	struct CH5 *ch5 = malloc(sizeof(struct CH5));
 	ch5->indexDriedBouquet = DB_place_index;
@@ -137,7 +141,7 @@ void finalizeChapter5Eval(struct BranchPath *node, struct Item *inventory, enum 
 	description.data = ch5;
 	int *copyOfOutputsFulfilled = malloc(sizeof(int) * 58);
 	copyOutputsFulfilled(copyOfOutputsFulfilled, outputsFulfilled);
-	struct BranchPath *legalMove = createLegalMove(node, inventory, description, copyOfOutputsFulfilled);
+	struct BranchPath *legalMove = createLegalMove(node, legalInventory, description, copyOfOutputsFulfilled);
 	
 	// Apend the legal move
 	insertIntoLegalMoves(insertIndex, legalMove, node);
@@ -149,7 +153,7 @@ void finalizeLegalMove(struct BranchPath *node, int tempFrames, struct MoveDescr
 	// Determine where to insert this legal move into the list of legal moves (sorted by frames taken)
 	int insertIndex = getInsertionIndex(node, tempFrames);
 	
-	struct Item *legalInventory = malloc(sizeof(struct  Item) * 20);
+	struct Item *legalInventory = malloc(sizeof(struct Item) * 20);
 	copyInventory(legalInventory, tempInventory);
 	struct Cook *cookNew = malloc(sizeof(struct Cook));
 	copyCook(cookNew, cookBase);
@@ -170,7 +174,7 @@ void finalizeLegalMove(struct BranchPath *node, int tempFrames, struct MoveDescr
 void freeAllNodes(struct BranchPath *node) {
 	struct BranchPath *nextNode = NULL;
 	
-	
+	/*
 	// We're at the deepest node. Print some debugging information
 	printf("Terminating all nodes. The following recipes were not satisfied at the deepest node after %d steps:\n", node->moves);
 
@@ -179,7 +183,7 @@ void freeAllNodes(struct BranchPath *node) {
 			printf("%s\n", getItemName(recipeList[i].output.a_key));
 		}
 	}
-	
+	*/
 	while(1) {
 		nextNode = node->prev;
 		freeNode(node);
@@ -193,6 +197,12 @@ void freeAllNodes(struct BranchPath *node) {
 		else {
 			break;
 		}
+	}
+}
+
+void freeInvFrames(int **invFrames) {
+	for (int i = 0; i < 21; i++) {
+		free(invFrames[i]);
 	}
 }
 
@@ -297,6 +307,8 @@ void handleChapter5EarlySortEndItems(struct BranchPath *node, struct Item *inven
 			if (remainingOutputsCanBeFulfilled(kmcs_temp_inventory, outputsFulfilled, recipeList)) {
 				finalizeChapter5Eval(node, kmcs_temp_inventory, sort, DB_place_index, CO_place_index, KM_place_index, CS_place_index, TR_use_index, temp_frame_sum, outputsFulfilled);
 			}
+			
+			free(kmcs_temp_inventory);
 		}
 	}
 }
@@ -345,6 +357,7 @@ void handleChapter5Eval(struct BranchPath *node, struct Item *inventory, struct 
 		
 		// Perform all sorts
 		handleChapter5Sorts(node, km_temp_inventory, recipeList, outputsFulfilled, frames_DB, frames_CO, temp_frames_KM, DB_place_index, CO_place_index, KM_place_index);
+		free(km_temp_inventory);
 	}		
 }
 	
@@ -379,6 +392,8 @@ void handleChapter5LateSortEndItems(struct BranchPath *node, struct  Item *inven
 		if (remainingOutputsCanBeFulfilled(cs_temp_inventory, outputsFulfilled, recipeList)) {
 			finalizeChapter5Eval(node, cs_temp_inventory, sort, DB_place_index, CO_place_index, KM_place_index, CS_place_index, TR_use_index, temp_frame_sum, outputsFulfilled);
 		}
+			
+		free(cs_temp_inventory);
 	}
 }
 
@@ -458,6 +473,7 @@ void insertIntoLegalMoves(int insertIndex, struct BranchPath *newLegalMove, stru
 void popAllButFirstLegalMove(struct BranchPath *node) {
 	for (int i = 1; i < node->numLegalMoves; i++) {
 		freeLegalMove(node, i);
+		i--;
 	}
 	
 	assert(node->numLegalMoves <= 1);
@@ -516,10 +532,10 @@ int printResults(char *filename, struct BranchPath *path) {
 			if (cookData->handleOutput == TossOther) {
 				fprintf(fp, ", toss [%s] in slot %d", getItemName(cookData->toss.a_key), cookData->indexToss + 1);
 			}
-			if (curNode->moves == 57 && ((struct Cook *) curNode->description.data)->handleOutput == Autoplace) {
+			if (outputsCreatedCount(curNode->outputCreated) == NUM_RECIPES && ((struct Cook *) curNode->description.data)->handleOutput == Autoplace) {
 				fprintf(fp, " (No-Toss 5 Frame Penalty for Jump Storage)");
 			}
-			else {
+			else if (outputsCreatedCount(curNode->outputCreated) == NUM_RECIPES) {
 				fprintf(fp, " (Jump Storage on Tossed Item)");
 			}
 			fprintf(fp, "\t");
@@ -545,63 +561,70 @@ int printResults(char *filename, struct BranchPath *path) {
 					fprintf(fp, "ERROR IN CH5SORT SWITCH CASE");
 			};
 			
-			fprintf(fp, "Replace #%d for KM, Replace #%d for CS, Use TR in #%d %d %d\t", ch5Data->indexKeelMango, ch5Data->indexCourageShell, ch5Data->indexThunderRage, desc.framesTaken, desc.totalFramesTaken);
+			fprintf(fp, "Replace #%d for KM, Replace #%d for CS, Use TR in #%d\t%d\t%d\t", ch5Data->indexKeelMango, ch5Data->indexCourageShell, ch5Data->indexThunderRage, desc.framesTaken, desc.totalFramesTaken);
+		}
+		else if (curNodeAction == Begin) {
+			fprintf(fp, "Begin\t");
 		}
 		else {
 			// Some type of sorting
 			fprintf(fp, "Sort - ");
 			switch (curNodeAction) {
 				case Sort_Alpha_Asc :
-					fprintf(fp, "Alphabetical ");
+					fprintf(fp, "Alphabetical\t");
 					break;
 				case Sort_Alpha_Des :
-					fprintf(fp, "Reverse Alphabetical ");
+					fprintf(fp, "Reverse Alphabetical\t");
 					break;
 				case Sort_Type_Asc :
-					fprintf(fp, "Type ");
+					fprintf(fp, "Type\t");
 					break;
 				case Sort_Type_Des :
-					fprintf(fp, "Reverse Type ");
+					fprintf(fp, "Reverse Type\t");
 					break;
 				default :
 					fprintf(fp, "ERROR IN HANDLING OF SORT");
 			};
-			
-			fprintf(fp, "%d %d\t", desc.framesTaken, desc.totalFramesTaken);
 		}
+		
+		// Print out frames taken
+		fprintf(fp, "%d\t", curNode->description.framesTaken);
+		// Print out total frames taken
+		fprintf(fp, "%d\t", curNode->description.totalFramesTaken);
 
 
 		// Print out inventory
 		for (int i = 0; i < 20; i++) {
 			if (curNode->inventory[i].a_key == -1) {
 				if (i<9) {
-					fprintf(fp, "NULL ");
+					fprintf(fp, "NULL\t");
 				}
 				else if (i==0) { 
 					fprintf(fp, "NULL\t");
 				}
 				else {
-					fprintf(fp, "BLOCKED ");
+					fprintf(fp, "BLOCKED\t");
 				}
 				continue;
 			}
 				
-			fprintf(fp, "%s ", getItemName(curNode->inventory[i].a_key));
+			fprintf(fp, "%s\t", getItemName(curNode->inventory[i].a_key));
 		}
 		
 		// Print out whether or not all 58 items were created
 		for (int i = 0; i < NUM_RECIPES; i++) {
 			if (curNode->outputCreated[i] == 1) {
-				fprintf(fp, "\tTrue");
+				fprintf(fp, "True\t");
 			}
 			else {
-				fprintf(fp, "\tFalse");
+				fprintf(fp, "False\t");
 			}
 		}
 		
 		fprintf(fp, "\n");
+		curNode = curNode->next;
 			
-	} while (curNode->next != NULL);
+	} while (curNode != NULL);
 	
 	fclose(fp);
 	
@@ -780,7 +803,6 @@ struct Result calculateOrder(struct Job job) {
 	
 	int select;
 	config_lookup_int(config, "select", &select);
-	
 	invFrames = getInventoryFrames();
 	recipeList = getRecipeList();
 	
@@ -883,7 +905,7 @@ struct Result calculateOrder(struct Job job) {
 				applyJumpStorageFramePenalty(curNode);
 				
 				currentFrameRecord = getFastestRecordOnBlob();
-				if (/*curNode->description.totalFramesTaken < currentFrameRecord + BUFFER_SEARCH_FRAMES*/ 1) {
+				if (curNode->description.totalFramesTaken < 5000) {
 					// A finished roadmap has been generated
 					// TODO: Implement optimizeRoadmap
 
@@ -895,16 +917,18 @@ struct Result calculateOrder(struct Job job) {
 						char *filename = malloc(sizeof(char) * 17);
 						sprintf(filename, "results/%d.txt", *(job.current_frame_record));
 						printResults(filename, root);
-						
+						char tmp[50];
+						sprintf(tmp, "Congrats! New fastest roadmap found! %d frames", curNode->description.totalFramesTaken);
+						recipeLog(6, "Calculator", "Info", "Roadmap", tmp);
 						free(filename);
-						free(invFrames);
+						freeInvFrames(invFrames);
 						invFrames = NULL;
 						struct Result result = (struct Result) {*(job.current_frame_record), job.callNumber};
 						return result;
 					}
 				}
 				
-				recipeLog(4, "Calculator", "Info", "Roadmap", "Found roadmap");
+				recipeLog(2, "Calculator", "Info", "Roadmap", "Found roadmap slower than best...");
 
 				// Regardless of record status, it's time to go back up and find new endstates
 				curNode = curNode->prev;
@@ -921,7 +945,7 @@ struct Result calculateOrder(struct Job job) {
 				
 				// Only evaluate the 57th recipe (Mistake) when it's the last recipe to fulfill
 				// This is because it is relatively easy to craft this output with many of the previous outputs, and will take minimal frames
-				int upperOutputLimit = (outputsCreatedCount(curNode->outputCreated) == NUM_RECIPES) ? NUM_RECIPES : (NUM_RECIPES - 1);
+				int upperOutputLimit = (outputsCreatedCount(curNode->outputCreated) == NUM_RECIPES - 1) ? NUM_RECIPES : (NUM_RECIPES - 1);
 				
 				struct Recipe *recipeList = job.recipeList;
 				// Iterate through all recipe ingredient combos
@@ -1251,6 +1275,7 @@ struct Result calculateOrder(struct Job job) {
 										// Something went wrong if we reach this point...
 										exit(-2);
 								}
+								generateFramesTaken(&description, curNode, sortFrames);
 								description.framesTaken = sortFrames;
 								int *copyOfOutputsFulfilled = malloc(sizeof(int) * 58);
 								copyOutputsFulfilled(copyOfOutputsFulfilled, curNode->outputCreated);
@@ -1358,6 +1383,9 @@ struct Result calculateOrder(struct Job job) {
 		}
 		
 		// We have passed the iteration maximum
+		// Print the incomplete roadmap
+		char filename[30];
+		sprintf(filename, "Invalid roadmap %d", total_dives);
 		// Free everything before reinitializing
 		freeAllNodes(curNode);
 	}
