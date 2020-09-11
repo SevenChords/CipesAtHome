@@ -5,6 +5,8 @@
 #include <sys/stat.h>
 #include "cJSON.h"
 #include "FTPManagement.h"
+#include <libconfig.h>
+#include "config.h"
 
 struct memory {
 	char *data;
@@ -67,27 +69,7 @@ int getFastestRecordOnBlob() {
 	return 0;
 }
 
-static size_t read_callback(void *dest, size_t size, size_t nmemb, void *userp) {
-	struct memory *wt = (struct memory *)userp;
-	size_t buffer_size = size * nmemb;
-	
-	if (wt->size > 0) {
-		size_t copy_this_much = wt->size;
-		if (copy_this_much > buffer_size)
-			copy_this_much = buffer_size;
-		memcpy(dest, wt->data, copy_this_much);
-
-		wt->data += copy_this_much;
-		wt->size -= copy_this_much;
-		return copy_this_much; // We transferred this many bytes
-	}
-
-	return 0;
-}
-
 int handle_post(char* url, FILE *fp, int localRecord, char *nickname) {
-	CURL *curl;
-	CURLcode res;
 	struct memory wt;
 	
 	fseek(fp, 0, SEEK_END);
@@ -99,14 +81,8 @@ int handle_post(char* url, FILE *fp, int localRecord, char *nickname) {
 	fread(wt.data + bytes_written, 1, fsize, fp);
 	fclose(fp);
 	sprintf(wt.data + fsize + bytes_written, "\"}");
-	
-	res = curl_global_init(CURL_GLOBAL_DEFAULT);
-	if (res != CURLE_OK) {
-		printf("cURL ERROR!");
-		return 1;
-	}
 
-	curl = curl_easy_init();
+	CURL *curl = curl_easy_init();
 	if (curl) {
 		cJSON *json = cJSON_Parse(wt.data);
 		char *json_str = cJSON_PrintUnformatted(json);
@@ -117,10 +93,7 @@ int handle_post(char* url, FILE *fp, int localRecord, char *nickname) {
 		curl_easy_setopt(curl, CURLOPT_URL, url);
 		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json_str);
 		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-		res = curl_easy_perform(curl);
-		
-		if(res != CURLE_OK)
-			printf("cURL FAILED!");
+		curl_easy_perform(curl);
 		
 		curl_easy_cleanup(curl);
 	}
@@ -149,23 +122,36 @@ int testRecord(int localRecord) {
 		return -1;
 	}
 
-	char* data;
-	handle_post("https://hundorecipes.azurewebsites.net/api/uploadAndVerify", fp, localRecord, "C_TEST");
+	const char *username;
+	config_t *config = getConfig();
+	config_lookup_string(config, "Username", &username);
+	char nickname[20];
+	strncpy(nickname, username, 19);
+	nickname[19] = '\0';
+	handle_post("https://hundorecipes.azurewebsites.net/api/uploadAndVerify", fp, localRecord, nickname);
 	return 0;
 }
 
-int checkForUpdates() {
+int checkForUpdates(char *ver) {
 	char *url = "https://api.github.com/repos/SevenChords/CipesAtHome/releases/latest";
 	char *data = handle_get(url);
-	printf("Data: %s\n", data);
 	cJSON *json = cJSON_Parse(data);
 	json = cJSON_GetObjectItemCaseSensitive(json, "tag_name");
-	char *tag_name = cJSON_Print(json);
-	printf("Tag Name: %s\n", tag_name);
-	free(tag_name);
-	// Add logs
+	ver = cJSON_Print(json);
+	config_t *config = getConfig();
+	char *local_ver = malloc(4 * sizeof(char));
+	config_lookup_string(config, "Version", (const char **) &local_ver);
 	
-	// TODO: Use getConfig to compare tag name with config file
+	// TODO: This is really janky...
+	// tag_name is read as (Ex.) "0.01" while local_ver is 0.01.
+	// Ignore first quote and just read 4 characters... If version # gets longer, will need to fix
+	if (strncmp(local_ver, ver + sizeof(char), 4) != 0) {
+		free(local_ver);
+		return -1;
+	}
+	
+	free(local_ver);
+	// Add logs
 	return 0;
 }
 
