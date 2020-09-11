@@ -17,13 +17,11 @@ struct Recipe *getRecipeList() {
 	
 	////////// Shroom Fry //////////
 	recipes[0].output = getItem(Shroom_Fry);
-	recipes[0].countCombos = 5;
+	recipes[0].countCombos = 3;
 	recipes[0].combos = malloc(sizeof(struct ItemCombination) * recipes[0].countCombos);
-	recipes[0].combos[0] = 	parseCombo(1, 	getItem(Dried_Shroom), (struct Item) {-1,-1});
-	recipes[0].combos[1] = 	parseCombo(1, 	getItem(Mushroom), 	(struct Item) {-1,-1});
-	recipes[0].combos[2] =		parseCombo(1, 	getItem(Poison_Shroom),(struct Item) {-1,-1});
-	recipes[0].combos[3] = 	parseCombo(1, 	getItem(Super_Shroom), (struct Item) {-1,-1});
-	recipes[0].combos[4] = 	parseCombo(1, 	getItem(Volt_Shroom),	(struct Item) {-1,-1});
+	recipes[0].combos[0] = 	parseCombo(1,	getItem(Mystery), (struct Item) {-1, -1});
+	recipes[0].combos[1] =		parseCombo(1, 	getItem(Poison_Shroom),(struct Item) {-1,-1});
+	recipes[0].combos[2] = 	parseCombo(1, 	getItem(Volt_Shroom),	(struct Item) {-1,-1});
 	
 	////////// Shroom Roast //////////
 	recipes[1].output = getItem(Shroom_Roast);
@@ -46,40 +44,35 @@ struct Recipe *getRecipeList() {
 	
 	////////// Maple Shroom //////////
 	recipes[4].output = getItem(Maple_Shroom);
-	recipes[4].countCombos = 3;
+	recipes[4].countCombos = 2;
 	recipes[4].combos = malloc(sizeof(struct ItemCombination) * recipes[4].countCombos);
-	recipes[4].combos[0] = 	parseCombo(2, 	getItem(Mushroom),	getItem(Maple_Syrup));
-	recipes[4].combos[1] = 	parseCombo(2, 	getItem(Volt_Shroom), 	getItem(Maple_Syrup));
-	recipes[4].combos[2] = 	parseCombo(2, 	getItem(Slow_Shroom), 	getItem(Maple_Syrup));
+	recipes[4].combos[0] = 	parseCombo(2, 	getItem(Volt_Shroom), 	getItem(Maple_Syrup));
+	recipes[4].combos[1] = 	parseCombo(2, 	getItem(Slow_Shroom), 	getItem(Maple_Syrup));
 	
 	////////// Jelly Shroom //////////
 	recipes[5].output = getItem(Jelly_Shroom);
-	recipes[5].countCombos = 2;
+	recipes[5].countCombos = 1;
 	recipes[5].combos = malloc(sizeof(struct ItemCombination) * recipes[5].countCombos);
-	recipes[5].combos[0] = 	parseCombo(2, 	getItem(Mushroom), 	getItem(Jammin_Jelly));
-	recipes[5].combos[1] = 	parseCombo(2, 	getItem(Volt_Shroom), 	getItem(Jammin_Jelly));
+	recipes[5].combos[0] = 	parseCombo(2, 	getItem(Volt_Shroom), 	getItem(Jammin_Jelly));
 	
 	////////// Honey Super //////////
 	recipes[6].output = getItem(Honey_Super);
-	recipes[6].countCombos = 2;
+	recipes[6].countCombos = 1;
 	recipes[6].combos = malloc(sizeof(struct ItemCombination) * recipes[6].countCombos);
 	recipes[6].combos[0] = 	parseCombo(2, 	getItem(Life_Shroom), 	getItem(Honey_Syrup));
-	recipes[6].combos[1] = 	parseCombo(2, 	getItem(Super_Shroom), getItem(Honey_Syrup));
 	
 	////////// Maple Super //////////
 	recipes[7].output = getItem(Maple_Super);
-	recipes[7].countCombos = 3;
+	recipes[7].countCombos = 2;
 	recipes[7].combos = malloc(sizeof(struct ItemCombination) * recipes[7].countCombos);
-	recipes[7].combos[0] = 	parseCombo(2, 	getItem(Super_Shroom),	getItem(Maple_Syrup));
-	recipes[7].combos[1] = 	parseCombo(2, 	getItem(Life_Shroom), 	getItem(Maple_Syrup));
-	recipes[7].combos[2] = 	parseCombo(2, 	getItem(Jammin_Jelly), getItem(Slow_Shroom));
+	recipes[7].combos[0] = 	parseCombo(2, 	getItem(Life_Shroom), 	getItem(Maple_Syrup));
+	recipes[7].combos[1] = 	parseCombo(2, 	getItem(Jammin_Jelly), getItem(Slow_Shroom));
 	
 	////////// Jelly Super //////////
 	recipes[8].output = getItem(Jelly_Super);
-	recipes[8].countCombos = 2;
+	recipes[8].countCombos = 1;
 	recipes[8].combos = malloc(sizeof(struct ItemCombination) * recipes[8].countCombos);
 	recipes[8].combos[0] = 	parseCombo(2, 	getItem(Life_Shroom), 	getItem(Jammin_Jelly));
-	recipes[8].combos[1] = 	parseCombo(2,	getItem(Super_Shroom), getItem(Jammin_Jelly));
 
 	////////// Honey Ultra //////////
 	recipes[9].output = getItem(Honey_Ultra);
@@ -166,12 +159,10 @@ struct Recipe *getRecipeList() {
 	
 	////////// Omelette Meal //////////
 	recipes[21].output = getItem(Omelette_Meal);
-	recipes[21].countCombos = 4;
+	recipes[21].countCombos = 2;
 	recipes[21].combos = malloc(sizeof(struct ItemCombination) * recipes[21].countCombos);
-	recipes[21].combos[0] = 	parseCombo(2,	getItem(Mystic_Egg),	getItem(Mushroom));
-	recipes[21].combos[1] = 	parseCombo(2,	getItem(Mystic_Egg),	getItem(Super_Shroom));
-	recipes[21].combos[2] = 	parseCombo(2,	getItem(Mystic_Egg),	getItem(Life_Shroom));
-	recipes[21].combos[3] = 	parseCombo(2,	getItem(Mystic_Egg),	getItem(Ultra_Shroom));
+	recipes[21].combos[0] = 	parseCombo(2,	getItem(Mystic_Egg),	getItem(Life_Shroom));
+	recipes[21].combos[1] = 	parseCombo(2,	getItem(Mystic_Egg),	getItem(Ultra_Shroom));
 	
 	////////// Koopa Bun //////////
 	recipes[22].output = getItem(Koopa_Bun);
@@ -207,12 +198,10 @@ struct Recipe *getRecipeList() {
 	
 	////////// Shroom Cake //////////
 	recipes[27].output = getItem(Shroom_Cake);
-	recipes[27].countCombos = 4;
+	recipes[27].countCombos = 2;
 	recipes[27].combos = malloc(sizeof(struct ItemCombination) * recipes[27].countCombos);
-	recipes[27].combos[0] = 	parseCombo(2,	getItem(Mushroom),	getItem(Cake_Mix));
-	recipes[27].combos[1] = 	parseCombo(2,	getItem(Super_Shroom),	getItem(Cake_Mix));
-	recipes[27].combos[2] = 	parseCombo(2,	getItem(Life_Shroom),	getItem(Cake_Mix));
-	recipes[27].combos[3] = 	parseCombo(2,	getItem(Slow_Shroom),	getItem(Cake_Mix));
+	recipes[27].combos[0] = 	parseCombo(2,	getItem(Life_Shroom),	getItem(Cake_Mix));
+	recipes[27].combos[1] = 	parseCombo(2,	getItem(Slow_Shroom),	getItem(Cake_Mix));
 	
 	////////// Choco Cake //////////
 	recipes[28].output = getItem(Choco_Cake);
@@ -305,13 +294,12 @@ struct Recipe *getRecipeList() {
 	
 	////////// Inky Sauce //////////
 	recipes[40].output = getItem(Inky_Sauce);
-	recipes[40].countCombos = 5;
+	recipes[40].countCombos = 4;
 	recipes[40].combos = malloc(sizeof(struct ItemCombination) * recipes[40].countCombos);
 	recipes[40].combos[0] = 	parseCombo(2,	getItem(Hot_Sauce),	getItem(Fresh_Juice));
 	recipes[40].combos[1] = 	parseCombo(2,	getItem(Hot_Sauce),	getItem(Koopa_Tea));
 	recipes[40].combos[2] = 	parseCombo(2,	getItem(Hot_Sauce),	getItem(Turtley_Leaf));
 	recipes[40].combos[3] = 	parseCombo(2,	getItem(Hot_Sauce),	getItem(Zess_Tea));
-	recipes[40].combos[4] = 	parseCombo(2,	getItem(Hot_Sauce),	getItem(Tasty_Tonic));
 	
 	////////// Icicle Pop //////////
 	recipes[41].output = getItem(Icicle_Pop);
@@ -444,10 +432,9 @@ struct Recipe *getRecipeList() {
 	
 	////////// Trial Stew //////////
 	recipes[51].output = getItem(Trial_Stew);
-	recipes[51].countCombos = 2;
+	recipes[51].countCombos = 1;
 	recipes[51].combos = malloc(sizeof(struct ItemCombination) * recipes[51].countCombos);
 	recipes[51].combos[0] = 	parseCombo(2,	getItem(Poison_Shroom),getItem(Couples_Cake));
-	recipes[51].combos[1] = 	parseCombo(2,	getItem(Thunder_Rage),	getItem(Thunder_Bolt));
 	
 	////////// Courage Meal //////////
 	recipes[52].output = getItem(Courage_Meal);
