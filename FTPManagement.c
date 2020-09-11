@@ -129,6 +129,7 @@ int testRecord(int localRecord) {
 	strncpy(nickname, username, 19);
 	nickname[19] = '\0';
 	handle_post("https://hundorecipes.azurewebsites.net/api/uploadAndVerify", fp, localRecord, nickname);
+	free(config);
 	return 0;
 }
 
