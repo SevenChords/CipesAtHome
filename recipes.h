@@ -18,4 +18,19 @@ struct Recipe {
 struct ItemCombination parseCombo(int itemCount, struct Item item1, struct Item item2);
 struct Recipe *getRecipeList();
 
+void copyDependentIndices(int *newDependentIndices, int *dependentIndices, int numDependentIndices);
+
+int itemInMakeableItems(struct Item item, struct Item *makeableItems, int makeableItemsLength);
+
+void clearDependentIndices(int *dependentIndices, int length);
+
+// Determine if the recipe items can still be fulfilled
+int checkRecipe(struct ItemCombination combo, struct Item *makeableItems, int *outputsCreated, int *dependentIndices, int numDependentIndices, struct Recipe *recipeList, int makeableItemsLength);
+
+// Determine if the remaining outputs can be fulfilled with the current given inventory
+int remainingOutputsCanBeFulfilled(struct Item *inventory, int *outputsCreated, struct Recipe *recipeList);
+
+// Returns the index in the recipeList for the given recipe output "item". -1 if not a recipe output
+int getIndexOfRecipe(struct Item item, struct Recipe *recipeList);
+
 #endif

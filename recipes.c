@@ -324,7 +324,7 @@ struct Recipe *getRecipeList() {
 	recipes[42].countCombos = 2;
 	recipes[42].combos = malloc(sizeof(struct ItemCombination) * recipes[42].countCombos);
 	recipes[42].combos[0] = 	parseCombo(2,	getItem(Ice_Storm),	getItem(Maple_Syrup));
-	recipes[42].combos[1] =		parseCombo(2,	getItem(Ice_Storm),	getItem(Jammin_Jelly));
+	recipes[42].combos[1] =	parseCombo(2,	getItem(Ice_Storm),	getItem(Jammin_Jelly));
 	
 	////////// Snow Bunny //////////
 	recipes[43].output = getItem(Snow_Bunny);
@@ -475,115 +475,220 @@ struct Recipe *getRecipeList() {
 	recipes[55].combos = malloc(sizeof(struct ItemCombination) * recipes[55].countCombos);
 	recipes[55].combos[0] = 	parseCombo(2,	getItem(Egg_Bomb), 	getItem(Coconut_Bomb));
 	
-	////////// Mistake //////////
-	recipes[56].output = getItem(Mistake);
-	recipes[56].countCombos = 63;
-	recipes[56].combos = malloc(sizeof(struct ItemCombination) * recipes[56].countCombos);
-	recipes[56].combos[0] = 	parseCombo(1,	getItem(Shroom_Roast),	(struct Item) {-1,-1});
-	recipes[56].combos[1] = 	parseCombo(1,	getItem(Shroom_Steak), (struct Item) {-1,-1});
-	recipes[56].combos[2] = 	parseCombo(1,	getItem(Honey_Shroom), (struct Item) {-1,-1});
-	recipes[56].combos[3] = 	parseCombo(1,	getItem(Maple_Shroom), (struct Item) {-1,-1});
-	recipes[56].combos[4] = 	parseCombo(1,	getItem(Jelly_Super), 	(struct Item) {-1,-1});
-	recipes[56].combos[5] = 	parseCombo(1,	getItem(Honey_Ultra),	(struct Item) {-1,-1});
-	recipes[56].combos[6] = 	parseCombo(1,	getItem(Maple_Ultra), 	(struct Item) {-1,-1});
-	recipes[56].combos[7] = 	parseCombo(1,	getItem(Jelly_Ultra), 	(struct Item) {-1,-1});
-	recipes[56].combos[8] = 	parseCombo(1,	getItem(Honey_Ultra), 	(struct Item) {-1,-1});
-	recipes[56].combos[9] = 	parseCombo(1,	getItem(Maple_Ultra), 	(struct Item) {-1,-1});
-	recipes[56].combos[10] = 	parseCombo(1,	getItem(Jelly_Ultra), 	(struct Item) {-1,-1});
-	recipes[56].combos[11] = 	parseCombo(1,	getItem(Zess_Dinner), 	(struct Item) {-1,-1});
-	recipes[56].combos[12] = 	parseCombo(1,	getItem(Zess_Special), (struct Item) {-1,-1});
-	recipes[56].combos[13] = 	parseCombo(1,	getItem(Zess_Deluxe), 	(struct Item) {-1,-1});
-	recipes[56].combos[14] = 	parseCombo(1,	getItem(Spaghetti), 	(struct Item) {-1,-1});
-	recipes[56].combos[15] = 	parseCombo(1,	getItem(Koopasta), 	(struct Item) {-1,-1});
-	recipes[56].combos[16] = 	parseCombo(1,	getItem(Spicy_Pasta), 	(struct Item) {-1,-1});
-	recipes[56].combos[17] = 	parseCombo(1,	getItem(Ink_Pasta), 	(struct Item) {-1,-1});
-	recipes[56].combos[18] = 	parseCombo(1,	getItem(Spicy_Soup), 	(struct Item) {-1,-1});
-	recipes[56].combos[19] = 	parseCombo(1,	getItem(Fried_Egg), 	(struct Item) {-1,-1});
-	recipes[56].combos[20] = 	parseCombo(1,	getItem(Omelette_Meal),(struct Item) {-1,-1});
-	recipes[56].combos[21] = 	parseCombo(1,	getItem(Koopa_Bun), 	(struct Item) {-1,-1});
-	recipes[56].combos[22] = 	parseCombo(1,	getItem(Healthy_Salad),(struct Item) {-1,-1});
-	recipes[56].combos[23] = 	parseCombo(1,	getItem(Meteor_Meal), 	(struct Item) {-1,-1});
-	recipes[56].combos[24] = 	parseCombo(1,	getItem(Couples_Cake), (struct Item) {-1,-1});
-	recipes[56].combos[25] = 	parseCombo(1,	getItem(Mousse_Cake), 	(struct Item) {-1,-1});
-	recipes[56].combos[26] = 	parseCombo(1,	getItem(Shroom_Cake), 	(struct Item) {-1,-1});
-	recipes[56].combos[27] = 	parseCombo(1,	getItem(Choco_Cake), 	(struct Item) {-1,-1});
-	recipes[56].combos[28] = 	parseCombo(1,	getItem(Heartful_Cake),(struct Item) {-1,-1});
-	recipes[56].combos[29] = 	parseCombo(1,	getItem(Fruit_Parfait),(struct Item) {-1,-1});
-	recipes[56].combos[30] = 	parseCombo(1,	getItem(Mango_Delight),(struct Item) {-1,-1});
-	recipes[56].combos[31] = 	parseCombo(1,	getItem(Love_Pudding), (struct Item) {-1,-1});
-	recipes[56].combos[32] = 	parseCombo(1,	getItem(Zess_Cookie), 	(struct Item) {-1,-1});
-	recipes[56].combos[33] = 	parseCombo(1,	getItem(Shroom_Crepe), (struct Item) {-1,-1});
-	recipes[56].combos[34] = 	parseCombo(1,	getItem(Peach_Tart), 	(struct Item) {-1,-1});
-	recipes[56].combos[35] = 	parseCombo(1,	getItem(Koopa_Tea), 	(struct Item) {-1,-1});
-	recipes[56].combos[36] = 	parseCombo(1,	getItem(Zess_Tea), 	(struct Item) {-1,-1});
-	recipes[56].combos[37] = 	parseCombo(1,	getItem(Shroom_Broth), (struct Item) {-1,-1});
-	recipes[56].combos[38] = 	parseCombo(1,	getItem(Fresh_Juice), 	(struct Item) {-1,-1});
-	recipes[56].combos[39] = 	parseCombo(1,	getItem(Inky_Sauce), 	(struct Item) {-1,-1});
-	recipes[56].combos[40] = 	parseCombo(1,	getItem(Icicle_Pop), 	(struct Item) {-1,-1});
-	recipes[56].combos[41] = 	parseCombo(1,	getItem(Zess_Frappe), 	(struct Item) {-1,-1});
-	recipes[56].combos[42] = 	parseCombo(1,	getItem(Coco_Candy), 	(struct Item) {-1,-1});
-	recipes[56].combos[43] = 	parseCombo(1,	getItem(Honey_Candy), 	(struct Item) {-1,-1});
-	recipes[56].combos[44] = 	parseCombo(1,	getItem(Jelly_Candy), 	(struct Item) {-1,-1});
-	recipes[56].combos[45] = 	parseCombo(1,	getItem(Electro_Pop), 	(struct Item) {-1,-1});
-	recipes[56].combos[46] = 	parseCombo(1,	getItem(Fire_Pop), 	(struct Item) {-1,-1});
-	recipes[56].combos[47] = 	parseCombo(1,	getItem(Space_Food), 	(struct Item) {-1,-1});
-	recipes[56].combos[48] = 	parseCombo(1,	getItem(Trial_Stew), 	(struct Item) {-1,-1});
-	recipes[56].combos[49] = 	parseCombo(1,	getItem(Courage_Meal), (struct Item) {-1,-1});
-	recipes[56].combos[50] = 	parseCombo(1,	getItem(Coconut_Bomb), (struct Item) {-1,-1});
-	recipes[56].combos[51] = 	parseCombo(1,	getItem(Egg_Bomb), 	(struct Item) {-1,-1});
-	recipes[56].combos[52] = 	parseCombo(1,	getItem(Zess_Dynamite),(struct Item) {-1,-1});
-	recipes[56].combos[53] = 	parseCombo(1,	getItem(Courage_Shell),(struct Item) {-1,-1});
-	recipes[56].combos[54] = 	parseCombo(1,	getItem(Hot_Dog), 	(struct Item) {-1,-1});
-	recipes[56].combos[55] = 	parseCombo(1,	getItem(Ice_Storm), 	(struct Item) {-1,-1});
-	recipes[56].combos[56] = 	parseCombo(1,	getItem(Mystery), 	(struct Item) {-1,-1});
-	recipes[56].combos[57] = 	parseCombo(1,	getItem(Ruin_Powder), 	(struct Item) {-1,-1});
-	recipes[56].combos[58] = 	parseCombo(1,	getItem(Shooting_Star),(struct Item) {-1,-1});
-	recipes[56].combos[59] = 	parseCombo(1,	getItem(Shroom_Fry), 	(struct Item) {-1,-1});
-	recipes[56].combos[60] = 	parseCombo(1,	getItem(Tasty_Tonic), 	(struct Item) {-1,-1});
-	recipes[56].combos[61] = 	parseCombo(1,	getItem(Thunder_Bolt), (struct Item) {-1,-1});
-	recipes[56].combos[62] = 	parseCombo(1,	getItem(Thunder_Rage), (struct Item) {-1,-1});
-	
 	////////// Dried Bouquet //////////
-	recipes[57].output = getItem(Dried_Bouquet);
-	recipes[57].countCombos = 1;
+	recipes[56].output = getItem(Dried_Bouquet);
+	recipes[56].countCombos = 1;
+	recipes[56].combos = malloc(sizeof(struct ItemCombination) * recipes[56].countCombos);
+	recipes[56].combos[0] = 	parseCombo(2,	getItem(Hot_Dog),	getItem(Mousse_Cake));
+	
+	////////// Mistake //////////
+	recipes[57].output = getItem(Mistake);
+	recipes[57].countCombos = 63;
 	recipes[57].combos = malloc(sizeof(struct ItemCombination) * recipes[57].countCombos);
-	recipes[57].combos[0] = 	parseCombo(1,	getItem(Hot_Dog),	getItem(Mousse_Cake));
+	recipes[57].combos[0] = 	parseCombo(1,	getItem(Shroom_Roast),	(struct Item) {-1,-1});
+	recipes[57].combos[1] = 	parseCombo(1,	getItem(Shroom_Steak), (struct Item) {-1,-1});
+	recipes[57].combos[2] = 	parseCombo(1,	getItem(Honey_Shroom), (struct Item) {-1,-1});
+	recipes[57].combos[3] = 	parseCombo(1,	getItem(Maple_Shroom), (struct Item) {-1,-1});
+	recipes[57].combos[4] = 	parseCombo(1,	getItem(Jelly_Super), 	(struct Item) {-1,-1});
+	recipes[57].combos[5] = 	parseCombo(1,	getItem(Honey_Ultra),	(struct Item) {-1,-1});
+	recipes[57].combos[6] = 	parseCombo(1,	getItem(Maple_Ultra), 	(struct Item) {-1,-1});
+	recipes[57].combos[7] = 	parseCombo(1,	getItem(Jelly_Ultra), 	(struct Item) {-1,-1});
+	recipes[57].combos[8] = 	parseCombo(1,	getItem(Honey_Ultra), 	(struct Item) {-1,-1});
+	recipes[57].combos[9] = 	parseCombo(1,	getItem(Maple_Ultra), 	(struct Item) {-1,-1});
+	recipes[57].combos[10] = 	parseCombo(1,	getItem(Jelly_Ultra), 	(struct Item) {-1,-1});
+	recipes[57].combos[11] = 	parseCombo(1,	getItem(Zess_Dinner), 	(struct Item) {-1,-1});
+	recipes[57].combos[12] = 	parseCombo(1,	getItem(Zess_Special), (struct Item) {-1,-1});
+	recipes[57].combos[13] = 	parseCombo(1,	getItem(Zess_Deluxe), 	(struct Item) {-1,-1});
+	recipes[57].combos[14] = 	parseCombo(1,	getItem(Spaghetti), 	(struct Item) {-1,-1});
+	recipes[57].combos[15] = 	parseCombo(1,	getItem(Koopasta), 	(struct Item) {-1,-1});
+	recipes[57].combos[16] = 	parseCombo(1,	getItem(Spicy_Pasta), 	(struct Item) {-1,-1});
+	recipes[57].combos[17] = 	parseCombo(1,	getItem(Ink_Pasta), 	(struct Item) {-1,-1});
+	recipes[57].combos[18] = 	parseCombo(1,	getItem(Spicy_Soup), 	(struct Item) {-1,-1});
+	recipes[57].combos[19] = 	parseCombo(1,	getItem(Fried_Egg), 	(struct Item) {-1,-1});
+	recipes[57].combos[20] = 	parseCombo(1,	getItem(Omelette_Meal),(struct Item) {-1,-1});
+	recipes[57].combos[21] = 	parseCombo(1,	getItem(Koopa_Bun), 	(struct Item) {-1,-1});
+	recipes[57].combos[22] = 	parseCombo(1,	getItem(Healthy_Salad),(struct Item) {-1,-1});
+	recipes[57].combos[23] = 	parseCombo(1,	getItem(Meteor_Meal), 	(struct Item) {-1,-1});
+	recipes[57].combos[24] = 	parseCombo(1,	getItem(Couples_Cake), (struct Item) {-1,-1});
+	recipes[57].combos[25] = 	parseCombo(1,	getItem(Mousse_Cake), 	(struct Item) {-1,-1});
+	recipes[57].combos[26] = 	parseCombo(1,	getItem(Shroom_Cake), 	(struct Item) {-1,-1});
+	recipes[57].combos[27] = 	parseCombo(1,	getItem(Choco_Cake), 	(struct Item) {-1,-1});
+	recipes[57].combos[28] = 	parseCombo(1,	getItem(Heartful_Cake),(struct Item) {-1,-1});
+	recipes[57].combos[29] = 	parseCombo(1,	getItem(Fruit_Parfait),(struct Item) {-1,-1});
+	recipes[57].combos[30] = 	parseCombo(1,	getItem(Mango_Delight),(struct Item) {-1,-1});
+	recipes[57].combos[31] = 	parseCombo(1,	getItem(Love_Pudding), (struct Item) {-1,-1});
+	recipes[57].combos[32] = 	parseCombo(1,	getItem(Zess_Cookie), 	(struct Item) {-1,-1});
+	recipes[57].combos[33] = 	parseCombo(1,	getItem(Shroom_Crepe), (struct Item) {-1,-1});
+	recipes[57].combos[34] = 	parseCombo(1,	getItem(Peach_Tart), 	(struct Item) {-1,-1});
+	recipes[57].combos[35] = 	parseCombo(1,	getItem(Koopa_Tea), 	(struct Item) {-1,-1});
+	recipes[57].combos[36] = 	parseCombo(1,	getItem(Zess_Tea), 	(struct Item) {-1,-1});
+	recipes[57].combos[37] = 	parseCombo(1,	getItem(Shroom_Broth), (struct Item) {-1,-1});
+	recipes[57].combos[38] = 	parseCombo(1,	getItem(Fresh_Juice), 	(struct Item) {-1,-1});
+	recipes[57].combos[39] = 	parseCombo(1,	getItem(Inky_Sauce), 	(struct Item) {-1,-1});
+	recipes[57].combos[40] = 	parseCombo(1,	getItem(Icicle_Pop), 	(struct Item) {-1,-1});
+	recipes[57].combos[41] = 	parseCombo(1,	getItem(Zess_Frappe), 	(struct Item) {-1,-1});
+	recipes[57].combos[42] = 	parseCombo(1,	getItem(Coco_Candy), 	(struct Item) {-1,-1});
+	recipes[57].combos[43] = 	parseCombo(1,	getItem(Honey_Candy), 	(struct Item) {-1,-1});
+	recipes[57].combos[44] = 	parseCombo(1,	getItem(Jelly_Candy), 	(struct Item) {-1,-1});
+	recipes[57].combos[45] = 	parseCombo(1,	getItem(Electro_Pop), 	(struct Item) {-1,-1});
+	recipes[57].combos[46] = 	parseCombo(1,	getItem(Fire_Pop), 	(struct Item) {-1,-1});
+	recipes[57].combos[47] = 	parseCombo(1,	getItem(Space_Food), 	(struct Item) {-1,-1});
+	recipes[57].combos[48] = 	parseCombo(1,	getItem(Trial_Stew), 	(struct Item) {-1,-1});
+	recipes[57].combos[49] = 	parseCombo(1,	getItem(Courage_Meal), (struct Item) {-1,-1});
+	recipes[57].combos[50] = 	parseCombo(1,	getItem(Coconut_Bomb), (struct Item) {-1,-1});
+	recipes[57].combos[51] = 	parseCombo(1,	getItem(Egg_Bomb), 	(struct Item) {-1,-1});
+	recipes[57].combos[52] = 	parseCombo(1,	getItem(Zess_Dynamite),(struct Item) {-1,-1});
+	recipes[57].combos[53] = 	parseCombo(1,	getItem(Courage_Shell),(struct Item) {-1,-1});
+	recipes[57].combos[54] = 	parseCombo(1,	getItem(Hot_Dog), 	(struct Item) {-1,-1});
+	recipes[57].combos[55] = 	parseCombo(1,	getItem(Ice_Storm), 	(struct Item) {-1,-1});
+	recipes[57].combos[56] = 	parseCombo(1,	getItem(Mystery), 	(struct Item) {-1,-1});
+	recipes[57].combos[57] = 	parseCombo(1,	getItem(Ruin_Powder), 	(struct Item) {-1,-1});
+	recipes[57].combos[58] = 	parseCombo(1,	getItem(Shooting_Star),(struct Item) {-1,-1});
+	recipes[57].combos[59] = 	parseCombo(1,	getItem(Shroom_Fry), 	(struct Item) {-1,-1});
+	recipes[57].combos[60] = 	parseCombo(1,	getItem(Tasty_Tonic), 	(struct Item) {-1,-1});
+	recipes[57].combos[61] = 	parseCombo(1,	getItem(Thunder_Bolt), (struct Item) {-1,-1});
+	recipes[57].combos[62] = 	parseCombo(1,	getItem(Thunder_Rage), (struct Item) {-1,-1});
 
 	// TODO: Add log call
 	return recipes;
 }
 
-/*
-int main() {
-	// For testing getRecipeList
-	struct Recipe *recipes = getRecipeList();
+void clearDependentIndices(int *dependentIndices, int length) {
+	for (int j = 0; j < length; j++) {
+		dependentIndices[j] = -1;
+	}
+}
 
-	end = clock() - start;
-	cpu_time_used = ((double)  end) / CLOCKS_PER_SEC;
-	
-	struct Recipe recipe;
-	struct Item output;
-	struct ItemCombination combo;
-	int countCombos;
-	int comboItemCount;
+int getIndexOfRecipe(struct Item item, struct Recipe *recipeList) {
+	for (int i = 0; i < NUM_RECIPES; i++) {
+		if (recipeList[i].output.a_key == item.a_key)
+			return i;
+	}
+	return -1;
+}
 
-	for (int i = 0; i < NUMRECIPES; i++) {
-		recipe = recipes[i];
-		output = recipe.output;
-		countCombos = recipe.countCombos;
-		printf("\n\nRecipe output: %d\n", output.a_key);
-		printf("Recipe Combinations:\n");
-
-		for (int j = 0; j < countCombos; j++) {
-			combo = recipe.combos[j];
-			comboItemCount = combo.numItems;
-			printf("\tRecipe Combo %d: ", j+1);
-			if (comboItemCount == 1) {
-				printf("Item 1: %d\n", combo.item1.a_key);
-			}
-			else {
-				printf("Item 1: %d\tItem 2: %d\n", combo.item1.a_key, combo.item2.a_key);
-			}
+int itemInMakeableItems(struct Item item, struct Item *makeableItems, int makeableItemsLength) {
+	for (int j = 0; j < makeableItemsLength; j++) {
+		if (item.a_key == makeableItems[j].a_key) {
+			return 1;
 		}
 	}
-}*/
+	return 0;
+}
+
+void copyDependentIndices(int *newDependentIndices, int *dependentIndices, int numDependentIndices) {
+	for (int i = 0; i < numDependentIndices; i++) {
+		newDependentIndices[i] = dependentIndices[i];
+	}
+}
+
+// Returns 1 if true, 0 if false
+int checkRecipe(struct ItemCombination combo, struct Item *makeableItems, int *outputsCreated, int *dependentIndices, int numDependentIndices, struct Recipe *recipeList, int makeableItemsLength) {
+	// Determine if the recipe items can still be fulfilled
+	for (int i = 0; i < 2; i++) {
+		// If this is a 1-item recipe, ignore the second item
+		if (i == 1 && combo.numItems == 1)
+			continue;
+		
+		// Check if we already have the item or know we can make it
+		if ((i == 0 && itemInMakeableItems(combo.item1, makeableItems, makeableItemsLength)) || (i == 1 && itemInMakeableItems(combo.item2, makeableItems, makeableItemsLength))) {
+			continue;
+		}
+		
+		int recipeIndex;
+		if (i == 0)
+			recipeIndex = getIndexOfRecipe(combo.item1, recipeList);
+		else
+			recipeIndex = getIndexOfRecipe(combo.item2, recipeList);
+
+		if (recipeIndex == -1)
+			// The item cannot ever be created
+			return 0;
+		
+		// Check if it hasn't been made and doesn't depend on any item
+		if (outputsCreated[recipeIndex] || itemInDependentIndices(recipeIndex, dependentIndices, numDependentIndices)) {
+			// The item cannot be produced due to the current history
+			return 0;
+		}
+		
+		// Anything made for this item cannot depend on the item
+		// Copy the dependentIndices array as to not cause lasting changes when we go back to remainingOutputsCanBeFulfilled
+		int *newDependentIndices = malloc(sizeof(int) * 200);
+		copyDependentIndices(newDependentIndices, dependentIndices, numDependentIndices);
+		newDependentIndices[numDependentIndices] = recipeIndex;
+		numDependentIndices++;
+		
+		// Recurse on all recipes that can make this item
+		int canBeProduced = 0;
+		for (int j = 0; j < recipeList[recipeIndex].countCombos; j++) {
+			struct ItemCombination newRecipe = recipeList[recipeIndex].combos[j];
+			if (checkRecipe(newRecipe, makeableItems, outputsCreated, newDependentIndices, numDependentIndices, recipeList, makeableItemsLength)) {
+				if (i == 0)
+					makeableItems[makeableItemsLength] = combo.item1;
+				else
+					makeableItems[makeableItemsLength] = combo.item2;
+				makeableItemsLength++;
+				canBeProduced = 1;
+				break;
+			}
+		}
+		
+		free(newDependentIndices);
+		if (!canBeProduced)
+			// The item cannot be produced with the current inventory
+			return 0;
+	}
+	
+	return 1;
+}
+
+int remainingOutputsCanBeFulfilled(struct Item *inventory, int *outputsCreated, struct Recipe *recipeList) {
+	// With the given inventory, can the remaining recipes be fulfilled?
+	struct Item *makeableItems = malloc(sizeof(int) * (200));
+	copyInventory(makeableItems, inventory);
+	int numMakeableItems = 20;
+	// If Chapter 5 has not been done, add the items it gives
+	if (outputsCreated[getIndexOfRecipe(getItem(Dried_Bouquet), recipeList)] == 0) {
+		makeableItems[20] = getItem(Keel_Mango);
+		makeableItems[21] = getItem(Coconut);
+		makeableItems[22] = getItem(Dried_Bouquet);
+		makeableItems[23] = getItem(Courage_Shell);
+		numMakeableItems+=4;
+	}
+	
+	// Iterate through all output items that haven't been created
+	int *dependentIndices = malloc(sizeof(int) * 200);
+	int numDependentIndices;
+	for (int i = 0; i < NUM_RECIPES; i++) {
+		if (outputsCreated[i] == 1)
+			continue;
+			
+		// List of items to not try to make
+		// Clear the dependentIndices array and set [0] = i
+		clearDependentIndices(dependentIndices, 200);
+		dependentIndices[0] = i;
+		numDependentIndices = 1;
+		// Check if any recipe to make the item can be fulfilled
+		int makeable = 0;
+		for (int j = 0; j < recipeList[i].countCombos; j++) {
+			if (checkRecipe(recipeList[i].combos[j], makeableItems, outputsCreated, dependentIndices, numDependentIndices, recipeList, numMakeableItems) == 1) {
+				// Stop looking for recipes to make the item
+				makeableItems[numMakeableItems] = recipeList[i].output;
+				numMakeableItems++;
+				makeable = 1;
+				break;
+			}
+		}
+		
+		// The item cannot be fulfilled
+		if (makeable == 0) {
+			free(makeableItems);
+			free(dependentIndices);
+			return 0;
+		}
+	}
+	// All remaining outputs can still be fulfilled
+	free(makeableItems);
+	free(dependentIndices);
+	return 1;
+}

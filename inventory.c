@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "inventory.h"
+#include "logger.h"
 
 #define INVENTORY_MAX_SIZE 21
 #define NUM_ITEMS 107
@@ -247,6 +248,58 @@ ItemName itemNames[] = {
 	{Fresh_Pasta, "Fresh Pasta"}
 };
 
+int compareInventories(struct Item *inv1, struct Item *inv2) {
+	for (int i = 0; i < 20; i++) {
+		if (inv1[i].a_key != inv2[i].a_key)
+			return 0;
+	}
+	return 1;
+}
+
+int itemInDependentIndices(int index, int *dependentIndices, int numDependentIndices) {
+	for (int i = 0; i < numDependentIndices; i++) {
+		if (dependentIndices[i] == index)
+			return 1;
+	}
+	return 0;
+}
+
+int countNullsInInventory(struct Item *inventory, int minIndex, int maxIndex) {
+	int count = 0;
+	for (int i = minIndex; i < maxIndex; i++) {
+		if ((int) inventory[i].a_key == -1)
+			count++;
+	}
+	return count;
+}
+
+int indexOfItemInInventory(struct Item *inventory, struct Item item) {
+	for (int i = 0; i < 20; i++) {
+		if (inventory[i].a_key == item.a_key)
+			return i;
+	}
+	return -1;
+}
+
+int countItemsInInventory(struct Item *inventory) {
+	int count = 0;
+	for (int i = 0; i < 20; i++) {
+		if (inventory[i].a_key != -1) {
+			count++;
+		}
+	}
+	
+	return count;
+}
+			
+
+void copyInventory(struct Item* newInventory, struct Item* oldInventory) {
+	for (int i = 0; i < 20; i++) {
+		newInventory[i] = oldInventory[i];
+	}
+	return;
+}
+
 char *getItemName(Alpha_Sort a_key) {
 	for (int i = 0; i < NUM_ITEMS; i++) {
 		if (itemNames[i].a_key == a_key) {
@@ -255,33 +308,31 @@ char *getItemName(Alpha_Sort a_key) {
 	}
 	
 	return NULL;
-};
+}
 
-// I don't think we need this function
-/*Type_Sort getTypeKey (Alpha_Sort a_key) {
-	for (int i = Mushroom_t; i <= Mistake_t; i++) {
-		if (items[i].a_key == a_key) {
-			return items[i].t_key;
-		}
+int itemInInventory(enum Alpha_Sort a_key, struct Item *inventory) {
+	for (int i = 0; i < 20; i++) {
+		if (inventory[i].a_key == a_key)
+			return 1;
 	}
-	
-	return -1;
-}*/
+	return 0;
+}
 
 int **getInventoryFrames() {
 	static int *inv_frames[INVENTORY_MAX_SIZE];
 	int frameList[11] = {0, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18};
 
-	for (int i = 0; i <= INVENTORY_MAX_SIZE; i++) {
+	for (int i = 0; i < INVENTORY_MAX_SIZE; i++) {
 		int *frames = malloc(sizeof(int) * (i+1));
 		for (int j = 0; j < i + 1; j++) {
 			if (j < i+1-j)
 				frames[j] = frameList[j];
 			else
-				frames[j] = frameList[i-j];
+				frames[j] = frameList[i-j+1];
 		}
 		inv_frames[i] = frames;
 	}
+	recipeLog(2, "Inventory", "Frames", "Generate", "Inventory Frames Generated");
 	return inv_frames;
 }
 
@@ -311,36 +362,3 @@ Item *getStartingInventory() {
 	
 	return inventory;
 }
-
-/*int main()
-{
-	//FOR TESTING getInventoryFrames
-	int **inv_frames;
-	inv_frames = getInventoryFrames();
-	for (int i = 0; i <= INVENTORY_MAX_SIZE; i++) {
-		for (int j = 0; j < i; j++) {
-			int *frames = inv_frames[i];
-			printf("Inventory size %d:\tIndex %d:\t%d\n", i, j, frames[j]);
-		}
-	}
-	
-	
-	//FOR TESTING ITEM SORT RETRIEVAL
-	printf("Name\t\tAlpha\tType\n");
-	for (int i = 0; i < NUM_ITEMS; i++) {
-		char *name = items[i].name;
-		enum Alpha_Sort a_key = items[i].a_key;
-		enum Type_Sort t_key = items[i].t_key;
-		printf("%s\t%d\t%d\n", name, a_key, t_key);
-	}
-	
-	
-	//FOR TESTING KEY RETRIEVAL
-	Item *inventory = getStartingInventory();
-	for (int i = 0; i < 20; i++) {
-		printf("Slot   %d\tAlpha   %d\tType %d\t\n", i+1, inventory[i].a_key, inventory[i].t_key);
-	}
-	
-	
-	return 0;
-}*/

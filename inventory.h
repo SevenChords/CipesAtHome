@@ -231,11 +231,31 @@ struct ItemName {
 	char *name;
 };
 
+// Returns 1 if the inventories are the same. Return 0 if they are different
+int compareInventories(struct Item *inv1, struct Item *inv2);
+
+int itemInDependentIndices(int index, int *dependentIndices, int numDependentIndices);
+
+// Count the number of nulls in the inventory that occur before maxIndex
+int countNullsInInventory(struct Item *inventory, int minIndex, int maxIndex);
+
+// Returns the index of an item in the inventory. -1 if not found
+int indexOfItemInInventory(struct Item *inventory, struct Item item);
+
+// Count the number of non-NULL and non-BLOCKED items
+int countItemsInInventory(struct Item *inventory);
+
+// Copy inventory to a new pointer
+void copyInventory(struct Item* newInventory, struct Item* oldInventory);
+
 // Return the string name for a particular item
 char *getItemName(enum Alpha_Sort a_key);
 
 // Return a pointer to an array of length 21 with each index i containing a variable length j which tracks the frameloss to navigate to the jth index in an inventory of size i
 int **getInventoryFrames();
+
+// Determine if a particular item is in your inventory
+int itemInInventory(enum Alpha_Sort a_key, struct Item *inventory);
 
 // I don't believe we need this
 /*struct Type_Sort getTypeKey (Alpha_Sort a_key);*/
@@ -245,10 +265,5 @@ struct Item *getStartingInventory();
 
 // Get all item data
 struct Item getItem(enum Alpha_Sort a_key);
-
-// Return a sorted inventory
-//struct Item *getSortedInventory(struct Item *inventory, enum Action sort);
-
-int main();
 
 #endif
