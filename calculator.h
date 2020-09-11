@@ -60,6 +60,15 @@ struct BranchPath {
 	int numLegalMoves;
 };
 
+void handleSelectAndRandom(struct BranchPath *curNode, int select, int randomise);
+
+void handleSorts(struct BranchPath *curNode);
+
+// Compartmentalized handling of Chapter 5 prior to handleChapter5Eval
+void fulfillChapter5(struct BranchPath *curNode, struct Recipe *recipeList);
+
+void fulfillRecipes(struct BranchPath *curNode, struct Recipe *recipeList, int recipeIndex);
+
 void freeInvFrames(int **invFrames);
 
 void tryTossInventoryItem(struct BranchPath *curNode, struct Item *tempInventory, struct MoveDescription useDescription, struct Cook *cookBase, int *tempOutputsFulfilled, int tossedIndex, struct Item output, int tempFrames, int viableItems);

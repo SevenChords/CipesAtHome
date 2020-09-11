@@ -237,10 +237,284 @@ int freeNode(struct BranchPath *node) {
 	return 0;
 }
 
+void fulfillChapter5(struct BranchPath *curNode, struct Recipe *recipeList) {
+	// Create an outputs chart but with the Dried Bouquet collected
+	// to ensure that the produced inventory can fulfill all remaining recipes
+	int *tempOutputsFulfilled = malloc(sizeof(int) * 58);
+	copyOutputsFulfilled(tempOutputsFulfilled, curNode->outputCreated);
+	tempOutputsFulfilled[getIndexOfRecipe(getItem(Dried_Bouquet), recipeList)] = 1;
+	
+	// Create a temp inventory
+	struct Item *tempInventory = malloc(sizeof(struct Item) * 20);
+	copyInventory(tempInventory, curNode->inventory);
+	
+	// Determine how many spaces are available in the inventory for frame calculation purposes
+	int viableItems = countItemsInInventory(tempInventory);
+	
+	// If the Mousse Cake is in the first 10 slots, change it to NULL
+	int mousse_cake_index = indexOfItemInInventory(tempInventory, getItem(Mousse_Cake));
+	if (mousse_cake_index < 10) {
+		tempInventory[mousse_cake_index] = (struct Item) {-1, -1};
+		viableItems--;
+	}
+	
+	// Handle allocation of the first 2 CH5 items (Dried Bouquet and Coconut)
+	if (countNullsInInventory(tempInventory, 0, 10) >= 2) {
+		// The Dried Bouquet gets auto-placed in the 1st slot,
+		// and everything else gets shifted down one slot to fill the first NULL
+		shiftDownToFillNull(tempInventory);
+		
+		// The vacancy at the start of the inventory is now occupied with the new item
+		tempInventory[0] = getItem(Dried_Bouquet);
+		/*int tempSlotDB = 1;*/
+		viableItems++;
+		
+		// The Coconut gets auto-placed in the 1st slot
+		// and everything else gets shifted down one slot to fill the first NULL
+		shiftDownToFillNull(tempInventory);
+		
+		// The vacancy at the start of the inventory is now occupied with the new item
+		tempInventory[0] = getItem(Coconut);
+		/*int tempSlotCO = 1;*/
+		viableItems++;
+		
+		// Auto-placing takes 0 frames
+		int tempFramesDB = 0;
+		int tempFramesCO = 0;
+		
+		// Handle the allocation of the Coconut, Sort, Keel Mango, and Courage Shell
+		handleChapter5Eval(curNode, tempInventory, recipeList, tempOutputsFulfilled, tempFramesDB, tempFramesCO, 0, 0);
+	}
+	else if (countNullsInInventory(tempInventory, 0, 10) == 1) {
+		// The Dried Bouquet gets auto-placed in the 1st slot,
+		// and everything else gets shifted down one to fill the first NULL
+		shiftDownToFillNull(tempInventory);
+		
+		// The vacancy at the start of the inventory is now occupied with the new item
+		tempInventory[0] = getItem(Dried_Bouquet);
+		/*int tempSlotDB = 0;*/
+		viableItems++;
+		
+		// Auto-placing takes zero frames
+		int temp_frames_DB = 0;
+		
+		// The Coconut can only be placed in the first 10 slots
+		// Dried Bouquet will always be in the first slot
+		for (int temp_index_CO = 1; temp_index_CO < 10; temp_index_CO++) {
+			// Don't waste time replacing the Dried Bouquet or Thunder Rage with the Coconut
+			if (tempInventory[temp_index_CO].a_key == getItem(Thunder_Rage).a_key) {
+				continue;
+			}
+			// Replace the item with the Coconut
+			// All items above the replaced item float down one slot
+			// and the Coconut is always placed in slot 1
+			struct Item *co_temp_inventory = malloc(sizeof(struct Item) * 20);
+			copyInventory(co_temp_inventory, tempInventory);
+			co_temp_inventory[temp_index_CO] = (struct Item) {-1, -1};
+			shiftDownToFillNull(co_temp_inventory);
+			co_temp_inventory[0] = getItem(Coconut);
+			
+			// Calculate the number of frames needed to pick this slot for replacement
+			int temp_frames_CO = TOSS_FRAMES + invFrames[viableItems-1][temp_index_CO];
+			
+			// Handle the allocation of the Coconut sort, Keel Mango, and Courage Shell
+			handleChapter5Eval(curNode, co_temp_inventory, recipeList, tempOutputsFulfilled, temp_frames_DB, temp_frames_CO, 0, temp_index_CO);
+		}
+	}
+	else {
+		// No nulls to utilize for Chapter 5 intermission
+		// Both the DB and CO can only replace items in the first 10 slots
+		// The remaining items always slide down to fill the vacancy
+		// The DB will eventually end up in slot #2 and
+		// the CO will eventually end up in slot #1
+		for (int temp_index_DB = 0; temp_index_DB < 10; temp_index_DB++) {
+			for (int temp_index_CO = temp_index_DB + 1; temp_index_CO < 10; temp_index_CO++) {
+				// Replace the 1st chosen item with the Dried Bouquet
+				struct Item *dbco_temp_inventory = malloc(sizeof(struct Item) * 20);
+				copyInventory(dbco_temp_inventory, tempInventory);
+				dbco_temp_inventory[temp_index_DB] = (struct Item) {-1, -1};
+				shiftDownToFillNull(dbco_temp_inventory);
+				dbco_temp_inventory[0] = getItem(Dried_Bouquet);
+				
+				// Replace the 2nd chosen item with the Coconut
+				dbco_temp_inventory[temp_index_CO] = (struct Item) {-1, -1};
+				shiftDownToFillNull(dbco_temp_inventory);
+				dbco_temp_inventory[0] = getItem(Coconut);
+				
+				// Calculate the frames of these actions
+				int temp_frames_DB = TOSS_FRAMES + invFrames[viableItems-1][temp_index_DB];
+				int temp_frames_CO = TOSS_FRAMES + invFrames[viableItems-1][temp_index_CO];
+				
+				// Only evaulate the remainder of the CH5 intermission if the Thunder Rage is still present in the inventory
+				if (indexOfItemInInventory(dbco_temp_inventory, getItem(Thunder_Rage)) > -1) {
+					// Handle the allocation of the Coconut sort, Keel Mango, and Courage Shell
+					handleChapter5Eval(curNode, dbco_temp_inventory, recipeList, tempOutputsFulfilled, temp_frames_DB, temp_frames_CO, temp_index_DB, temp_index_CO);
+				}
+			}
+		}
+	}
+	
+	free(tempInventory);
+	free(tempOutputsFulfilled);
+	tempInventory = NULL;
+	tempOutputsFulfilled = NULL;
+}
+
+void fulfillRecipes(struct BranchPath *curNode, struct Recipe *recipeList, int recipeIndex) {
+	// Only want ingredient combos that can be fulfilled right now!
+	struct Recipe recipe = recipeList[recipeIndex];
+	struct ItemCombination *combo = recipe.combos;
+	for (int comboIndex = 0; comboIndex < recipe.countCombos; comboIndex++) {
+		int itemComboInInventoryBoolean = (combo[comboIndex].numItems == 1 &&
+							itemInInventory(combo[comboIndex].item1.a_key, curNode->inventory)
+						   ) ||
+						   (combo[comboIndex].numItems == 2 &&
+						   	itemInInventory(combo[comboIndex].item1.a_key, curNode->inventory) && 
+						   	itemInInventory(combo[comboIndex].item2.a_key, curNode->inventory)
+						   );
+		if (!itemComboInInventoryBoolean) {
+			continue;
+		}
+			
+		// This is a recipe that can be fulfilled right now!
+		
+		// Copy the inventory
+		struct Item *tempInventory = malloc(sizeof(struct Item) * 20);
+		copyInventory(tempInventory, curNode->inventory);
+		
+		// Mark that this output has been fulfilled for viability determination
+		int *tempOutputsFulfilled = malloc(sizeof(int) * NUM_RECIPES);
+		copyOutputsFulfilled(tempOutputsFulfilled, curNode->outputCreated);
+		tempOutputsFulfilled[recipeIndex] = 1;
+		
+		// Determine how many viable items are in the list (No NULLS or BLOCKED)
+		int viableItems = countItemsInInventory(tempInventory);
+		
+		int ingredientLoc[2]= {0, 0};
+		int ingredientOffset[2] = {0, 0};
+		int tempFrames;
+		struct MoveDescription useDescription;
+		
+		struct Cook *cookBase;
+		
+		if (combo[comboIndex].numItems == 1) {
+			// This is a potentially viable recipe with 1 ingredient
+			// Determine the location of the ingredient
+			ingredientLoc[0] = indexOfItemInInventory(tempInventory, combo[comboIndex].item1);
+			
+			// Determine the offset by NULLs before the desired item, as NULLs do not appear during the inventory navigation
+			ingredientOffset[0] = countNullsInInventory(tempInventory, 0, ingredientLoc[0]);
+			
+			// Modify the inventory if the ingredient was in the first 10 slots
+			if (ingredientLoc[0] < 10) {
+				tempInventory[ingredientLoc[0]].a_key = -1;
+				tempInventory[ingredientLoc[0]].t_key = -1;
+			}
+			
+			// Determine how many frames will be needed to select that item
+			tempFrames = invFrames[viableItems][ingredientLoc[0]-ingredientOffset[0]];
+				
+			
+			// TODO: Compartmentalize this in a separate fn
+			// Describe what items were used
+			
+			generateCook(&useDescription, combo[comboIndex], recipe, ingredientLoc);
+			cookBase = (struct Cook *) useDescription.data;
+			generateFramesTaken(&useDescription, curNode, tempFrames);
+		}
+		else {
+			// This is a potentially viable recipe with 2 ingredients
+			//Baseline frames based on how many times we need to access the menu
+			tempFrames = CHOOSE_2ND_INGREDIENT_FRAMES;
+			
+			// Determine the locations of both ingredients
+			ingredientLoc[0] = indexOfItemInInventory(tempInventory, combo[comboIndex].item1);
+			ingredientLoc[1] = indexOfItemInInventory(tempInventory, combo[comboIndex].item2);
+			
+			// Determine the offset by NULLs before the desired items, as NULLs do not appear during the inventory navigation
+			ingredientOffset[0] = countNullsInInventory(tempInventory, 0, ingredientLoc[0]);
+			ingredientOffset[1] = countNullsInInventory(tempInventory, 0, ingredientLoc[1]);
+			
+			// Determine which order of ingredients to take
+			// The first picked item always vanishes from the list of ingredients when picking the 2nd ingredient
+			// There are some configurations where it is 2 frames faster to pick the ingredients in the reverse order
+			if (selectSecondItemFirst(curNode, combo[comboIndex], ingredientLoc, ingredientOffset, viableItems))
+				// It's faster to select the 2nd item, so make it the priority and switch the order
+				swapItems(ingredientLoc, ingredientOffset);
+			
+			// Calculate the number of frames needed to grab the first item
+			tempFrames += invFrames[viableItems][ingredientLoc[0]-ingredientOffset[0]];
+			
+			// Set each inventory index to null if the item was in the first 10 slots
+			if (ingredientLoc[0] < 10) {
+				tempInventory[ingredientLoc[0]] = (struct Item) {-1, -1};
+			}
+			if (ingredientLoc[1] < 10) {
+				tempInventory[ingredientLoc[1]] = (struct Item) {-1, -1};
+			}
+			
+			// Determine the frames needed for the 2nd ingredient
+			// First ingredient is always removed from the menu, so there is always 1 less viable item
+			if (ingredientLoc[1] > ingredientLoc[0]) {
+				// In this case, the 2nd ingredient has "moved up" one slot since the 1st ingredient vanishes
+				tempFrames += invFrames[viableItems-1][ingredientLoc[1]-ingredientOffset[1]-1];
+			}
+			else {
+				// In this case, the 2nd ingredient was found earlier on than the 1st ingredient, so no change to index
+				tempFrames += invFrames[viableItems-1][ingredientLoc[1]-ingredientOffset[1]];
+			}
+			
+			// Describe what items were used
+			generateCook(&useDescription, combo[comboIndex], recipe, ingredientLoc);
+			cookBase = (struct Cook *) useDescription.data;
+			generateFramesTaken(&useDescription, curNode, tempFrames);
+		}
+		
+		// Handle allocation of the output variable
+		// Options vary by whether there are NULLs within the inventory
+		if (countNullsInInventory(tempInventory, 0, 10) >= 1) {
+			// If there are NULLs in the inventory, all items before the 1st NULL get shifted down 1 position
+			shiftDownToFillNull(tempInventory);
+		
+			// The vacancy at the start of the inventory is now occupied with the new item
+			tempInventory[0] = ((struct Cook *) useDescription.data)->output;
+		
+			// Check to see if this state is viable
+			if(remainingOutputsCanBeFulfilled(tempInventory, tempOutputsFulfilled, recipeList) == 1) {
+				finalizeLegalMove(curNode, tempFrames, useDescription, tempInventory, cookBase, tempOutputsFulfilled, Autoplace, (struct Item) {-1, -1}, -1);
+			}
+		}
+		else {
+			// There are no NULLs in the inventory. Something must be tossed
+			// Total number of frames increased by forcing to toss something
+			tempFrames += TOSS_FRAMES;
+			useDescription.framesTaken += TOSS_FRAMES;
+			useDescription.totalFramesTaken += TOSS_FRAMES;
+			
+			// Evaluate viability of tossing the output item itself
+			if (remainingOutputsCanBeFulfilled(tempInventory, tempOutputsFulfilled, recipeList) == 1) {
+				finalizeLegalMove(curNode, tempFrames, useDescription, tempInventory, cookBase, tempOutputsFulfilled, Toss, recipe.output, -1);
+			}
+			
+			// Evaluate the viability of tossing all current inventory items
+			// Assumed that it is impossible to toss and replace any items in the last 10 positions
+			for (int tossedIndex = 0; tossedIndex < 10; tossedIndex++) {
+				tryTossInventoryItem(curNode, tempInventory, useDescription, cookBase, tempOutputsFulfilled, tossedIndex, recipe.output, tempFrames, viableItems);
+			}
+		}
+		
+		free(cookBase);
+		free(tempInventory);
+		free(tempOutputsFulfilled);
+		tempInventory = NULL;
+		tempOutputsFulfilled = NULL;
+	}
+}
+
 void generateCook(struct MoveDescription *description, struct ItemCombination combo, struct Recipe recipe, int *ingredientLoc) {
 	struct Cook *cook = malloc(sizeof(struct Cook));
 	description->action = Cook;
-	cook->numItems = 1;
+	cook->numItems = combo.numItems;
 	cook->item1 = combo.item1;
 	cook->itemIndex1 = ingredientLoc[0];
 	cook->item2 = combo.item2;
@@ -436,6 +710,79 @@ void handleChapter5Sorts(struct BranchPath *node, struct Item *inventory, struct
 	}
 }
 
+void handleSelectAndRandom(struct BranchPath *curNode, int select, int randomise) {
+	// Somewhat random process of picking the quicker moves to recurse down
+	// Arbitrarily remove the first listed move with a given probability
+	// TODO: Modify select to do the following
+		// Take the frame count of the fastest node
+		// Divide by the sum of all frame counts
+		// Generates a weight between 0 and 1
+		// Determine what interval it falls in and its corresponding node
+		// Softmax function
+	if (select && curNode->moves < 55) {
+		while (curNode->numLegalMoves > 1 && rand() % 100 < 50) {
+			freeLegalMove(curNode, 0);
+		}
+	}
+	// When not doing the select methodology, and opting for randomize
+	// just shuffle the entire list of legal moves and pick the new first item
+	else if (randomise) {
+		shuffleLegalMoves(curNode);
+	}
+}
+
+void handleSorts(struct BranchPath *curNode) {
+	// Count the number of sorts for capping purposes
+	// Limit the number of sorts allowed in a roadmap
+	// NOTE: Reduced from 10 to 6 based off of the current set of fastest roadmaps
+	if (countTotalSorts(curNode) <= 6) {
+		// Perform the 4 different sorts
+		for (enum Action sort = Sort_Alpha_Asc; sort <= Sort_Type_Des; sort++) {
+			struct Item *sorted_inventory = getSortedInventory(curNode->inventory,sort);
+		
+			// Only add the legal move if the sort actually changes the inventory
+			if (compareInventories(sorted_inventory, curNode->inventory) == 0) {
+				struct MoveDescription description;
+				description.action = sort;
+				description.data = NULL;
+				int sortFrames;
+				switch (sort) {
+					case Sort_Alpha_Asc :
+						sortFrames = ALPHA_SORT_FRAMES;
+						break;
+					case Sort_Alpha_Des :
+						sortFrames = REVERSE_ALPHA_SORT_FRAMES;
+						break;
+					case Sort_Type_Asc :
+						sortFrames = TYPE_SORT_FRAMES;
+						break;
+					case Sort_Type_Des :
+						sortFrames = REVERSE_TYPE_SORT_FRAMES;
+						break;
+					default :
+						// Something went wrong if we reach this point...
+						exit(-2);
+				}
+				generateFramesTaken(&description, curNode, sortFrames);
+				description.framesTaken = sortFrames;
+				int *copyOfOutputsFulfilled = malloc(sizeof(int) * 58);
+				copyOutputsFulfilled(copyOfOutputsFulfilled, curNode->outputCreated);
+				
+				// Create the legalMove node
+				struct BranchPath *newLegalMove = createLegalMove(curNode, sorted_inventory, description, copyOfOutputsFulfilled);
+				
+				// Insert this new move into the current node's legalMove array
+				insertIntoLegalMoves(curNode->numLegalMoves, newLegalMove, curNode);
+				assert(curNode->legalMoves[curNode->numLegalMoves-1] != NULL);
+			}
+			else {
+				free(sorted_inventory);
+				sorted_inventory = NULL;
+			}
+		}
+	}
+}
+
 struct BranchPath *initializeRoot(struct Job job) {
 	struct BranchPath *root = malloc(sizeof(struct BranchPath));
 	root->moves = 0;
@@ -561,7 +908,7 @@ int printResults(char *filename, struct BranchPath *path) {
 					fprintf(fp, "ERROR IN CH5SORT SWITCH CASE");
 			};
 			
-			fprintf(fp, "Replace #%d for KM, Replace #%d for CS, Use TR in #%d\t%d\t%d\t", ch5Data->indexKeelMango, ch5Data->indexCourageShell, ch5Data->indexThunderRage, desc.framesTaken, desc.totalFramesTaken);
+			fprintf(fp, "Replace #%d for KM, Replace #%d for CS, Use TR in #%d\t", ch5Data->indexKeelMango, ch5Data->indexCourageShell, ch5Data->indexThunderRage);
 		}
 		else if (curNodeAction == Begin) {
 			fprintf(fp, "Begin\t");
@@ -927,9 +1274,7 @@ struct Result calculateOrder(struct Job job) {
 						return result;
 					}
 				}
-				
-				recipeLog(2, "Calculator", "Info", "Roadmap", "Found roadmap slower than best...");
-
+				printf("Found slower roadmap.");
 				// Regardless of record status, it's time to go back up and find new endstates
 				curNode = curNode->prev;
 				freeLegalMove(curNode, 0);
@@ -962,155 +1307,7 @@ struct Result calculateOrder(struct Job job) {
 						continue;
 					}
 					
-					struct Recipe recipe = recipeList[recipeIndex];
-					
-					// Only want ingredient combos that can be fulfilled right now!
-					struct ItemCombination *combo = recipe.combos;
-					for (int comboIndex = 0; comboIndex < recipe.countCombos; comboIndex++) {
-						int itemComboInInventoryBoolean = (combo[comboIndex].numItems == 1 &&
-											itemInInventory(combo[comboIndex].item1.a_key, curNode->inventory)
-										   ) ||
-										   (combo[comboIndex].numItems == 2 &&
-										   	itemInInventory(combo[comboIndex].item1.a_key, curNode->inventory) && 
-										   	itemInInventory(combo[comboIndex].item2.a_key, curNode->inventory)
-										   );
-						if (!itemComboInInventoryBoolean) {
-							continue;
-						}
-							
-						// This is a recipe that can be fulfilled right now!
-						
-						// Copy the inventory
-						struct Item *tempInventory = malloc(sizeof(struct Item) * 20);
-						copyInventory(tempInventory, curNode->inventory);
-						
-						// Mark that this output has been fulfilled for viability determination
-						int *tempOutputsFulfilled = malloc(sizeof(int) * NUM_RECIPES);
-						copyOutputsFulfilled(tempOutputsFulfilled, curNode->outputCreated);
-						tempOutputsFulfilled[recipeIndex] = 1;
-						
-						// Determine how many viable items are in the list (No NULLS or BLOCKED)
-						int viableItems = countItemsInInventory(tempInventory);
-						
-						int ingredientLoc[2]= {0, 0};
-						int ingredientOffset[2] = {0, 0};
-						int tempFrames;
-						struct MoveDescription useDescription;
-						
-						struct Cook *cookBase;
-						
-						if (combo[comboIndex].numItems == 1) {
-							// This is a potentially viable recipe with 1 ingredient
-							// Determine the location of the ingredient
-							ingredientLoc[0] = indexOfItemInInventory(tempInventory, combo[comboIndex].item1);
-							
-							// Determine the offset by NULLs before the desired item, as NULLs do not appear during the inventory navigation
-							ingredientOffset[0] = countNullsInInventory(tempInventory, 0, ingredientLoc[0]);
-							
-							// Modify the inventory if the ingredient was in the first 10 slots
-							if (ingredientLoc[0] < 10) {
-								tempInventory[ingredientLoc[0]].a_key = -1;
-								tempInventory[ingredientLoc[0]].t_key = -1;
-							}
-							
-							// Determine how many frames will be needed to select that item
-							tempFrames = invFrames[viableItems][ingredientLoc[0]-ingredientOffset[0]];
-								
-							
-							// TODO: Compartmentalize this in a separate fn
-							// Describe what items were used
-							
-							generateCook(&useDescription, combo[comboIndex], recipe, ingredientLoc);
-							cookBase = (struct Cook *) useDescription.data;
-							generateFramesTaken(&useDescription, curNode, tempFrames);
-						}
-						else {
-							// This is a potentially viable recipe with 2 ingredients
-							//Baseline frames based on how many times we need to access the menu
-							tempFrames = CHOOSE_2ND_INGREDIENT_FRAMES;
-							
-							// Determine the locations of both ingredients
-							ingredientLoc[0] = indexOfItemInInventory(tempInventory, combo[comboIndex].item1);
-							ingredientLoc[1] = indexOfItemInInventory(tempInventory, combo[comboIndex].item2);
-							
-							// Determine the offset by NULLs before the desired items, as NULLs do not appear during the inventory navigation
-							ingredientOffset[0] = countNullsInInventory(tempInventory, 0, ingredientLoc[0]);
-							ingredientOffset[1] = countNullsInInventory(tempInventory, 0, ingredientLoc[1]);
-							
-							// Determine which order of ingredients to take
-							// The first picked item always vanishes from the list of ingredients when picking the 2nd ingredient
-							// There are some configurations where it is 2 frames faster to pick the ingredients in the reverse order
-							if (selectSecondItemFirst(curNode, combo[comboIndex], ingredientLoc, ingredientOffset, viableItems))
-								// It's faster to select the 2nd item, so make it the priority and switch the order
-								swapItems(ingredientLoc, ingredientOffset);
-							
-							// Calculate the number of frames needed to grab the first item
-							tempFrames += invFrames[viableItems][ingredientLoc[0]-ingredientOffset[0]];
-							
-							// Set each inventory index to null if the item was in the first 10 slots
-							if (ingredientLoc[0] < 10) {
-								tempInventory[ingredientLoc[0]] = (struct Item) {-1, -1};
-							}
-							if (ingredientLoc[1] < 10) {
-								tempInventory[ingredientLoc[1]] = (struct Item) {-1, -1};
-							}
-							
-							// Determine the frames needed for the 2nd ingredient
-							// First ingredient is always removed from the menu, so there is always 1 less viable item
-							if (ingredientLoc[1] > ingredientLoc[0]) {
-								// In this case, the 2nd ingredient has "moved up" one slot since the 1st ingredient vanishes
-								tempFrames += invFrames[viableItems-1][ingredientLoc[1]-ingredientOffset[1]-1];
-							}
-							else {
-								// In this case, the 2nd ingredient was found earlier on than the 1st ingredient, so no change to index
-								tempFrames += invFrames[viableItems-1][ingredientLoc[1]-ingredientOffset[1]];
-							}
-							
-							// Describe what items were used
-							generateCook(&useDescription, combo[comboIndex], recipe, ingredientLoc);
-							cookBase = (struct Cook *) useDescription.data;
-							generateFramesTaken(&useDescription, curNode, tempFrames);
-						}
-						
-						// Handle allocation of the output variable
-						// Options vary by whether there are NULLs within the inventory
-						if (countNullsInInventory(tempInventory, 0, 10) >= 1) {
-							// If there are NULLs in the inventory, all items before the 1st NULL get shifted down 1 position
-							shiftDownToFillNull(tempInventory);
-						
-							// The vacancy at the start of the inventory is now occupied with the new item
-							tempInventory[0] = ((struct Cook *) useDescription.data)->output;
-						
-							// Check to see if this state is viable
-							if(remainingOutputsCanBeFulfilled(tempInventory, tempOutputsFulfilled, recipeList) == 1) {
-								finalizeLegalMove(curNode, tempFrames, useDescription, tempInventory, cookBase, tempOutputsFulfilled, Autoplace, (struct Item) {-1, -1}, -1);
-							}
-						}
-						else {
-							// There are no NULLs in the inventory. Something must be tossed
-							// Total number of frames increased by forcing to toss something
-							tempFrames += TOSS_FRAMES;
-							useDescription.framesTaken += TOSS_FRAMES;
-							useDescription.totalFramesTaken += TOSS_FRAMES;
-							
-							// Evaluate viability of tossing the output item itself
-							if (remainingOutputsCanBeFulfilled(tempInventory, tempOutputsFulfilled, recipeList) == 1) {
-								finalizeLegalMove(curNode, tempFrames, useDescription, tempInventory, cookBase, tempOutputsFulfilled, Toss, recipe.output, -1);
-							}
-							
-							// Evaluate the viability of tossing all current inventory items
-							// Assumed that it is impossible to toss and replace any items in the last 10 positions
-							for (int tossedIndex = 0; tossedIndex < 10; tossedIndex++) {
-								tryTossInventoryItem(curNode, tempInventory, useDescription, cookBase, tempOutputsFulfilled, tossedIndex, recipe.output, tempFrames, viableItems);
-							}
-						}
-						
-						free(cookBase);
-						free(tempInventory);
-						free(tempOutputsFulfilled);
-						tempInventory = NULL;
-						tempOutputsFulfilled = NULL;
-					}
+					fulfillRecipes(curNode, recipeList, recipeIndex);
 				}
 				
 				// Special handling of the 58th item, which is representative of the Chapter 5 intermission
@@ -1119,186 +1316,19 @@ struct Result calculateOrder(struct Job job) {
 				// Inventory must contain both items, and Hot Dog must be in a slot such that it can be duplicated
 				if (!curNode->outputCreated[getIndexOfRecipe(getItem(Dried_Bouquet), recipeList)] && itemInInventory(Mousse_Cake, curNode->inventory) &&
 				    indexOfItemInInventory(curNode->inventory, getItem(Hot_Dog)) >= 10) {
-					// Create an outputs chart but with the Dried Bouquet collected
-					// to ensure that the produced inventory can fulfill all remaining recipes
-					int *tempOutputsFulfilled = malloc(sizeof(int) * 58);
-					copyOutputsFulfilled(tempOutputsFulfilled, curNode->outputCreated);
-					tempOutputsFulfilled[getIndexOfRecipe(getItem(Dried_Bouquet), recipeList)] = 1;
-					
-					// Create a temp inventory
-					struct Item *tempInventory = malloc(sizeof(struct Item) * 20);
-					copyInventory(tempInventory, curNode->inventory);
-					
-					// Determine how many spaces are available in the inventory for frame calculation purposes
-					int viableItems = countItemsInInventory(tempInventory);
-					
-					// If the Mousse Cake is in the first 10 slots, change it to NULL
-					int mousse_cake_index = indexOfItemInInventory(tempInventory, getItem(Mousse_Cake));
-					if (mousse_cake_index < 10) {
-						tempInventory[mousse_cake_index] = (struct Item) {-1, -1};
-						viableItems--;
-					}
-					
-					// Handle allocation of the first 2 CH5 items (Dried Bouquet and Coconut)
-					if (countNullsInInventory(tempInventory, 0, 10) >= 2) {
-						// The Dried Bouquet gets auto-placed in the 1st slot,
-						// and everything else gets shifted down one slot to fill the first NULL
-						shiftDownToFillNull(tempInventory);
-						
-						// The vacancy at the start of the inventory is now occupied with the new item
-						tempInventory[0] = getItem(Dried_Bouquet);
-						/*int tempSlotDB = 1;*/
-						viableItems++;
-						
-						// The Coconut gets auto-placed in the 1st slot
-						// and everything else gets shifted down one slot to fill the first NULL
-						shiftDownToFillNull(tempInventory);
-						
-						// The vacancy at the start of the inventory is now occupied with the new item
-						tempInventory[0] = getItem(Coconut);
-						/*int tempSlotCO = 1;*/
-						viableItems++;
-						
-						// Auto-placing takes 0 frames
-						int tempFramesDB = 0;
-						int tempFramesCO = 0;
-						
-						// Handle the allocation of the Coconut, Sort, Keel Mango, and Courage Shell
-						handleChapter5Eval(curNode, tempInventory, recipeList, tempOutputsFulfilled, tempFramesDB, tempFramesCO, 0, 0);
-					}
-					else if (countNullsInInventory(tempInventory, 0, 10) == 1) {
-						// The Dried Bouquet gets auto-placed in the 1st slot,
-						// and everything else gets shifted down one to fill the first NULL
-						shiftDownToFillNull(tempInventory);
-						
-						// The vacancy at the start of the inventory is now occupied with the new item
-						tempInventory[0] = getItem(Dried_Bouquet);
-						/*int tempSlotDB = 0;*/
-						viableItems++;
-						
-						// Auto-placing takes zero frames
-						int temp_frames_DB = 0;
-						
-						// The Coconut can only be placed in the first 10 slots
-						// Dried Bouquet will always be in the first slot
-						for (int temp_index_CO = 1; temp_index_CO < 10; temp_index_CO++) {
-							// Don't waste time replacing the Dried Bouquet or Thunder Rage with the Coconut
-							if (tempInventory[temp_index_CO].a_key == getItem(Thunder_Rage).a_key) {
-								continue;
-							}
-							// Replace the item with the Coconut
-							// All items above the replaced item float down one slot
-							// and the Coconut is always placed in slot 1
-							struct Item *co_temp_inventory = malloc(sizeof(struct Item) * 20);
-							copyInventory(co_temp_inventory, tempInventory);
-							co_temp_inventory[temp_index_CO] = (struct Item) {-1, -1};
-							shiftDownToFillNull(co_temp_inventory);
-							co_temp_inventory[0] = getItem(Coconut);
-							
-							// Calculate the number of frames needed to pick this slot for replacement
-							int temp_frames_CO = TOSS_FRAMES + invFrames[viableItems-1][temp_index_CO];
-							
-							// Handle the allocation of the Coconut sort, Keel Mango, and Courage Shell
-							handleChapter5Eval(curNode, co_temp_inventory, recipeList, tempOutputsFulfilled, temp_frames_DB, temp_frames_CO, 0, temp_index_CO);
-						}
-					}
-					else {
-						// No nulls to utilize for Chapter 5 intermission
-						// Both the DB and CO can only replace items in the first 10 slots
-						// The remaining items always slide down to fill the vacancy
-						// The DB will eventually end up in slot #2 and
-						// the CO will eventually end up in slot #1
-						for (int temp_index_DB = 0; temp_index_DB < 10; temp_index_DB++) {
-							for (int temp_index_CO = temp_index_DB + 1; temp_index_CO < 10; temp_index_CO++) {
-								// Replace the 1st chosen item with the Dried Bouquet
-								struct Item *dbco_temp_inventory = malloc(sizeof(struct Item) * 20);
-								copyInventory(dbco_temp_inventory, tempInventory);
-								dbco_temp_inventory[temp_index_DB] = (struct Item) {-1, -1};
-								shiftDownToFillNull(dbco_temp_inventory);
-								dbco_temp_inventory[0] = getItem(Dried_Bouquet);
-								
-								// Replace the 2nd chosen item with the Coconut
-								dbco_temp_inventory[temp_index_CO] = (struct Item) {-1, -1};
-								shiftDownToFillNull(dbco_temp_inventory);
-								dbco_temp_inventory[0] = getItem(Coconut);
-								
-								// Calculate the frames of these actions
-								int temp_frames_DB = TOSS_FRAMES + invFrames[viableItems-1][temp_index_DB];
-								int temp_frames_CO = TOSS_FRAMES + invFrames[viableItems-1][temp_index_CO];
-								
-								// Only evaulate the remainder of the CH5 intermission if the Thunder Rage is still present in the inventory
-								if (indexOfItemInInventory(dbco_temp_inventory, getItem(Thunder_Rage)) > -1) {
-									// Handle the allocation of the Coconut sort, Keel Mango, and Courage Shell
-									handleChapter5Eval(curNode, dbco_temp_inventory, recipeList, tempOutputsFulfilled, temp_frames_DB, temp_frames_CO, temp_index_DB, temp_index_CO);
-								}
-							}
-						}
-					}
-					
-					free(tempInventory);
-					free(tempOutputsFulfilled);
-					tempInventory = NULL;
-					tempOutputsFulfilled = NULL;
+					fulfillChapter5(curNode, recipeList);
 				}
 				
 				// Special handling of inventory sorting
 				// Avoid redundant searches
 				if (curNode->description.action == Begin || curNode->description.action == Cook || curNode->description.action == Ch5) {
-					// Count the number of sorts for capping purposes
-					// Limit the number of sorts allowed in a roadmap
-					// NOTE: Reduced from 10 to 6 based off of the current set of fastest roadmaps
-					if (countTotalSorts(curNode) <= 6) {
-						// Perform the 4 different sorts
-						for (enum Action sort = Sort_Alpha_Asc; sort <= Sort_Type_Des; sort++) {
-							struct Item *sorted_inventory = getSortedInventory(curNode->inventory,sort);
-						
-							// Only add the legal move if the sort actually changes the inventory
-							if (compareInventories(sorted_inventory, curNode->inventory) == 0) {
-								struct MoveDescription description;
-								description.action = sort;
-								description.data = NULL;
-								int sortFrames;
-								switch (sort) {
-									case Sort_Alpha_Asc :
-										sortFrames = ALPHA_SORT_FRAMES;
-										break;
-									case Sort_Alpha_Des :
-										sortFrames = REVERSE_ALPHA_SORT_FRAMES;
-										break;
-									case Sort_Type_Asc :
-										sortFrames = TYPE_SORT_FRAMES;
-										break;
-									case Sort_Type_Des :
-										sortFrames = REVERSE_TYPE_SORT_FRAMES;
-										break;
-									default :
-										// Something went wrong if we reach this point...
-										exit(-2);
-								}
-								generateFramesTaken(&description, curNode, sortFrames);
-								description.framesTaken = sortFrames;
-								int *copyOfOutputsFulfilled = malloc(sizeof(int) * 58);
-								copyOutputsFulfilled(copyOfOutputsFulfilled, curNode->outputCreated);
-								
-								// Create the legalMove node
-								struct BranchPath *newLegalMove = createLegalMove(curNode, sorted_inventory, description, copyOfOutputsFulfilled);
-								
-								// Insert this new move into the current node's legalMove array
-								insertIntoLegalMoves(curNode->numLegalMoves, newLegalMove, curNode);
-								assert(curNode->legalMoves[curNode->numLegalMoves-1] != NULL);
-							}
-							else {
-								free(sorted_inventory);
-								sorted_inventory = NULL;
-							}
-						}
-					}
+					handleSorts(curNode);
 				}
 				
 				// All legal moves evaluated and listed!
 				
 				// Filter out all legal moves that would exceed the current frame limit
-				/*filterLegalMovesExceedFrameLimit(curNode, currentFrameRecord + BUFFER_SEARCH_FRAMES);*/
+				filterLegalMovesExceedFrameLimit(curNode, currentFrameRecord + BUFFER_SEARCH_FRAMES);
 				
 				if (curNode->moves == 0) {
 					// Filter out all legal moves that use 2 ingredients in the very first legal move
@@ -1313,24 +1343,7 @@ struct Result calculateOrder(struct Job job) {
 					popAllButFirstLegalMove(curNode);
 				}
 				else {
-					// Somewhat random process of picking the quicker moves to recurse down
-					// Arbitrarily remove the first listed move with a given probability
-					// TODO: Modify select to do the following
-						// Take the frame count of the fastest node
-						// Divide by the sum of all frame counts
-						// Generates a weight between 0 and 1
-						// Determine what interval it falls in and its corresponding node
-						// Softmax function
-					if (select && curNode->moves < 55) {
-						while (curNode->numLegalMoves > 1 && rand() % 100 < 50) {
-							freeLegalMove(curNode, 0);
-						}
-					}
-					// When not doing the select methodology, and opting for randomize
-					// just shuffle the entire list of legal moves and pick the new first item
-					else if (randomise) {
-						shuffleLegalMoves(curNode);
-					}
+					handleSelectAndRandom(curNode, select, randomise);
 				}
 				
 				if (curNode->numLegalMoves == 0) {
@@ -1351,7 +1364,7 @@ struct Result calculateOrder(struct Job job) {
 			}
 			else {
 				// Filter out all legal moves that would exceed the current frame limit
-				/*filterLegalMovesExceedFrameLimit(curNode, currentFrameRecord);*/
+				filterLegalMovesExceedFrameLimit(curNode, currentFrameRecord);
 				
 				if (curNode->numLegalMoves == 0) {
 					// No legal moves are left to evaluate, go back up...
