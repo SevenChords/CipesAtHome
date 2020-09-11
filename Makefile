@@ -15,3 +15,6 @@ recipemake: recipes.c
 
 calculatormake: calculator.c
 	gcc -o calculator calculator.c inventory.c recipes.c FTPManagement.c cJSON.c -lcurl -g -Wall
+
+startmake: start.c
+	gcc -o start start.c inventory.c recipes.c config.c FTPManagement.c cJSON.c calculator.c logger.c -lcurl -lconfig -fopenmp -Wall -g
