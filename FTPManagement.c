@@ -44,7 +44,7 @@ char *handle_get(char* url) {
 		curl_easy_setopt(curl, CURLOPT_USERAGENT, "curl/7.68.0");
 		res = curl_easy_perform(curl);
 		if (res != CURLE_OK) {
-			printf("cURL ERROR!");
+			return NULL;
 		}
 		
 		curl_easy_cleanup(curl);
@@ -133,25 +133,24 @@ int testRecord(int localRecord) {
 	return 0;
 }
 
-int checkForUpdates(char *ver) {
+int checkForUpdates(const char *local_ver) {
 	char *url = "https://api.github.com/repos/SevenChords/CipesAtHome/releases/latest";
 	char *data = handle_get(url);
 	cJSON *json = cJSON_Parse(data);
 	json = cJSON_GetObjectItemCaseSensitive(json, "tag_name");
-	ver = cJSON_Print(json);
-	config_t *config = getConfig();
-	char *local_ver = malloc(4 * sizeof(char));
-	config_lookup_string(config, "Version", (const char **) &local_ver);
+	char *ver = cJSON_Print(json);
+	
+	if (ver == NULL) {
+		return -1;
+	}
 	
 	// TODO: This is really janky...
 	// tag_name is read as (Ex.) "0.01" while local_ver is 0.01.
 	// Ignore first quote and just read 4 characters... If version # gets longer, will need to fix
 	if (strncmp(local_ver, ver + sizeof(char), 4) != 0) {
-		free(local_ver);
-		return -1;
+		return 1;
 	}
 	
-	free(local_ver);
 	// Add logs
 	return 0;
 }
