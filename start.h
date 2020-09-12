@@ -18,6 +18,7 @@ struct Job {
 	struct Recipe *recipeList;
 	int *current_frame_record;
 	struct Result result;
+	const char *local_ver;
 };
 
 // Defined in calculator.c

@@ -24,7 +24,6 @@ int main() {
 	init_level_cfg();
 	const char *local_ver;
 	config_lookup_string(config, "Version", &local_ver);
-	char *ver			= NULL;
 	
 	// Seed the RNG for the select config option
 	srand(time(0));
@@ -32,7 +31,13 @@ int main() {
 	// Initialize libcurl
 	curl_global_init(CURL_GLOBAL_DEFAULT);
 	
-	if (checkForUpdates(ver) == -1) {
+	int update = checkForUpdates(local_ver);
+	if (update == -1) {
+		printf("Please check your internet connection in order to continue.\n");
+		printf("Otherwise, we can't submit compelted roadmaps to the server!\n");
+		return -1;
+	}
+	else if (update == 1) {
 		printf("Please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!");
 		return -1;
 	}
@@ -76,6 +81,7 @@ int main() {
 	job.startingInventory = startingInventory;
 	job.recipeList = recipeList;
 	job.current_frame_record = malloc(sizeof(int));
+	job.local_ver = local_ver;
 	
 	while (1) {
 		*(job.current_frame_record) = current_frame_record;
