@@ -56,9 +56,22 @@ struct BranchPath {
 	struct BranchPath *prev;	// Needed since we'll often be moving back up the tree
 	struct BranchPath *next;
 	int *outputCreated;		// Array of 58 items, 1 if item was produced, 0 if not; indexed by recipe ordering
+	int numOutputsCreated;		// Number of valid outputCreated entries to eliminate a lengthy for-loop
 	struct BranchPath **legalMoves;// Represents possible next paths to take
 	int numLegalMoves;
 };
+
+void printOutputsCreated(struct BranchPath *curNode, FILE *fp);
+
+void printInventoryData(struct BranchPath *curNode, FILE *fp);
+
+void printSortData(FILE *fp, enum Action curNodeAction);
+
+void printFileHeader(FILE *fp);
+
+void printCh5Data(struct BranchPath *curNode, struct MoveDescription desc, FILE *fp);
+
+void printCookData(struct BranchPath *curNode, struct MoveDescription desc, FILE *fp);
 
 void handleSelectAndRandom(struct BranchPath *curNode, int select, int randomise);
 
@@ -142,9 +155,6 @@ void getCurNode(struct BranchPath *node, int stepIndex);
 
 // Frees all pointers when we go back up a node
 int freeNode(struct BranchPath *node);
-
-// Determine how many recipes have been created
-int outputsCreatedCount(int *outputCreated);
 
 // Print the results of all states observed in the current stack
 // filename represents the output roadmap filename

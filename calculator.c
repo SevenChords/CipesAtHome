@@ -9,6 +9,9 @@
 #include <assert.h>
 #include <time.h>
 
+// TODO: Eliminate struct Item, solely use t_key. If sort required, use function to look up a_key
+// 	 	- Use alpha_sort_positions[item/t_key] to quickly index for the a_key
+
 #define NUM_RECIPES 58 // Including Dried Bouquet trade
 
 // Total frames to choose an additional ingredient (as opposed to just a single ingredient)
@@ -85,6 +88,7 @@ struct BranchPath *createLegalMove(struct BranchPath *node, struct Item *invento
 	newLegalMove->prev = node;
 	newLegalMove->next = NULL;
 	newLegalMove->outputCreated = outputsFulfilled;
+	newLegalMove->numOutputsCreated = node->numOutputsCreated + 1;
 	newLegalMove->legalMoves = NULL;
 	newLegalMove->numLegalMoves = 0;
 	return newLegalMove;
@@ -740,7 +744,7 @@ void handleSorts(struct BranchPath *curNode) {
 	// Count the number of sorts for capping purposes
 	// Limit the number of sorts allowed in a roadmap
 	// NOTE: Reduced from 10 to 6 based off of the current set of fastest roadmaps
-	if (countTotalSorts(curNode) <= 6) {
+	if (countTotalSorts(curNode) < 6) {
 		// Perform the 4 different sorts
 		for (enum Action sort = Sort_Alpha_Asc; sort <= Sort_Type_Des; sort++) {
 			struct Item *sorted_inventory = getSortedInventory(curNode->inventory,sort);
@@ -799,6 +803,7 @@ struct BranchPath *initializeRoot(struct Job job) {
 	root->prev = NULL;
 	root->next = NULL;
 	root->outputCreated = calloc(NUM_RECIPES, sizeof(int));
+	root->numOutputsCreated = 0;
 	root->legalMoves = NULL;
 	root->numLegalMoves = 0;
 	return root;
@@ -833,21 +838,60 @@ void popAllButFirstLegalMove(struct BranchPath *node) {
 	return;
 }
 
-int outputsCreatedCount(int *outputCreated) {
-	int count = 0;
-	for (int i = 0; i < NUM_RECIPES; i++) {
-		if (outputCreated[i]) {
-			count++;
-		}
-	}
-	return count;
+void printCh5Data(struct BranchPath *curNode, struct MoveDescription desc, FILE *fp) {
+	struct CH5 *ch5Data = desc.data;
+	fprintf(fp, "Ch.5 Break: Replace #%d for DB, Replace #%d for CO, Sort (", ch5Data->indexDriedBouquet, ch5Data->indexCoconut);
+	
+	switch (ch5Data->ch5Sort) {
+		case Sort_Alpha_Asc :
+			fprintf(fp, "Alpha), ");
+			break;
+		case Sort_Alpha_Des :
+			fprintf(fp, "Reverse-Alpha), ");
+			break;
+		case Sort_Type_Asc :
+			fprintf(fp, "Type), ");
+			break;
+		case Sort_Type_Des :
+			fprintf(fp, "Reverse-Type), ");
+			break;
+		default :
+			fprintf(fp, "ERROR IN CH5SORT SWITCH CASE");
+	};
+	
+	fprintf(fp, "Replace #%d for KM, Replace #%d for CS, Use TR in #%d\t", ch5Data->indexKeelMango, ch5Data->indexCourageShell, ch5Data->indexThunderRage);
 }
 
-// TODO: This should exactly replicate the formatting from the Python output file, though I haven't tested it yet
-int printResults(char *filename, struct BranchPath *path) {
-	FILE *fp = fopen(filename, "w");
+void printCookData(struct BranchPath *curNode, struct MoveDescription desc, FILE *fp) {
+	struct Cook *cookData = desc.data;
+	fprintf(fp, "Use [%s] in slot %d ", getItemName(cookData->item1.a_key), cookData->itemIndex1 + 1);
 	
-	// Write header information
+	if (cookData->numItems == 2) {
+		fprintf(fp, "and [%s] in slot %d ", getItemName(cookData->item2.a_key), cookData->itemIndex2 + 1);
+	}
+	fputs("to make ", fp);
+	
+	if (cookData->handleOutput == Toss) {
+		fputs("(and toss) ", fp);
+	}
+	else if (cookData->handleOutput == Autoplace) {
+		fputs("(and auto-place) ", fp);
+	}
+	fprintf(fp, "<%s>", getItemName(cookData->output.a_key));
+	
+	if (cookData->handleOutput == TossOther) {
+		fprintf(fp, ", toss [%s] in slot %d", getItemName(cookData->toss.a_key), cookData->indexToss + 1);
+	}
+	if (curNode->numOutputsCreated == NUM_RECIPES && ((struct Cook *) curNode->description.data)->handleOutput == Autoplace) {
+		fputs(" (No-Toss 5 Frame Penalty for Jump Storage)", fp);
+	}
+	else if (curNode->numOutputsCreated == NUM_RECIPES) {
+		fputs(" (Jump Storage on Tossed Item)", fp);
+	}
+	fputs("\t", fp);
+}
+
+void printFileHeader(FILE *fp) {
 	fputs("Description\tFrames Taken\tTotal Frames", fp);
 	struct Recipe *recipes = getRecipeList();
 	for (int i = 0; i < 20; i++) {
@@ -858,85 +902,62 @@ int printResults(char *filename, struct BranchPath *path) {
 	}
 	fprintf(fp, "\n");
 	recipeLog(5, "Calculator", "File", "Write", "Header for new output written");
+}
+
+void printInventoryData(struct BranchPath *curNode, FILE *fp) {
+	for (int i = 0; i < 20; i++) {
+		if (curNode->inventory[i].a_key == -1) {
+			if (i<9) {
+				fprintf(fp, "NULL\t");
+			}
+			else if (i==0) { 
+				fprintf(fp, "NULL\t");
+			}
+			else {
+				fprintf(fp, "BLOCKED\t");
+			}
+			continue;
+		}
+			
+		fprintf(fp, "%s\t", getItemName(curNode->inventory[i].a_key));
+	}
+}
+
+void printOutputsCreated(struct BranchPath *curNode, FILE *fp) {
+	for (int i = 0; i < NUM_RECIPES; i++) {
+		if (curNode->outputCreated[i] == 1) {
+			fprintf(fp, "True\t");
+		}
+		else {
+			fprintf(fp, "False\t");
+		}
+	}
+}
+
+int printResults(char *filename, struct BranchPath *path) {
+	FILE *fp = fopen(filename, "w");
+	
+	// Write header information
+	printFileHeader(fp);
 	
 	// Print data information
 	struct BranchPath *curNode = path;
 	do {
 		struct MoveDescription desc = curNode->description;
 		enum Action curNodeAction = desc.action;
-		if (curNodeAction == Cook) {
-			struct Cook *cookData = desc.data;
-			fprintf(fp, "Use [%s] in slot %d ", getItemName(cookData->item1.a_key), cookData->itemIndex1 + 1);
-			
-			if (cookData->numItems == 2) {
-				fprintf(fp, "and [%s] in slot %d ", getItemName(cookData->item2.a_key), cookData->itemIndex2 + 1);
-			}
-			fprintf(fp, "to make ");
-			
-			if (cookData->handleOutput == Toss) {
-				fprintf(fp, "(and toss) ");
-			}
-			else if (cookData->handleOutput == Autoplace) {
-				fprintf(fp, "(and auto-place) ");
-			}
-			fprintf(fp, "<%s>", getItemName(cookData->output.a_key));
-			
-			if (cookData->handleOutput == TossOther) {
-				fprintf(fp, ", toss [%s] in slot %d", getItemName(cookData->toss.a_key), cookData->indexToss + 1);
-			}
-			if (outputsCreatedCount(curNode->outputCreated) == NUM_RECIPES && ((struct Cook *) curNode->description.data)->handleOutput == Autoplace) {
-				fprintf(fp, " (No-Toss 5 Frame Penalty for Jump Storage)");
-			}
-			else if (outputsCreatedCount(curNode->outputCreated) == NUM_RECIPES) {
-				fprintf(fp, " (Jump Storage on Tossed Item)");
-			}
-			fprintf(fp, "\t");
-		}
-		else if (curNodeAction == Ch5) {
-			struct CH5 *ch5Data = desc.data;
-			fprintf(fp, "Ch.5 Break: Replace #%d for DB, Replace #%d for CO, Sort (", ch5Data->indexDriedBouquet, ch5Data->indexCoconut);
-			
-			switch (ch5Data->ch5Sort) {
-				case Sort_Alpha_Asc :
-					fprintf(fp, "Alpha), ");
-					break;
-				case Sort_Alpha_Des :
-					fprintf(fp, "Reverse-Alpha), ");
-					break;
-				case Sort_Type_Asc :
-					fprintf(fp, "Type), ");
-					break;
-				case Sort_Type_Des :
-					fprintf(fp, "Reverse-Type), ");
-					break;
-				default :
-					fprintf(fp, "ERROR IN CH5SORT SWITCH CASE");
-			};
-			
-			fprintf(fp, "Replace #%d for KM, Replace #%d for CS, Use TR in #%d\t", ch5Data->indexKeelMango, ch5Data->indexCourageShell, ch5Data->indexThunderRage);
-		}
-		else if (curNodeAction == Begin) {
-			fprintf(fp, "Begin\t");
-		}
-		else {
-			// Some type of sorting
-			fprintf(fp, "Sort - ");
-			switch (curNodeAction) {
-				case Sort_Alpha_Asc :
-					fprintf(fp, "Alphabetical\t");
-					break;
-				case Sort_Alpha_Des :
-					fprintf(fp, "Reverse Alphabetical\t");
-					break;
-				case Sort_Type_Asc :
-					fprintf(fp, "Type\t");
-					break;
-				case Sort_Type_Des :
-					fprintf(fp, "Reverse Type\t");
-					break;
-				default :
-					fprintf(fp, "ERROR IN HANDLING OF SORT");
-			};
+		switch (curNodeAction) {
+			case Cook :
+				printCookData(curNode, desc, fp);
+				break;
+			case Ch5 :
+				printCh5Data(curNode, desc, fp);
+				break;
+			case Begin :
+				fputs("Begin\t", fp);
+				break;
+			default :
+				// Some type of sorting
+				printSortData(fp, curNodeAction);
 		}
 		
 		// Print out frames taken
@@ -944,36 +965,16 @@ int printResults(char *filename, struct BranchPath *path) {
 		// Print out total frames taken
 		fprintf(fp, "%d\t", curNode->description.totalFramesTaken);
 
-
 		// Print out inventory
-		for (int i = 0; i < 20; i++) {
-			if (curNode->inventory[i].a_key == -1) {
-				if (i<9) {
-					fprintf(fp, "NULL\t");
-				}
-				else if (i==0) { 
-					fprintf(fp, "NULL\t");
-				}
-				else {
-					fprintf(fp, "BLOCKED\t");
-				}
-				continue;
-			}
-				
-			fprintf(fp, "%s\t", getItemName(curNode->inventory[i].a_key));
-		}
+		printInventoryData(curNode, fp);
 		
 		// Print out whether or not all 58 items were created
-		for (int i = 0; i < NUM_RECIPES; i++) {
-			if (curNode->outputCreated[i] == 1) {
-				fprintf(fp, "True\t");
-			}
-			else {
-				fprintf(fp, "False\t");
-			}
-		}
+		printOutputsCreated(curNode, fp);
 		
+		// Add newline character to put next node on new line
 		fprintf(fp, "\n");
+		
+		// Traverse to the next node in the roadmap
 		curNode = curNode->next;
 			
 	} while (curNode != NULL);
@@ -983,6 +984,26 @@ int printResults(char *filename, struct BranchPath *path) {
 	recipeLog(5, "Calculator", "File", "Write", "Data for roadmap written.");
 	
 	return 0;
+}
+
+void printSortData(FILE *fp, enum Action curNodeAction) {
+	fprintf(fp, "Sort - ");
+	switch (curNodeAction) {
+		case Sort_Alpha_Asc :
+			fputs("Alphabetical\t", fp);
+			break;
+		case Sort_Alpha_Des :
+			fputs("Reverse Alphabetical\t", fp);
+			break;
+		case Sort_Type_Asc :
+			fputs("Type\t", fp);
+			break;
+		case Sort_Type_Des :
+			fputs("Reverse Type\t", fp);
+			break;
+		default :
+			fputs("ERROR IN HANDLING OF SORT", fp);
+	};
 }
 
 // TODO: This just doesn't look right...
@@ -1211,7 +1232,7 @@ struct Result calculateOrder(struct Job job) {
 	while (1) {
 		int stepIndex = 0;
 		int iterationCount = 0;
-		int currentFrameRecord = 5000;
+		int currentFrameRecord = getFastestRecordOnBlob();
 
 		// Create root of tree path
 		curNode = initializeRoot(job);
@@ -1268,14 +1289,14 @@ struct Result calculateOrder(struct Job job) {
 			}
 			
 			// Check for end condition (57 recipes + the Chapter 5 intermission)
-			if(outputsCreatedCount(curNode->outputCreated) == NUM_RECIPES) {
+			if(curNode->numOutputsCreated == NUM_RECIPES) {
 				// All recipes have been fulfilled!
 				// Check that the total time taken is strictly less than the current observed record.
 				// Apply a frame penalty if the final move did not toss an item.
 				applyJumpStorageFramePenalty(curNode);
 				
 				currentFrameRecord = getFastestRecordOnBlob();
-				if (curNode->description.totalFramesTaken < 5000) {
+				if (curNode->description.totalFramesTaken < currentFrameRecord) {
 					// A finished roadmap has been generated
 					// TODO: Implement optimizeRoadmap
 
@@ -1297,7 +1318,7 @@ struct Result calculateOrder(struct Job job) {
 						return result;
 					}
 				}
-				printf("Found slower roadmap.");
+				
 				// Regardless of record status, it's time to go back up and find new endstates
 				curNode = curNode->prev;
 				freeLegalMove(curNode, 0);
@@ -1313,7 +1334,7 @@ struct Result calculateOrder(struct Job job) {
 				
 				// Only evaluate the 57th recipe (Mistake) when it's the last recipe to fulfill
 				// This is because it is relatively easy to craft this output with many of the previous outputs, and will take minimal frames
-				int upperOutputLimit = (outputsCreatedCount(curNode->outputCreated) == NUM_RECIPES - 1) ? NUM_RECIPES : (NUM_RECIPES - 1);
+				int upperOutputLimit = (curNode->numOutputsCreated == NUM_RECIPES - 1) ? NUM_RECIPES : (NUM_RECIPES - 1);
 				
 				struct Recipe *recipeList = job.recipeList;
 				// Iterate through all recipe ingredient combos
@@ -1359,7 +1380,7 @@ struct Result calculateOrder(struct Job job) {
 				}
 				
 				// Special filtering if we only had one recipe left to fulfill
-				if (outputsCreatedCount(curNode->outputCreated) == 57 && curNode->numLegalMoves > 0 && curNode->legalMoves[0]->description.action == Cook) {
+				if (curNode->numOutputsCreated == 57 && curNode->numLegalMoves > 0 && curNode->legalMoves[0]->description.action == Cook) {
 					// If there are any legal moves that satisfy this final recipe,
 					// strip out everything besides the fastest legal move
 					// This saves on recursing down pointless states
@@ -1430,9 +1451,11 @@ struct Result calculateOrder(struct Job job) {
 		
 		printf("100K iterations in %fs\n", cpu_time_used);
 		
+		/*
 		// For profiling
 		if (total_dives == 10) {
 			exit(1);
 		}
+		*/
 	}
 }
