@@ -7,6 +7,7 @@
 #include <libconfig.h>
 #include "logger.h"
 #include <assert.h>
+#include <time.h>
 
 #define NUM_RECIPES 58 // Including Dried Bouquet trade
 
@@ -319,6 +320,8 @@ void fulfillChapter5(struct BranchPath *curNode, struct Recipe *recipeList) {
 			
 			// Handle the allocation of the Coconut sort, Keel Mango, and Courage Shell
 			handleChapter5Eval(curNode, co_temp_inventory, recipeList, tempOutputsFulfilled, temp_frames_DB, temp_frames_CO, 0, temp_index_CO);
+			
+			free(co_temp_inventory);
 		}
 	}
 	else {
@@ -350,6 +353,8 @@ void fulfillChapter5(struct BranchPath *curNode, struct Recipe *recipeList) {
 					// Handle the allocation of the Coconut sort, Keel Mango, and Courage Shell
 					handleChapter5Eval(curNode, dbco_temp_inventory, recipeList, tempOutputsFulfilled, temp_frames_DB, temp_frames_CO, temp_index_DB, temp_index_CO);
 				}
+				
+				free(dbco_temp_inventory);
 			}
 		}
 	}
@@ -1206,7 +1211,7 @@ struct Result calculateOrder(struct Job job) {
 	while (1) {
 		int stepIndex = 0;
 		int iterationCount = 0;
-		int currentFrameRecord = getFastestRecordOnBlob();
+		int currentFrameRecord = 5000;
 
 		// Create root of tree path
 		curNode = initializeRoot(job);
@@ -1219,11 +1224,29 @@ struct Result calculateOrder(struct Job job) {
 		sprintf(temp2, "Searching New Branch %d", total_dives);
 		recipeLog(3, "Calculator", "Info", temp1, temp2);
 		
+		clock_t start, end;
+		double cpu_time_used;
+		
+		start = clock();
+		
 		// Handle the case where the user may choose to disable both randomise and select,
 		// in which case they would always iterate down the same path, even if we reset every n iterations
 		// Set to 1,000,000 iterations before resetting at the root
 		int configBool = (iterationCount < 100000 || (select == 0 && randomise == 0));
 		
+		// Periodic check for current version
+		if (total_dives % 10 == 0) {
+			int update = checkForUpdates(job.local_ver);
+			if (update == -1) {
+				printf("Please check your internet connection in order to continue.\n");
+				printf("Otherwise, we can't submit compelted roadmaps to the server!\n");
+				exit(-1);
+			}
+			else if (update == 1) {
+				printf("Please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!");
+				exit(-1);
+			}
+		}
 		// Start iteration loop
 		while (configBool) {
 			// In the rare occassion that the root node runs out of legal moves due to "select",
@@ -1401,5 +1424,15 @@ struct Result calculateOrder(struct Job job) {
 		sprintf(filename, "Invalid roadmap %d", total_dives);
 		// Free everything before reinitializing
 		freeAllNodes(curNode);
+		
+		end = clock();
+		cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+		
+		printf("100K iterations in %fs\n", cpu_time_used);
+		
+		// For profiling
+		if (total_dives == 10) {
+			exit(1);
+		}
 	}
 }
