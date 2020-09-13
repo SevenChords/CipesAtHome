@@ -427,7 +427,7 @@ void fulfillRecipes(struct BranchPath *curNode, struct Recipe *recipeList, int r
 			// TODO: Compartmentalize this in a separate fn
 			// Describe what items were used
 			
-			generateCook(&useDescription, combo[comboIndex], recipe, ingredientLoc);
+			generateCook(&useDescription, combo[comboIndex], recipe, ingredientLoc, 0);
 			cookBase = (struct Cook *) useDescription.data;
 			generateFramesTaken(&useDescription, curNode, tempFrames);
 		}
@@ -448,10 +448,11 @@ void fulfillRecipes(struct BranchPath *curNode, struct Recipe *recipeList, int r
 			// The first picked item always vanishes from the list of ingredients when picking the 2nd ingredient
 			// There are some configurations where it is 2 frames faster to pick the ingredients in the reverse order
 			int swap = 0;
-			if (selectSecondItemFirst(curNode, combo[comboIndex], ingredientLoc, ingredientOffset, viableItems))
+			if (selectSecondItemFirst(curNode, combo[comboIndex], ingredientLoc, ingredientOffset, viableItems)) {
 				// It's faster to select the 2nd item, so make it the priority and switch the order
 				swapItems(ingredientLoc, ingredientOffset);
 				swap = 1;
+			}
 			
 			// Calculate the number of frames needed to grab the first item
 			tempFrames += invFrames[viableItems][ingredientLoc[0]-ingredientOffset[0]];
@@ -539,7 +540,6 @@ void generateCook(struct MoveDescription *description, struct ItemCombination co
 	cook->itemIndex2 = ingredientLoc[1];
 	cook->output = recipe.output;
 	description->data = cook;
-	int test;
 }
 
 void generateFramesTaken(struct MoveDescription *description, struct BranchPath *node, int framesTaken) {
