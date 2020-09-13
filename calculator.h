@@ -104,7 +104,7 @@ int selectSecondItemFirst(struct BranchPath *node, struct ItemCombination combo,
 
 void generateFramesTaken(struct MoveDescription *description, struct BranchPath *node, int framesTaken);
 
-void generateCook(struct MoveDescription *description, struct ItemCombination combo, struct Recipe recipe, int *ingredientLoc);
+void generateCook(struct MoveDescription *description, struct ItemCombination combo, struct Recipe recipe, int *ingredientLoc, int swap);
 
 void shuffleLegalMoves(struct BranchPath *node);
 
