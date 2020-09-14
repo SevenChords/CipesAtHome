@@ -8,6 +8,7 @@
 #include "logger.h"
 #include <assert.h>
 #include <time.h>
+#include <string.h>
 
 // TODO: Eliminate struct Item, solely use t_key. If sort required, use function to look up a_key
 // 	 	- Use alpha_sort_positions[item/t_key] to quickly index for the a_key
@@ -49,7 +50,7 @@ void applyJumpStorageFramePenalty(struct BranchPath *node) {
 }
 
 void copyCook(struct Cook *cookNew, struct Cook *cookOld) {
-	memcpy((void *)cookNew, (void *)cookOld, sizeof(struct Cook));
+	*cookNew = *cookOld;
 	return;
 }
 
