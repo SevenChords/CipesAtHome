@@ -24,6 +24,9 @@ struct Job {
 // Defined in calculator.c
 struct BranchPath *initializeRoot(struct Job job);
 
+// Defined in calculator.c
+void periodicCheckForUpdate(struct Job job);
+
 // Main routine
 struct Result calculateOrder(struct Job job);
 
