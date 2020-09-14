@@ -62,10 +62,7 @@ void copyCook(struct Cook *cookNew, struct Cook *cookOld) {
 }
 
 void copyOutputsFulfilled(int *newOutputsFulfilled, int *oldOutputsFulfilled) {
-	for (int i = 0; i < NUM_RECIPES; i++) {
-		newOutputsFulfilled[i] = oldOutputsFulfilled[i];
-	}
-	return;
+	memcpy((void *)newOutputsFulfilled, (void *)oldOutputsFulfilled, sizeof(int) * NUM_RECIPES);
 }
 
 int countTotalSorts(struct BranchPath *node) {
@@ -1766,9 +1763,9 @@ struct Result calculateOrder(struct Job job) {
 		
 		
 		// For profiling
-		/*if (total_dives == 10) {
+		if (total_dives == 10) {
 			exit(1);
-		}*/
+		}
 		
 	}
 }
