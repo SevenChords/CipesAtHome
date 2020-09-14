@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "recipes.h"
+#include <string.h>
 
 #define NUM_RECIPES 58 // Including Dried Bouquet trade
 #define NUM_ITEMS 107 // All listed items
@@ -550,14 +551,12 @@ int getIndexOfRecipe(struct Item item, struct Recipe *recipeList) {
 		: item.t_key - Shroom_Fry_t;
 }
 
-void copyDependentIndices(int *newDependentIndices, int *dependentIndices, int numDependentIndices) {
-	for (int i = 0; i < numDependentIndices; i++) {
-		newDependentIndices[i] = dependentIndices[i];
-	}
+void copyDependentIndices(int *newDependentIndices, int *dependentIndices) {
+	memcpy((void *)newDependentIndices, (void *)dependentIndices, sizeof(int) * NUM_RECIPES);
 }
 
 // Returns 1 if true, 0 if false
-int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCreated, int *dependentIndices, int numDependentIndices, struct Recipe *recipeList) {
+int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCreated, int *dependentIndices, struct Recipe *recipeList) {
 	// Determine if the recipe items can still be fulfilled
 	for (int i = 0; i < combo.numItems; i++) {
 		// Check if we already have the item or know we can make it
@@ -577,23 +576,22 @@ int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCr
 		}
 		
 		// Check if it hasn't been made and doesn't depend on any item
-		if (outputsCreated[recipeIndex] == 1 || itemInDependentIndices(recipeIndex, dependentIndices, numDependentIndices) == 1) {
+		if (outputsCreated[recipeIndex] == 1 || dependentIndices[recipeIndex] == 1) {
 			// The item cannot be produced due to the current history
 			return 0;
 		}
 		
 		// Anything made for this item cannot depend on the item
 		// Copy the dependentIndices array as to not cause lasting changes when we go back to remainingOutputsCanBeFulfilled
-		int *newDependentIndices = malloc(sizeof(int) * 200);
-		copyDependentIndices(newDependentIndices, dependentIndices, numDependentIndices);
-		newDependentIndices[numDependentIndices] = recipeIndex;
-		numDependentIndices++;
+		int *newDependentIndices = calloc(NUM_RECIPES, sizeof(int));
+		copyDependentIndices(newDependentIndices, dependentIndices);
+		newDependentIndices[recipeIndex] = 1;
 		
 		// Recurse on all recipes that can make this item
 		int canBeProduced = 0;
 		for (int j = 0; j < recipeList[recipeIndex].countCombos; j++) {
 			struct ItemCombination newRecipe = recipeList[recipeIndex].combos[j];
-			if (checkRecipe(newRecipe, makeableItems, outputsCreated, newDependentIndices, numDependentIndices, recipeList)) {
+			if (checkRecipe(newRecipe, makeableItems, outputsCreated, newDependentIndices, recipeList)) {
 				if (i == 0) {
 					makeableItems[combo.item1.t_key] = 1;
 				}
@@ -643,15 +641,13 @@ int remainingOutputsCanBeFulfilled(struct Item *inventory, int *outputsCreated, 
 			continue;
 			
 		// List of items to not try to make
-		// Clear the dependentIndices array and set [0] = i
-		int *dependentIndices = calloc(200, sizeof(int));
-		int numDependentIndices;
-		dependentIndices[0] = i;
-		numDependentIndices = 1;
+		// Clear the dependentIndices array, specify that recipe #i is dependent
+		int *dependentIndices = calloc(NUM_RECIPES, sizeof(int));
+		dependentIndices[i] = 1;
 		// Check if any recipe to make the item can be fulfilled
 		int makeable = 0;
 		for (int j = 0; j < recipeList[i].countCombos; j++) {
-			if (checkRecipe(recipeList[i].combos[j], makeableItems, outputsCreated, dependentIndices, numDependentIndices, recipeList) == 1) {
+			if (checkRecipe(recipeList[i].combos[j], makeableItems, outputsCreated, dependentIndices, recipeList) == 1) {
 				// Stop looking for recipes to make the item
 				makeableItems[recipeList[i].output.t_key] = 1;
 				makeable = 1;

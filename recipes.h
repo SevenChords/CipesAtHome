@@ -20,10 +20,10 @@ struct Recipe *getRecipeList();
 
 void placeInventoryInMakeableItems(int *makeableItems, struct Item *inventory);
 
-void copyDependentIndices(int *newDependentIndices, int *dependentIndices, int numDependentIndices);
+void copyDependentIndices(int *newDependentIndices, int *dependentIndices);
 
 // Determine if the recipe items can still be fulfilled
-int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCreated, int *dependentIndices, int numDependentIndices, struct Recipe *recipeList);
+int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCreated, int *dependentIndices, struct Recipe *recipeList);
 
 // Determine if the remaining outputs can be fulfilled with the current given inventory
 int remainingOutputsCanBeFulfilled(struct Item *inventory, int *outputsCreated, struct Recipe *recipeList);
