@@ -559,11 +559,7 @@ void copyDependentIndices(int *newDependentIndices, int *dependentIndices, int n
 // Returns 1 if true, 0 if false
 int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCreated, int *dependentIndices, int numDependentIndices, struct Recipe *recipeList) {
 	// Determine if the recipe items can still be fulfilled
-	for (int i = 0; i < 2; i++) {
-		// If this is a 1-item recipe, ignore the second item
-		if (i == 1 && combo.numItems == 1)
-			continue;
-		
+	for (int i = 0; i < combo.numItems; i++) {
 		// Check if we already have the item or know we can make it
 		if ((i == 0 && makeableItems[combo.item1.t_key] == 1) || (i == 1 && makeableItems[combo.item2.t_key] == 1)) {
 			continue;
@@ -575,12 +571,13 @@ int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCr
 		else
 			recipeIndex = getIndexOfRecipe(combo.item2, recipeList);
 
-		if (recipeIndex == -1)
+		if (recipeIndex == -1) {
 			// The item cannot ever be created
 			return 0;
+		}
 		
 		// Check if it hasn't been made and doesn't depend on any item
-		if (outputsCreated[recipeIndex] || itemInDependentIndices(recipeIndex, dependentIndices, numDependentIndices)) {
+		if (outputsCreated[recipeIndex] == 1 || itemInDependentIndices(recipeIndex, dependentIndices, numDependentIndices) == 1) {
 			// The item cannot be produced due to the current history
 			return 0;
 		}
@@ -597,19 +594,22 @@ int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCr
 		for (int j = 0; j < recipeList[recipeIndex].countCombos; j++) {
 			struct ItemCombination newRecipe = recipeList[recipeIndex].combos[j];
 			if (checkRecipe(newRecipe, makeableItems, outputsCreated, newDependentIndices, numDependentIndices, recipeList)) {
-				if (i == 0)
+				if (i == 0) {
 					makeableItems[combo.item1.t_key] = 1;
-				else
+				}
+				else {
 					makeableItems[combo.item2.t_key] = 1;
+				}
 				canBeProduced = 1;
 				break;
 			}
 		}
 		
 		free(newDependentIndices);
-		if (!canBeProduced)
+		if (!canBeProduced) {
 			// The item cannot be produced with the current inventory
 			return 0;
+		}
 	}
 	
 	return 1;
