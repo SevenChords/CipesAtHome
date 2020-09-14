@@ -49,15 +49,7 @@ void applyJumpStorageFramePenalty(struct BranchPath *node) {
 }
 
 void copyCook(struct Cook *cookNew, struct Cook *cookOld) {
-	cookNew->numItems = cookOld->numItems;
-	cookNew->item1 = cookOld->item1;
-	cookNew->itemIndex1 = cookOld->itemIndex1;
-	cookNew->item2 = cookOld->item2;
-	cookNew->itemIndex2 = cookOld->itemIndex2;
-	cookNew->output = cookOld->output;
-	cookNew->handleOutput = cookOld->handleOutput;
-	cookNew->toss = cookOld->toss;
-	cookNew->indexToss = cookOld->indexToss;
+	memcpy((void *)cookNew, (void *)cookOld, sizeof(struct Cook));
 	return;
 }
 
