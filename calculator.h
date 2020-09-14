@@ -61,6 +61,15 @@ struct BranchPath {
 	int numLegalMoves;
 };
 
+struct OptimizeResult {
+	struct BranchPath *root;
+	struct BranchPath *last;
+};
+
+struct BranchPath *copyAllNodes(struct BranchPath *newNode, struct BranchPath *oldNode);
+
+struct OptimizeResult optimizeRoadmap(struct BranchPath *root); 
+
 void printOutputsCreated(struct BranchPath *curNode, FILE *fp);
 
 void printInventoryData(struct BranchPath *curNode, FILE *fp);
@@ -84,11 +93,11 @@ void fulfillRecipes(struct BranchPath *curNode, struct Recipe *recipeList, int r
 
 void freeInvFrames(int **invFrames);
 
-void tryTossInventoryItem(struct BranchPath *curNode, struct Item *tempInventory, struct MoveDescription useDescription, struct Cook *cookBase, int *tempOutputsFulfilled, int tossedIndex, struct Item output, int tempFrames, int viableItems);
+void tryTossInventoryItem(struct BranchPath *curNode, struct Item *tempInventory, struct MoveDescription useDescription, struct Cook *cookBase, int *tempOutputsFulfilled, int numOutputsFulfilled, int tossedIndex, struct Item output, int tempFrames, int viableItems);
 
-void finalizeLegalMove(struct BranchPath *node, int tempFrames, struct MoveDescription useDescription, struct Item *tempInventory, struct Cook *cookBase, int *tempOutputsFulfilled, enum HandleOutput tossType, struct Item toss, int tossIndex);
+void finalizeLegalMove(struct BranchPath *node, int tempFrames, struct MoveDescription useDescription, struct Item *tempInventory, struct Cook *cookBase, int *tempOutputsFulfilled, int numOutputsFulfilled, enum HandleOutput tossType, struct Item toss, int tossIndex);
 
-void finalizeChapter5Eval(struct BranchPath *node, struct Item *inventory, enum Action sort, int DB_place_index, int CO_place_index, int KM_place_index, int CS_place_index, int TR_use_index, int temp_frame_sum, int *outputsFulfilled);
+void finalizeChapter5Eval(struct BranchPath *node, struct Item *inventory, enum Action sort, int DB_place_index, int CO_place_index, int KM_place_index, int CS_place_index, int TR_use_index, int temp_frame_sum, int *outputsFulfilled, int numOutputsFulfilled);
 
 void applyJumpStorageFramePenalty(struct BranchPath *node);
 
@@ -98,7 +107,7 @@ void freeLegalMove(struct BranchPath *node, int index);
 
 void copyCook(struct Cook *cookNew, struct Cook *cookOld);
 
-struct BranchPath *createLegalMove(struct BranchPath *node, struct Item *inventory, struct MoveDescription description, int *outputsFulfilled);
+struct BranchPath *createLegalMove(struct BranchPath *node, struct Item *inventory, struct MoveDescription description, int *outputsFulfilled, int numOutputsFulfilled);
 
 int selectSecondItemFirst(struct BranchPath *node, struct ItemCombination combo, int *ingredientLoc, int *ingredientOffset, int viableItems);
 
@@ -122,20 +131,20 @@ int countTotalSorts(struct BranchPath *node);
 
 // Evaluates all possible placements of the Keel Mango and Courage Shell
 // and all possible locations and types of sorting that can place the Coconut into a position where it can be duplicated
-void handleChapter5Eval(struct BranchPath *node, struct Item *inventory, struct Recipe *recipeList, int *outputsFulfilled, int frames_DB, int frames_CO, int DB_place_index, int CO_place_index);
+void handleChapter5Eval(struct BranchPath *node, struct Item *inventory, struct Recipe *recipeList, int *outputsFulfilled, int numOutputsFulfilled, int frames_DB, int frames_CO, int DB_place_index, int CO_place_index);
 
 // Handles allocation of the Keel Mango and Courage Shell, both of which happen after the sort to correctly place
 // the Coconut in a location where it can be duplicated
-void handleChapter5EarlySortEndItems(struct BranchPath *node, struct Item *inventory, struct Recipe *recipeList, int *outputsFulfilled, int sort_frames, enum Action sort, int frames_DB, int frames_CO, int DB_place_index, int CO_place_index);
+void handleChapter5EarlySortEndItems(struct BranchPath *node, struct Item *inventory, struct Recipe *recipeList, int *outputsFulfilled, int numOutputsFulfilled, int sort_frames, enum Action sort, int frames_DB, int frames_CO, int DB_place_index, int CO_place_index);
 
 // Performs all sorts, verifies Coconut is in slots 11-20, and checks to see if all other recipes can be fulfilled
-void handleChapter5Sorts(struct BranchPath *node, struct Item *inventory, struct Recipe *recipeList, int *outputsFulfilled, int frames_DB, int frames_CO, int frames_KM, int DB_place_index, int CO_place_index, int KM_place_index);
+void handleChapter5Sorts(struct BranchPath *node, struct Item *inventory, struct Recipe *recipeList, int *outputsFulfilled, int numOutputsFulfilled, int frames_DB, int frames_CO, int frames_KM, int DB_place_index, int CO_place_index, int KM_place_index);
 
 // Handles allocation of the Courage Shell
 // The inventory has already had the Keel Mango placed,
 // and a sort has occurred to place the Coconut into a location
 // where it can be duplicated
-void handleChapter5LateSortEndItems(struct BranchPath *node, struct Item *inventory, struct Recipe *recipeList, int *outputsFulfilled, int sort_frames, enum Action sort, int frames_DB, int frames_CO, int frames_KM, int DB_place_index, int CO_place_index, int KM_place_index);
+void handleChapter5LateSortEndItems(struct BranchPath *node, struct Item *inventory, struct Recipe *recipeList, int *outputsFulfilled, int numOutputsFulfilled, int sort_frames, enum Action sort, int frames_DB, int frames_CO, int frames_KM, int DB_place_index, int CO_place_index, int KM_place_index);
 
 void insertIntoLegalMoves(int insertIndex, struct BranchPath *newLegalMove, struct BranchPath *curNode);
 
