@@ -294,10 +294,7 @@ int countItemsInInventory(struct Item *inventory) {
 			
 
 void copyInventory(struct Item* newInventory, struct Item* oldInventory) {
-	for (int i = 0; i < 20; i++) {
-		newInventory[i] = oldInventory[i];
-	}
-	return;
+	memcpy((void *)newInventory, (void *)oldInventory, sizeof(struct Item) * 20);
 }
 
 char *getItemName(Alpha_Sort a_key) {
