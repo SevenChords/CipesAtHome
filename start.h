@@ -15,7 +15,6 @@ struct Result {
 struct Job {
 	int callNumber;
 	struct Item *startingInventory;
-	struct Recipe *recipeList;
 	int *current_frame_record;
 	struct Result result;
 	const char *local_ver;

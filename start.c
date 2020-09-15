@@ -16,7 +16,6 @@
 int main() {
 	int cycle_count			= 1;
 	struct Item *startingInventory 	= getStartingInventory();
-	struct Recipe *recipeList 	= getRecipeList();
 	int workerCount;
 	int current_frame_record	= 9999;
 	config_t *config 		= getConfig();
@@ -43,9 +42,12 @@ int main() {
 	}
 
 	current_frame_record = getFastestRecordOnBlob();
+	// Initialize global variable invFrames in calculator.c
+	initializeInvFrames();
+	initializeRecipeList();
 	
 	// Create workerCount threads
-	/*double threads[workerCount];
+	double threads[workerCount];
 	omp_set_num_threads(workerCount);
 	#pragma omp parallel
 	{
@@ -53,17 +55,14 @@ int main() {
 		struct Job job;
 		job.callNumber = ID;
 		job.startingInventory = startingInventory;
-		job.recipeList = recipeList;
-		job.inventoryFrames = inventoryFrames;
 		job.current_frame_record = malloc(sizeof(int));
+		job.local_ver = local_ver;
 		
 		while (1) {
 			*(job.current_frame_record) = current_frame_record;
 			job.result.frames = -1; // If these are set to -1, then we know there has not been a result produced
 			job.result.callNumber = -1;
 			struct Result result = calculateOrder(job);
-			
-			result.frames = current_frame_record-1;
 
 			if (result.frames < current_frame_record) {
 				testRecord(result.frames);
@@ -74,9 +73,9 @@ int main() {
 
 			cycle_count++;
 		}
-	}*/
+	}
 	
-	struct Job job;
+	/*struct Job job;
 	job.callNumber = 0;
 	job.startingInventory = startingInventory;
 	job.recipeList = recipeList;
@@ -99,5 +98,5 @@ int main() {
 		cycle_count++;
 	}
 	
-	return 0;
+	return 0;*/
 }
