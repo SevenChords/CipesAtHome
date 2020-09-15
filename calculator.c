@@ -241,7 +241,7 @@ void fulfillChapter5(struct BranchPath *curNode, struct Recipe *recipeList) {
 	// to ensure that the produced inventory can fulfill all remaining recipes
 	int *tempOutputsFulfilled = malloc(sizeof(int) * 58);
 	copyOutputsFulfilled(tempOutputsFulfilled, curNode->outputCreated);
-	tempOutputsFulfilled[getIndexOfRecipe(getItem(Dried_Bouquet), recipeList)] = 1;
+	tempOutputsFulfilled[getIndexOfRecipe(getItem(Dried_Bouquet))] = 1;
 	int numOutputsFulfilled = curNode->numOutputsCreated + 1;
 	
 	// Create a temp inventory
@@ -941,7 +941,7 @@ struct OptimizeResult optimizeRoadmap(struct BranchPath *root) {
 		// First update subsequent nodes to remove this item from outputCreated
 		struct BranchPath *node = newNode->next;
 		while (node != NULL) {
-			node->outputCreated[getIndexOfRecipe(tossed_item, recipeList)] = 0;
+			node->outputCreated[getIndexOfRecipe(tossed_item)] = 0;
 			node->numOutputsCreated--;
 			node = node->next;
 		}
@@ -963,7 +963,7 @@ struct OptimizeResult optimizeRoadmap(struct BranchPath *root) {
 		struct Cook *record_description = NULL;
 		
 		// Evaluate all recipes and determine the optimal recipe and location
-		int recipe_index = getIndexOfRecipe(rearranged_recipes[recipe_offset], recipeList);
+		int recipe_index = getIndexOfRecipe(rearranged_recipes[recipe_offset]);
 		struct Recipe recipe = recipeList[recipe_index];
 		for (int recipe_combo_index = 0; recipe_combo_index < recipe.countCombos; recipe_combo_index++) {
 			struct ItemCombination combo = recipe.combos[recipe_combo_index];
@@ -1725,7 +1725,7 @@ struct Result calculateOrder(struct Job job) {
 	recipeList = getRecipeList();
 	
 	int debug;
-	config_lookup_int(config, "debug", &debug);
+	config_lookup_int(config, "Debug", &debug);
 	
 	if (debug) {
 		userDebugSession(job);
@@ -1819,18 +1819,6 @@ struct Result calculateOrder(struct Job job) {
 				break;
 			}
 			
-			// Check for bad states to immediately retreat from
-			// The Thunder Rage must remain in the inventory until the Chapter 5 intermission
-			if (!(curNode->outputCreated[57]) && !(itemInInventory(Thunder_Rage, curNode->inventory))) {
-				// Regardless of record status, it's time to go back up and find new endstates
-				// Wipe away the current state
-				curNode = curNode->prev;
-				curNode->next = NULL;
-				freeLegalMove(curNode, 0);
-				stepIndex--;
-				continue;
-			}
-			
 			// Check for end condition (57 recipes + the Chapter 5 intermission)
 			if(curNode->numOutputsCreated == NUM_RECIPES) {
 				// All recipes have been fulfilled!
@@ -1839,12 +1827,12 @@ struct Result calculateOrder(struct Job job) {
 				applyJumpStorageFramePenalty(curNode);
 				
 				currentFrameRecord = getFastestRecordOnBlob();
-				if (curNode->description.totalFramesTaken < job.current_frame_record + BUFFER_SEARCH_FRAMES) {
+				if (curNode->description.totalFramesTaken < 5000/*currentFrameRecord + BUFFER_SEARCH_FRAMES*/) {
 					// A finished roadmap has been generated
 					// Rearrange the roadmap to save frames
 					struct OptimizeResult optimizeResult = optimizeRoadmap(root);
 					
-					if (optimizeResult.last->description.totalFramesTaken < job.current_frame_record) {
+					if (optimizeResult.last->description.totalFramesTaken < 5000/*job.current_frame_record*/) {
 						job.current_frame_record = curNode->description.totalFramesTaken;
 						char *filename = malloc(sizeof(char) * 17);
 						sprintf(filename, "results/%d.txt", job.current_frame_record);
@@ -1889,18 +1877,18 @@ struct Result calculateOrder(struct Job job) {
 					
 					// Dried Bouquet (Recipe index 56) represents the Chapter 5 intermission
 					// Don't actually use the specified recipe, as it is handled later
-					if (recipeIndex == getIndexOfRecipe(getItem(Dried_Bouquet), recipeList)) {
+					if (recipeIndex == getIndexOfRecipe(getItem(Dried_Bouquet))) {
 						continue;
 					}
 					
 					fulfillRecipes(curNode, recipeList, recipeIndex);
 				}
 				
-				// Special handling of the 58th item, which is representative of the Chapter 5 intermission
+				// Special handling of the 56th recipe, which is representative of the Chapter 5 intermission
 				
 				// The first item is trading the Mousse Cake and 2 Hot Dogs for a Dried Bouquet
 				// Inventory must contain both items, and Hot Dog must be in a slot such that it can be duplicated
-				if (!curNode->outputCreated[getIndexOfRecipe(getItem(Dried_Bouquet), recipeList)] && itemInInventory(Mousse_Cake, curNode->inventory) &&
+				if (curNode->outputCreated[getIndexOfRecipe(getItem(Dried_Bouquet))] == 0 && itemInInventory(Mousse_Cake, curNode->inventory) &&
 				    indexOfItemInInventory(curNode->inventory, getItem(Hot_Dog)) >= 10) {
 					fulfillChapter5(curNode, recipeList);
 				}
