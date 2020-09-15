@@ -15,7 +15,7 @@ struct Result {
 struct Job {
 	int callNumber;
 	struct Item *startingInventory;
-	int *current_frame_record;
+	int current_frame_record;
 	struct Result result;
 	const char *local_ver;
 };
@@ -25,6 +25,9 @@ struct BranchPath *initializeRoot(struct Job job);
 
 // Defined in calculator.c
 void periodicCheckForUpdate(struct Job job);
+
+// Used to test behavior of various functions as roadmaps are calculated and verified
+void userDebugSession(struct Job job);
 
 // Main routine
 struct Result calculateOrder(struct Job job);

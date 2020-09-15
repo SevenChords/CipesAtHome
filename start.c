@@ -55,11 +55,11 @@ int main() {
 		struct Job job;
 		job.callNumber = ID;
 		job.startingInventory = startingInventory;
-		job.current_frame_record = malloc(sizeof(int));
+		job.current_frame_record = current_frame_record;
 		job.local_ver = local_ver;
 		
 		while (1) {
-			*(job.current_frame_record) = current_frame_record;
+			job.current_frame_record = current_frame_record;
 			job.result.frames = -1; // If these are set to -1, then we know there has not been a result produced
 			job.result.callNumber = -1;
 			struct Result result = calculateOrder(job);
