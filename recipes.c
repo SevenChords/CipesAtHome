@@ -581,17 +581,13 @@ int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCr
 			return 0;
 		}
 		
-		// Anything made for this item cannot depend on the item
-		// Copy the dependentIndices array as to not cause lasting changes when we go back to remainingOutputsCanBeFulfilled
-		int *newDependentIndices = calloc(NUM_RECIPES, sizeof(int));
-		copyDependentIndices(newDependentIndices, dependentIndices);
-		newDependentIndices[recipeIndex] = 1;
+		dependentIndices[recipeIndex] = 1;
 		
 		// Recurse on all recipes that can make this item
 		int canBeProduced = 0;
 		for (int j = 0; j < recipeList[recipeIndex].countCombos; j++) {
 			struct ItemCombination newRecipe = recipeList[recipeIndex].combos[j];
-			if (checkRecipe(newRecipe, makeableItems, outputsCreated, newDependentIndices, recipeList)) {
+			if (checkRecipe(newRecipe, makeableItems, outputsCreated, dependentIndices, recipeList)) {
 				if (i == 0) {
 					makeableItems[combo.item1.t_key] = 1;
 				}
@@ -603,7 +599,7 @@ int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCr
 			}
 		}
 		
-		free(newDependentIndices);
+		dependentIndices[recipeIndex] = 0;;
 		if (!canBeProduced) {
 			// The item cannot be produced with the current inventory
 			return 0;
@@ -635,14 +631,16 @@ int remainingOutputsCanBeFulfilled(struct Item *inventory, int *outputsCreated, 
 		makeableItems[Courage_Shell_t] = 1;
 	}
 	
+	// List of items to not try to make
+	// Once we're done exploring the current recipe, unset it in the array
+	int *dependentIndices = calloc(NUM_RECIPES, sizeof(int));
+	
 	// Iterate through all output items that haven't been created
 	for (int i = 0; i < NUM_RECIPES; i++) {
 		if (outputsCreated[i] == 1)
 			continue;
 			
-		// List of items to not try to make
 		// Clear the dependentIndices array, specify that recipe #i is dependent
-		int *dependentIndices = calloc(NUM_RECIPES, sizeof(int));
 		dependentIndices[i] = 1;
 		// Check if any recipe to make the item can be fulfilled
 		int makeable = 0;
@@ -654,15 +652,19 @@ int remainingOutputsCanBeFulfilled(struct Item *inventory, int *outputsCreated, 
 				break;
 			}
 		}
-		free(dependentIndices);
 		
 		// The item cannot be fulfilled
 		if (makeable == 0) {
+			free(dependentIndices);
 			free(makeableItems);
 			return 0;
 		}
+		
+		dependentIndices[i] = 0;
 	}
+	
 	// All remaining outputs can still be fulfilled
 	free(makeableItems);
+	free(dependentIndices);
 	return 1;
 }
