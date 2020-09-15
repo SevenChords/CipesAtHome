@@ -138,20 +138,22 @@ int checkForUpdates(const char *local_ver) {
 	char *data = handle_get(url);
 	cJSON *json = cJSON_Parse(data);
 	json = cJSON_GetObjectItemCaseSensitive(json, "tag_name");
-	char *ver = cJSON_Print(json);
+	char *ver = cJSON_GetStringValue(json);
 	
 	if (ver == NULL) {
 		return -1;
 	}
 	
-	// TODO: This is really janky...
-	// tag_name is read as (Ex.) "0.01" while local_ver is 0.01.
-	// Ignore first quote and just read 4 characters... If version # gets longer, will need to fix
-	if (strncmp(local_ver, ver + sizeof(char), 4) != 0) {
+	printf("Tag name: %s", ver);
+	
+	// Compare local version with github version
+	if (strncmp(local_ver, ver, 4) != 0) {
+		cJSON_Delete(json);
 		return 1;
 	}
 	
 	// Add logs
+	cJSON_Delete(json);
 	return 0;
 }
 
