@@ -40,6 +40,14 @@
 int **invFrames;
 struct Recipe  *recipeList;
 
+void initializeInvFrames() {
+	invFrames = getInventoryFrames();
+}
+
+void initializeRecipeList() {
+	recipeList = getRecipeList();
+}
+
 void applyJumpStorageFramePenalty(struct BranchPath *node) {
 	if (((struct Cook *) node->description.data)->handleOutput == Autoplace) {
 		node->description.framesTaken += JUMP_STORAGE_NO_TOSS_FRAMES;
@@ -194,12 +202,6 @@ void freeAllNodes(struct BranchPath *node) {
 		else {
 			break;
 		}
-	}
-}
-
-void freeInvFrames(int **invFrames) {
-	for (int i = 0; i < 21; i++) {
-		free(invFrames[i]);
 	}
 }
 
@@ -1232,6 +1234,7 @@ void printOutputsCreated(struct BranchPath *curNode, FILE *fp) {
 
 int printResults(char *filename, struct BranchPath *path) {
 	FILE *fp = fopen(filename, "w");
+	flockfile(fp);
 	
 	// Write header information
 	printFileHeader(fp);
@@ -1276,6 +1279,7 @@ int printResults(char *filename, struct BranchPath *path) {
 	} while (curNode != NULL);
 	
 	fclose(fp);
+	funlockfile(fp);
 	
 	recipeLog(5, "Calculator", "File", "Write", "Data for roadmap written.");
 	
@@ -1470,7 +1474,6 @@ struct Result calculateOrder(struct Job job) {
 	
 	int select;
 	config_lookup_int(config, "select", &select);
-	invFrames = getInventoryFrames();
 	recipeList = getRecipeList();
 	
 	/*
@@ -1583,12 +1586,9 @@ struct Result calculateOrder(struct Job job) {
 				currentFrameRecord = getFastestRecordOnBlob();
 				if (curNode->description.totalFramesTaken < 5000 + BUFFER_SEARCH_FRAMES) {
 					// A finished roadmap has been generated
-					// TODO: Implement optimizeRoadmap
-					// struct BranchPath *optimizedRoadmap = optimizeRoadmap(root);
-					
+					// Rearrange the roadmap to save frames
 					struct OptimizeResult optimizeResult = optimizeRoadmap(root);
 					
-					// Add log
 					if (optimizeResult.last->description.totalFramesTaken < 5000) {
 						*(job.current_frame_record) = curNode->description.totalFramesTaken;
 						char *filename = malloc(sizeof(char) * 17);
@@ -1598,10 +1598,8 @@ struct Result calculateOrder(struct Job job) {
 						sprintf(tmp, "Congrats! New fastest roadmap found! %d frames, saved %d after rearranging", curNode->description.totalFramesTaken, curNode->description.totalFramesTaken - optimizeResult.last->description.totalFramesTaken);
 						recipeLog(6, "Calculator", "Info", "Roadmap", tmp);
 						free(filename);
-						freeInvFrames(invFrames);
 						freeAllNodes(curNode);
 						freeAllNodes(optimizeResult.last);
-						invFrames = NULL;
 						struct Result result = (struct Result) {*(job.current_frame_record), job.callNumber};
 						return result;
 					}
@@ -1627,9 +1625,7 @@ struct Result calculateOrder(struct Job job) {
 				// This is because it is relatively easy to craft this output with many of the previous outputs, and will take minimal frames
 				int upperOutputLimit = (curNode->numOutputsCreated == NUM_RECIPES - 1) ? NUM_RECIPES : (NUM_RECIPES - 1);
 				
-				struct Recipe *recipeList = job.recipeList;
 				// Iterate through all recipe ingredient combos
-					
 				for (int recipeIndex = 0; recipeIndex < upperOutputLimit; recipeIndex++) {
 					// Only want recipes that haven't been fulfilled
 					if (curNode->outputCreated[recipeIndex] == 1) {
@@ -1663,7 +1659,7 @@ struct Result calculateOrder(struct Job job) {
 				// All legal moves evaluated and listed!
 				
 				// Filter out all legal moves that would exceed the current frame limit
-				/*filterLegalMovesExceedFrameLimit(curNode, currentFrameRecord + BUFFER_SEARCH_FRAMES);*/
+				//filterLegalMovesExceedFrameLimit(curNode, currentFrameRecord + BUFFER_SEARCH_FRAMES);
 				
 				if (curNode->moves == 0) {
 					// Filter out all legal moves that use 2 ingredients in the very first legal move
@@ -1707,7 +1703,7 @@ struct Result calculateOrder(struct Job job) {
 			}
 			else {
 				// Filter out all legal moves that would exceed the current frame limit
-				filterLegalMovesExceedFrameLimit(curNode, currentFrameRecord);
+				//filterLegalMovesExceedFrameLimit(curNode, currentFrameRecord);
 				
 				if (curNode->numLegalMoves == 0) {
 					// No legal moves are left to evaluate, go back up...
@@ -1752,7 +1748,7 @@ struct Result calculateOrder(struct Job job) {
 		end = clock();
 		cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
 		
-		printf("100K iterations in %fs\n", cpu_time_used);
+		printf("[Thread %d completed 100K iterations in %f seconds.]\n", job.callNumber, cpu_time_used);
 		
 		
 		// For profiling

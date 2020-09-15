@@ -66,6 +66,10 @@ struct OptimizeResult {
 	struct BranchPath *last;
 };
 
+void initializeRecipeList();
+
+void initializeInvFrames();
+
 struct BranchPath *copyAllNodes(struct BranchPath *newNode, struct BranchPath *oldNode);
 
 struct OptimizeResult optimizeRoadmap(struct BranchPath *root); 
