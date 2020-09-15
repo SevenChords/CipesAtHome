@@ -542,7 +542,7 @@ struct Recipe *getRecipeList() {
 	return recipes;
 }
 
-int getIndexOfRecipe(struct Item item, struct Recipe *recipeList) {
+int getIndexOfRecipe(struct Item item) {
 	// Conveniently, all recipes are stored as the same "type",
 	// so their t_key's are adjacent to one another
 	return item.t_key == Dried_Bouquet_t ? 56
@@ -566,9 +566,9 @@ int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCr
 		
 		int recipeIndex;
 		if (i == 0)
-			recipeIndex = getIndexOfRecipe(combo.item1, recipeList);
+			recipeIndex = getIndexOfRecipe(combo.item1);
 		else
-			recipeIndex = getIndexOfRecipe(combo.item2, recipeList);
+			recipeIndex = getIndexOfRecipe(combo.item2);
 
 		if (recipeIndex == -1) {
 			// The item cannot ever be created
@@ -621,10 +621,17 @@ void placeInventoryInMakeableItems(int *makeableItems, struct Item *inventory) {
 
 int remainingOutputsCanBeFulfilled(struct Item *inventory, int *outputsCreated, struct Recipe *recipeList) {
 	// With the given inventory, can the remaining recipes be fulfilled?
+		
+	// If Chapter 5 has not been done, verify that Thunder Rage is in the inventory
+	if (outputsCreated[getIndexOfRecipe(getItem(Dried_Bouquet))] == 0 && !itemInInventory(Thunder_Rage, inventory)) {
+		return 0;
+	}
+	
 	int *makeableItems = calloc(NUM_ITEMS, sizeof(int));
 	placeInventoryInMakeableItems(makeableItems, inventory);
+	
 	// If Chapter 5 has not been done, add the items it gives
-	if (outputsCreated[getIndexOfRecipe(getItem(Dried_Bouquet), recipeList)] == 0) {
+	if (outputsCreated[getIndexOfRecipe(getItem(Dried_Bouquet))] == 0) {
 		makeableItems[Keel_Mango_t] = 1;
 		makeableItems[Coconut_t] = 1;
 		makeableItems[Dried_Bouquet_t] = 1;

@@ -29,6 +29,6 @@ int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCr
 int remainingOutputsCanBeFulfilled(struct Item *inventory, int *outputsCreated, struct Recipe *recipeList);
 
 // Returns the index in the recipeList for the given recipe output "item". -1 if not a recipe output
-int getIndexOfRecipe(struct Item item, struct Recipe *recipeList);
+int getIndexOfRecipe(struct Item item);
 
 #endif
