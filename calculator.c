@@ -1466,6 +1466,254 @@ struct Item *getSortedInventory(struct Item *inventory, enum Action sort) {
 	}
 }
 
+void userDebugSession(struct Job job) {
+	struct BranchPath *curNode = initializeRoot(job);
+	
+	while (1) {
+		int action = -1;
+		printf("Choose an action:\n0 - Cook\n1 - Sort Alpha Asc\n2 - Sort Alpha Des\n3 - Sort Type Asc\n4 - Sort Type Des\n5 - Chapter 5\n");
+		scanf("%d", &action);
+		while (action < 0 || action > 5) {
+			printf("Invalid action. Choose a number between 0-5: ");
+			scanf("%d", &action);
+		}
+		
+		int recipeIndex = -1;
+		struct Item *newInventory;
+		struct BranchPath *newNode;
+		int *newOutputsFulfilled;
+		switch (action) {
+			case 0 :
+				// Cook
+				printf("Choose the recipe index you are cooking: ");
+				scanf("%d", &recipeIndex);
+				while (recipeIndex <  0 || recipeIndex > NUM_RECIPES) {
+					printf("Invalid recipe index. Choose a number between 0 and 57: ");
+					scanf("%d", &recipeIndex);
+				}
+				
+				struct Recipe recipe = recipeList[recipeIndex];
+				printf("Choose one of the following combos:\n");
+				for (int i = 0; i < recipe.countCombos; i++) {
+					if (recipe.combos[i].numItems == 1) {
+						printf("%d -> Use %s to make %s\n", i, getItemName(recipe.combos[i].item1.a_key), getItemName(recipe.output.a_key));
+					}
+					else {
+						printf("%d -> Use %s and %s to make %s\n", i, getItemName(recipe.combos[i].item1.a_key), getItemName(recipe.combos[i].item2.a_key), getItemName(recipe.output.a_key));
+					}
+				}
+				
+				// Have user choose one of the recipe combos
+				int comboIndex = -1;
+				scanf("%d", &comboIndex);
+				while (comboIndex < 0 || comboIndex > recipe.countCombos) {
+					printf("Invalid combo index. Choose a number between 0 and %d: ", recipe.countCombos - 1);
+					scanf("%d", &comboIndex);
+				}
+				
+				struct ItemCombination combo = recipe.combos[comboIndex];
+				
+				// Modify the inventory to reflect changes to the inventory
+				newInventory = malloc(sizeof(struct Item) * 20);
+				copyInventory(newInventory, curNode->inventory);
+				
+				// If either item is in the first 10 slots, set it to null
+				int indexItem1 = indexOfItemInInventory(newInventory, combo.item1);
+				int indexItem2 = indexOfItemInInventory(newInventory, combo.item2);
+				if (indexItem1 < 10) {
+					newInventory[indexItem1] = (struct Item) {-1, -1};
+				}
+				if (combo.numItems == 2) {
+					if (indexItem2 < 10) {
+						newInventory[indexItem2] = (struct Item) {-1, -1};
+					}
+				}
+				
+				enum HandleOutput handleOutput;
+				if (countNullsInInventory(newInventory, 0, 10) > 0) {
+					printf("Output will be autoplaced.");
+					handleOutput = Autoplace;
+				}
+				else {
+					// Have the user specify what to do with the output
+					printf("How should we handle the output?\n");
+					printf("0 -> Toss the output\n");
+					printf("1 -> Toss a different item\n");
+					int handleOutputInt = -1;
+					scanf("%d", &handleOutputInt);
+					while (handleOutputInt < 0 || handleOutputInt > 1) {
+						printf("Invalid handle value.");
+						scanf("%d", &handleOutputInt);
+					}
+					if (handleOutputInt == 0) {
+						handleOutput = Toss;
+					}
+					else {
+						handleOutput = TossOther;
+					}
+				}
+				
+				struct Item tossedItem = (struct Item) {-1, -1};
+				int tossIndex = -1;
+				
+				// If tossing output, no modifications to inventory are necessary
+				if (handleOutput == Toss) {
+					;
+				}
+				else if (handleOutput == Autoplace) {
+					// Shift inventory to fill null
+					shiftDownToFillNull(newInventory);
+					// Occupancy in first index is where new output is placed
+					newInventory[0] = recipe.output;
+				}
+				else {
+					// Toss other
+					// Specify items and their indices to be tossed
+					printf("What index would you like to toss?\n");
+					for (int i = 0; i < 20; i++) {
+						printf("%d -> %s\n", i, getItemName(newInventory[i].a_key));
+					}
+					scanf("%d", &tossIndex);
+					while (tossIndex < 0 || tossIndex >= 20) {
+						printf("Invalid toss index.");
+						scanf("%d", &tossIndex);
+					}
+					
+					tossedItem = newInventory[tossIndex];
+					
+					// Set the tossed item index to null
+					newInventory[tossIndex] = (struct Item) {-1, -1};
+					shiftDownToFillNull(newInventory);
+					newInventory[0] = recipe.output;
+				}
+				
+				// Set the outputFulfilled index of the current recipe to 1
+				newOutputsFulfilled = malloc(sizeof(int) * NUM_RECIPES);
+				copyOutputsFulfilled(newOutputsFulfilled, curNode->outputCreated);
+				newOutputsFulfilled[recipeIndex] = 1;
+				
+				// Now for the moment of truth...
+				// Can all the other recipes be fulfilled?
+				int remainingCanBeFulfilled = remainingOutputsCanBeFulfilled(newInventory, newOutputsFulfilled, recipeList);
+				if (remainingCanBeFulfilled == 0) {
+					printf("remainingOutputsCanBeFulfilled determined that this move is not possible.\n");
+					exit(1);
+				}
+				
+				printf("This has been determined to be a legal move. Moving to the next node...\n");
+				
+				newNode = malloc(sizeof(struct BranchPath));
+				newNode->prev = curNode;
+				curNode->next = newNode;
+				newNode->moves = curNode->moves + 1;
+				newNode->inventory = newInventory;
+				newNode->description.action = Cook;
+				
+				struct Cook *cook = malloc(sizeof(struct Cook));
+				cook->numItems = combo.numItems;
+				cook->item1 = combo.item1;
+				cook->itemIndex1 = indexItem1;
+				if (combo.numItems == 2) {
+					cook->item2 = combo.item2;
+					cook->itemIndex2 = indexItem2;
+				}
+				else {
+					cook->item2 = (struct Item) {-1, -1};
+					cook->itemIndex2 = -1;
+				}
+				cook->output = recipe.output;
+				cook->handleOutput = handleOutput;
+				if (cook->handleOutput == Toss || cook->handleOutput == Autoplace) {
+					cook->toss = (struct Item) {-1, -1};
+				}
+				else {
+					cook->toss = tossedItem;
+					cook->indexToss = tossIndex;
+				}
+				newNode->description.data = (void *)cook;
+				newNode->outputCreated = newOutputsFulfilled;
+				newNode->numOutputsCreated = curNode->numOutputsCreated + 1;
+				curNode = newNode;
+				break;
+			case 1 : // Sort Alpha Asc
+				newInventory = getSortedInventory(curNode->inventory, Sort_Alpha_Asc);
+				newNode = malloc(sizeof(struct BranchPath));
+				curNode->next = newNode;
+				newNode->prev = curNode;
+				newNode->moves = curNode->moves + 1;
+				newNode->inventory = newInventory;
+				newNode->description.action = Sort_Alpha_Asc;
+				newNode->description.data = NULL;
+				
+				int *newOutputsFulfilled = malloc(sizeof(int) * NUM_RECIPES);
+				copyOutputsFulfilled(newOutputsFulfilled, curNode->outputCreated);
+				newNode->outputCreated = newOutputsFulfilled;
+				newNode->numOutputsCreated = curNode->numOutputsCreated;
+				curNode = newNode;
+				break;
+			case 2 : // Sort Alpha Des
+				newInventory = getSortedInventory(curNode->inventory, Sort_Alpha_Des);
+				newNode = malloc(sizeof(struct BranchPath));
+				curNode->next = newNode;
+				newNode->prev = curNode;
+				newNode->moves = curNode->moves + 1;
+				newNode->inventory = newInventory;
+				newNode->description.action = Sort_Alpha_Des;
+				newNode->description.data = NULL;
+				
+				newOutputsFulfilled = malloc(sizeof(int) * NUM_RECIPES);
+				copyOutputsFulfilled(newOutputsFulfilled, curNode->outputCreated);
+				newNode->outputCreated = newOutputsFulfilled;
+				newNode->numOutputsCreated = curNode->numOutputsCreated;
+				curNode = newNode;
+				break;
+			case 3 : // Sort Type Asc
+				newInventory = getSortedInventory(curNode->inventory, Sort_Type_Asc);
+				newNode = malloc(sizeof(struct BranchPath));
+				curNode->next = newNode;
+				newNode->prev = curNode;
+				newNode->moves = curNode->moves + 1;
+				newNode->inventory = newInventory;
+				newNode->description.action = Sort_Type_Asc;
+				newNode->description.data = NULL;
+				
+				newOutputsFulfilled = malloc(sizeof(int) * NUM_RECIPES);
+				copyOutputsFulfilled(newOutputsFulfilled, curNode->outputCreated);
+				newNode->outputCreated = newOutputsFulfilled;
+				newNode->numOutputsCreated = curNode->numOutputsCreated;
+				curNode = newNode;
+				break;
+			case 4: // Sort Type Des
+				newInventory = getSortedInventory(curNode->inventory, Sort_Type_Des);
+				newNode = malloc(sizeof(struct BranchPath));
+				curNode->next = newNode;
+				newNode->prev = curNode;
+				newNode->moves = curNode->moves + 1;
+				newNode->inventory = newInventory;
+				newNode->description.action = Sort_Type_Des;
+				newNode->description.data = NULL;
+				
+				newOutputsFulfilled = malloc(sizeof(int) * NUM_RECIPES);
+				copyOutputsFulfilled(newOutputsFulfilled, curNode->outputCreated);
+				newNode->outputCreated = newOutputsFulfilled;
+				newNode->numOutputsCreated = curNode->numOutputsCreated;
+				curNode = newNode;
+				break;
+			case 5 : // CH5
+				printf("Not done yet");
+				break;
+			default :
+				break;
+		}
+		
+		// Print inventory
+		printf("We now have the following inventory:\n");
+		for (int i = 0; i < 20; i++) {
+			printf("%s\n", getItemName(curNode->inventory[i].a_key));
+		}
+	}
+}
+
 struct Result calculateOrder(struct Job job) {
 	config_t *config = getConfig();
 	
@@ -1475,6 +1723,13 @@ struct Result calculateOrder(struct Job job) {
 	int select;
 	config_lookup_int(config, "select", &select);
 	recipeList = getRecipeList();
+	
+	int debug;
+	config_lookup_int(config, "debug", &debug);
+	
+	if (debug) {
+		userDebugSession(job);
+	}
 	
 	/*
 	#===============================================================================
@@ -1584,15 +1839,15 @@ struct Result calculateOrder(struct Job job) {
 				applyJumpStorageFramePenalty(curNode);
 				
 				currentFrameRecord = getFastestRecordOnBlob();
-				if (curNode->description.totalFramesTaken < 5000 + BUFFER_SEARCH_FRAMES) {
+				if (curNode->description.totalFramesTaken < job.current_frame_record + BUFFER_SEARCH_FRAMES) {
 					// A finished roadmap has been generated
 					// Rearrange the roadmap to save frames
 					struct OptimizeResult optimizeResult = optimizeRoadmap(root);
 					
-					if (optimizeResult.last->description.totalFramesTaken < 5000) {
-						*(job.current_frame_record) = curNode->description.totalFramesTaken;
+					if (optimizeResult.last->description.totalFramesTaken < job.current_frame_record) {
+						job.current_frame_record = curNode->description.totalFramesTaken;
 						char *filename = malloc(sizeof(char) * 17);
-						sprintf(filename, "results/%d.txt", *(job.current_frame_record));
+						sprintf(filename, "results/%d.txt", job.current_frame_record);
 						printResults(filename, optimizeResult.root);
 						char tmp[100];
 						sprintf(tmp, "Congrats! New fastest roadmap found! %d frames, saved %d after rearranging", curNode->description.totalFramesTaken, curNode->description.totalFramesTaken - optimizeResult.last->description.totalFramesTaken);
@@ -1600,7 +1855,7 @@ struct Result calculateOrder(struct Job job) {
 						free(filename);
 						freeAllNodes(curNode);
 						freeAllNodes(optimizeResult.last);
-						struct Result result = (struct Result) {*(job.current_frame_record), job.callNumber};
+						struct Result result = (struct Result) {job.current_frame_record, job.callNumber};
 						return result;
 					}
 					
@@ -1752,9 +2007,9 @@ struct Result calculateOrder(struct Job job) {
 		
 		
 		// For profiling
-		if (total_dives == 10) {
+		/*if (total_dives == 10) {
 			exit(1);
-		}
+		}*/
 		
 	}
 }
