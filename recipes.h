@@ -26,7 +26,7 @@ void copyDependentIndices(int *newDependentIndices, int *dependentIndices);
 int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCreated, int *dependentIndices, struct Recipe *recipeList);
 
 // Determine if the remaining outputs can be fulfilled with the current given inventory
-int remainingOutputsCanBeFulfilled(struct Item *inventory, int *outputsCreated, struct Recipe *recipeList);
+int stateOK(struct Item *inventory, int *outputsCreated, struct Recipe *recipeList);
 
 // Returns the index in the recipeList for the given recipe output "item". -1 if not a recipe output
 int getIndexOfRecipe(struct Item item);

@@ -619,7 +619,7 @@ void placeInventoryInMakeableItems(int *makeableItems, struct Item *inventory) {
 	}
 }
 
-int remainingOutputsCanBeFulfilled(struct Item *inventory, int *outputsCreated, struct Recipe *recipeList) {
+int stateOK(struct Item *inventory, int *outputsCreated, struct Recipe *recipeList) {
 	// With the given inventory, can the remaining recipes be fulfilled?
 		
 	// If Chapter 5 has not been done, verify that Thunder Rage is in the inventory
