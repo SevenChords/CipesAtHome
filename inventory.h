@@ -246,7 +246,7 @@ int indexOfItemInInventory(struct Item *inventory, struct Item item);
 int countItemsInInventory(struct Item *inventory);
 
 // Copy inventory to a new pointer
-void copyInventory(struct Item* newInventory, struct Item* oldInventory);
+struct Item *copyInventory(struct Item* oldInventory);
 
 // Return the string name for a particular item
 char *getItemName(enum Alpha_Sort a_key);
