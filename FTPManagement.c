@@ -144,8 +144,6 @@ int checkForUpdates(const char *local_ver) {
 		return -1;
 	}
 	
-	printf("Tag name: %s", ver);
-	
 	// Compare local version with github version
 	if (strncmp(local_ver, ver, 4) != 0) {
 		cJSON_Delete(json);
