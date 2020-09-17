@@ -67,6 +67,10 @@ struct OptimizeResult {
 	struct BranchPath *last;
 };
 
+void shiftDownLegalMoves(struct BranchPath *node, int index);
+
+void softMin(struct BranchPath *node);
+
 void handleRecipeOutput(struct BranchPath *curNode, struct Item *tempInventory, int tempFrames, struct MoveDescription useDescription, int *tempOutputsFulfilled, int numOutputsFulfilled, struct Item output, int viableItems);
 
 void createCookDescription2Items(struct BranchPath *node, struct Recipe recipe, struct ItemCombination combo, struct Item *tempInventory, int *ingredientLoc, int *ingredientOffset, int *tempFrames, int viableItems, struct MoveDescription *useDescription);
@@ -176,8 +180,11 @@ void insertIntoLegalMoves(int insertIndex, struct BranchPath *newLegalMove, stru
 // Find out where to place a new legalMove in the array of legalMoves
 int getInsertionIndex(struct BranchPath *node, int frames);
 
-// Moves all items down one position to fill up the first null item
-void shiftDownToFillNull(struct Item *inventory);
+// Moves all items one position towards the back of the array to fill up the first null item
+void shiftUpToFillNull(struct Item *inventory);
+
+// Move all items one position towards the front of the inventory to fill up the first null item
+void shiftDownToFillNull(struct  Item *inventory);
 
 // Swaps a set of item indices when determining that it's faster to choose two ingredients in reverse order
 void swapItems(int *ingredientLoc, int *ingredientOffset);
