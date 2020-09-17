@@ -21,6 +21,7 @@ struct Job {
 };
 
 int getLocalRecord();
+void setLocalRecord(int frames);
 
 // Defined in calculator.c
 struct BranchPath *initializeRoot(struct Job job);

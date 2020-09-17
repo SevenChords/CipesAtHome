@@ -19,6 +19,10 @@ int getLocalRecord() {
 	return current_frame_record;
 }
 
+void setLocalRecord(int frames) {
+	current_frame_record = frames;
+}
+
 int main() {
 	int cycle_count = 1;
 	struct Item *startingInventory = getStartingInventory();
