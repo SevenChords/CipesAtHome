@@ -13,12 +13,18 @@
 #include <curl/curl.h>
 #include "logger.h"
 
+int current_frame_record;
+
+int getLocalRecord() {
+	return current_frame_record;
+}
+
 int main() {
-	int cycle_count			= 1;
-	struct Item *startingInventory 	= getStartingInventory();
+	int cycle_count = 1;
+	struct Item *startingInventory = getStartingInventory();
 	int workerCount;
-	int current_frame_record	= 9999;
-	config_t *config 		= getConfig();
+	current_frame_record = 9999;
+	config_t *config = getConfig();
 	config_lookup_int(config, "workerCount", &workerCount);
 	init_level_cfg();
 	const char *local_ver;
@@ -40,9 +46,10 @@ int main() {
 		printf("Please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!");
 		return -1;
 	}
-
-	current_frame_record = getFastestRecordOnBlob();
-	// Initialize global variable invFrames in calculator.c
+	
+	// Initialize global variables in calculator.c
+	// This does not need to be done in parallel, as these globals will
+	// persist through all parallel calls to calculator.c
 	initializeInvFrames();
 	initializeRecipeList();
 	
@@ -60,17 +67,16 @@ int main() {
 		
 		while (1) {
 			job.current_frame_record = current_frame_record;
-			job.result.frames = -1; // If these are set to -1, then we know there has not been a result produced
+			job.result.frames = -1;
 			job.result.callNumber = -1;
 			struct Result result = calculateOrder(job);
-
-			if (result.frames < current_frame_record) {
-				testRecord(result.frames);
+			
+			#pragma omp critical
+			{
 				current_frame_record = result.frames;
-				
-				// Add log
 			}
-
+			
+			testRecord(result.frames);
 			cycle_count++;
 		}
 	}

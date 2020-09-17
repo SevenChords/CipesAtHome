@@ -20,6 +20,8 @@ struct Job {
 	const char *local_ver;
 };
 
+int getLocalRecord();
+
 // Defined in calculator.c
 struct BranchPath *initializeRoot(struct Job job);
 
