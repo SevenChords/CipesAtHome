@@ -1505,12 +1505,11 @@ struct OptimizeResult optimizeRoadmap(struct BranchPath *root) {
 void periodicCheckForUpdate(struct Job job) {
 	int update = checkForUpdates(job.local_ver);
 	if (update == -1) {
-		printf("Please check your internet connection in order to continue.\n");
-		printf("Otherwise, we can't submit completed roadmaps to the server!\n");
-		printf("Continuing for now. If the issue persists, please terminate the program and test your internet.");
+		printf("Could not get latest version from Github.\n");
+		printf("Continuing for now. If the issue persists for more than 10 minutes, please terminate the program and test your internet.\n");
 	}
 	else if (update == 1) {
-		printf("Please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!");
+		printf("Please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!\n");
 		exit(-1);
 	}
 }
