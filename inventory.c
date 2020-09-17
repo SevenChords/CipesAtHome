@@ -18,10 +18,6 @@ typedef struct ItemName ItemName;
   - Using the alpha key as the main identifier also negates the need to have a function to obtain the alpha key along with the type key.
 - Each item in the inventory is represented with a struct which contains both its alphabetical and type sort keys, again using
   the alphabetical key as the main item identifier.
-  
-- TODO:
-	- checkRecipe
-	- remainingOutputsCanBeFulfilled
 ====================     ====================*/
 
 Item items[] = {
@@ -134,6 +130,13 @@ Item items[] = {
 	{Fresh_Pasta, Fresh_Pasta_t}
 };
 
+/*-------------------------------------------------------------------
+ * Function 	: getItem
+ * Inputs	: enum Alpha_Sort a_key
+ * Outputs	: struct Item 	  item
+ *
+ * Use an item's a_key to retrieve its Item struct from the above array
+ -------------------------------------------------------------------*/
 struct Item getItem(enum Alpha_Sort a_key) {
 	return items[a_key];
 }
@@ -248,6 +251,16 @@ ItemName itemNames[] = {
 	{Fresh_Pasta, "Fresh Pasta"}
 };
 
+/*-------------------------------------------------------------------
+ * Function 	: compareInventories
+ * Inputs	: struct Item 	*inv1
+ * 		  struct Item	*inv2
+ * Outputs	: 0 - inventories are different
+ *		  1 - inventories are identical
+ *
+ * Compare two inventories for any differences. This is used to determine
+ * if sorts changed the inventory at all.
+ -------------------------------------------------------------------*/
 int compareInventories(struct Item *inv1, struct Item *inv2) {
 	for (int i = 0; i < 20; i++) {
 		if (inv1[i].a_key != inv2[i].a_key)
@@ -256,6 +269,17 @@ int compareInventories(struct Item *inv1, struct Item *inv2) {
 	return 1;
 }
 
+/*-------------------------------------------------------------------
+ * Function 	: itemInDependentIndices
+ * Inputs	: int index
+ *		  int *dependentIndices
+ *		  int numDependentIndices
+ * Outputs	: 0 - item is not in dependentIndices
+ *		  1 - item is is dependentIndices
+ *
+ * Compare two inventories for any differences. This is used to determine
+ * if sorts changed the inventory at all.
+ -------------------------------------------------------------------*/
 int itemInDependentIndices(int index, int *dependentIndices, int numDependentIndices) {
 	for (int i = 0; i < numDependentIndices; i++) {
 		if (dependentIndices[i] == index)
@@ -264,6 +288,16 @@ int itemInDependentIndices(int index, int *dependentIndices, int numDependentInd
 	return 0;
 }
 
+/*-------------------------------------------------------------------
+ * Function 	: countNullsInInventory
+ * Inputs	: struct Item 	*inventory
+ *		  int		minIndex
+ *		  int		maxIndex
+ * Outputs	: The number of nulls in the inventory
+ *
+ * Traverse through the inventory and count the number of blank entries
+ * in the inventory.
+ -------------------------------------------------------------------*/
 int countNullsInInventory(struct Item *inventory, int minIndex, int maxIndex) {
 	int count = 0;
 	for (int i = minIndex; i < maxIndex; i++) {
@@ -273,6 +307,15 @@ int countNullsInInventory(struct Item *inventory, int minIndex, int maxIndex) {
 	return count;
 }
 
+/*-------------------------------------------------------------------
+ * Function 	: indexOfItemInInventory
+ * Inputs	: struct Item 	*inventory
+ *		  struct Item	item
+ * Outputs	: index of item in inventory
+ *
+ * Traverse through the inventory and find the location of the provided
+ * item. If not found, return -1.
+ -------------------------------------------------------------------*/
 int indexOfItemInInventory(struct Item *inventory, struct Item item) {
 	for (int i = 0; i < 20; i++) {
 		if (inventory[i].a_key == item.a_key)
@@ -281,6 +324,14 @@ int indexOfItemInInventory(struct Item *inventory, struct Item item) {
 	return -1;
 }
 
+/*-------------------------------------------------------------------
+ * Function 	: countItemsInInventory
+ * Inputs	: struct Item 	*inventory
+ * Outputs	: number of item in inventory
+ *
+ * Traverse through the inventory and count the number of valid items
+ * in the inventory. This excludes blank (NULL) entries.
+ -------------------------------------------------------------------*/
 int countItemsInInventory(struct Item *inventory) {
 	int count = 0;
 	for (int i = 0; i < 20; i++) {
@@ -292,13 +343,28 @@ int countItemsInInventory(struct Item *inventory) {
 	return count;
 }
 			
-
+/*-------------------------------------------------------------------
+ * Function 	: copyInventory
+ * Inputs	: struct Item 	*oldInventory
+ * Outputs	: struct Item	*newInventory
+ *
+ * Perform a simple memcpy to duplicate an old inventory to a newly
+ * allocated inventory.
+ -------------------------------------------------------------------*/
 struct Item *copyInventory(struct Item* oldInventory) {
 	struct Item *newInventory = malloc(sizeof(struct Item) * 20);
 	memcpy((void *)newInventory, (void *)oldInventory, sizeof(struct Item) * 20);
 	return newInventory;
 }
 
+/*-------------------------------------------------------------------
+ * Function 	: getItemName
+ * Inputs	: enum Alpha_Sort 	a_key
+ * Outputs	: char			*itemName
+ *
+ * Access the itemNames array to associate an item's a_key with its
+ * string counterpart. Also handles the case of a null item.
+ -------------------------------------------------------------------*/
 char *getItemName(Alpha_Sort a_key) {
 	for (int i = 0; i < NUM_ITEMS; i++) {
 		if (itemNames[i].a_key == a_key) {
@@ -309,6 +375,14 @@ char *getItemName(Alpha_Sort a_key) {
 	return "NULL ITEM";
 }
 
+/*-------------------------------------------------------------------
+ * Function 	: shiftDownToFillNull
+ * Inputs	: struct Item	*inventory
+ *
+ * There is a null in the inventory. Shift items after the null towards
+ * the beginning of the array to fill in the null. Then place the null
+ * at the end of the array.
+ -------------------------------------------------------------------*/
 void shiftDownToFillNull(struct  Item *inventory) {
 	// First find the index of the first null
 	int firstNull = -1;
@@ -330,6 +404,14 @@ void shiftDownToFillNull(struct  Item *inventory) {
 	return;
 }
 
+/*-------------------------------------------------------------------
+ * Function 	: shiftUpToFillNull
+ * Inputs	: struct Item	*inventory
+ *
+ * There is a null in the inventory. Shift items before the null towards
+ * the end of the array to fill in the null. A new item will be placed
+ * at the start of the inventory after return.
+ -------------------------------------------------------------------*/
 void shiftUpToFillNull(struct Item *inventory) {
 	// First find the index of the first null
 	int firstNull = -1;
@@ -348,14 +430,17 @@ void shiftUpToFillNull(struct Item *inventory) {
 	return;
 }
 
-int itemInInventory(enum Alpha_Sort a_key, struct Item *inventory) {
-	for (int i = 0; i < 20; i++) {
-		if (inventory[i].a_key == a_key)
-			return 1;
-	}
-	return 0;
-}
-
+/*-------------------------------------------------------------------
+ * Function 	: getInventoryFrames
+ * Inputs	: 
+ * Outputs	: int **inv_frames
+ *
+ * Returns a double pointer which can be used to reference how many
+ * frames it takes to access a specific item
+ * inv_frames[x][y] where:
+ *	- x = number of valid items in inventory
+ *	- y = index of item minus any nulls in the inventory prior to index of item
+ -------------------------------------------------------------------*/
 int **getInventoryFrames() {
 	static int *inv_frames[INVENTORY_MAX_SIZE];
 	int frameList[11] = {0, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18};
@@ -374,6 +459,13 @@ int **getInventoryFrames() {
 	return inv_frames;
 }
 
+/*-------------------------------------------------------------------
+ * Function 	: getStartingInventory
+ * Inputs	: 
+ * Outputs	: Item *inventory
+ *
+ * Returns a pointer to an array which contains all items we start with
+ -------------------------------------------------------------------*/
 Item *getStartingInventory() {
 	static Item inventory[] = {
 		{Golden_Leaf, Golden_Leaf_t},

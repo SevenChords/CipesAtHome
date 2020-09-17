@@ -260,9 +260,6 @@ char *getItemName(enum Alpha_Sort a_key);
 // Return a pointer to an array of length 21 with each index i containing a variable length j which tracks the frameloss to navigate to the jth index in an inventory of size i
 int **getInventoryFrames();
 
-// Determine if a particular item is in your inventory
-int itemInInventory(enum Alpha_Sort a_key, struct Item *inventory);
-
 // I don't believe we need this
 /*struct Type_Sort getTypeKey (Alpha_Sort a_key);*/
 
