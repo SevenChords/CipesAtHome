@@ -2630,9 +2630,9 @@ struct Result calculateOrder(struct Job job) {
 	int debug;
 	config_lookup_int(config, "Debug", &debug);
 	
-	if (debug) {
+	/*if (debug) {
 		userDebugSession(job);
-	}
+	}*/
 	
 	/*
 	#===============================================================================
