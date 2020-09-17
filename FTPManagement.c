@@ -14,7 +14,17 @@ struct memory {
 	size_t size;
 };
 
-// Function to write data from HTTP request
+/*-------------------------------------------------------------------
+ * Function 	: write_data
+ * Inputs	: char 	 *contents
+ *		  size_t 	 size
+ *		  size_t 	 nmemb
+ *		  void 	 *userdata
+ * Outputs	: static size_t realsize
+ *
+ * This is a child function called by handle_get. This function writes
+ * data to a buffer as data is received by a cURL request.
+ -------------------------------------------------------------------*/
 static size_t write_data(char *contents, size_t size, size_t nmemb, void *userdata) {
 	size_t realsize = size * nmemb;
 	struct memory *mem = (struct memory *)userdata;
@@ -29,7 +39,15 @@ static size_t write_data(char *contents, size_t size, size_t nmemb, void *userda
 	return realsize;
 }
 
-// Main curl function
+/*-------------------------------------------------------------------
+ * Function 	: handle_get
+ * Inputs	: char	*url
+ * Outputs	: char	*data	
+ *
+ * This is the main cURL GET function. Communicate with either GitHub
+ * or the Blob server to obtain either the latest program version or
+ * the current fastest frame record respectively.
+ -------------------------------------------------------------------*/
 char *handle_get(char* url) {
 	CURL *curl;
 	struct memory chunk;
@@ -54,6 +72,13 @@ char *handle_get(char* url) {
 	return chunk.data;
 }
 
+/*-------------------------------------------------------------------
+ * Function 	: getFastestRecordOnBlob
+ * Inputs	: 
+ * Outputs	: int record	
+ *
+ * Retrieve the server's current fastest roadmap length.
+ -------------------------------------------------------------------*/
 int getFastestRecordOnBlob() {
 	char* data;
 
@@ -70,7 +95,17 @@ int getFastestRecordOnBlob() {
 	return 0;
 }
 
-int handle_post(char* url, FILE *fp, int localRecord, char *nickname) {
+/*-------------------------------------------------------------------
+ * Function 	: handle_post
+ * Inputs	: char	*url
+ *		  FILE	*fp
+ *		  int	localRecord
+ *		  char	*nickname
+ * Outputs	: int 	status
+ *
+ * Retrieve the server's current fastest roadmap length.
+ -------------------------------------------------------------------*/
+void handle_post(char* url, FILE *fp, int localRecord, char *nickname) {
 	struct memory wt;
 	
 	fseek(fp, 0, SEEK_END);
@@ -100,12 +135,18 @@ int handle_post(char* url, FILE *fp, int localRecord, char *nickname) {
 	}
 	curl_global_cleanup();
 	free(wt.data);
-	
-	// Add logs based on file upload success
-	return 0;
 }
 
-// Returns 1 when local record is NOT faster than remote record
+
+/*-------------------------------------------------------------------
+ * Function 	: testRecord
+ * Inputs	: int localRecord
+ * Outputs	: 1  - local record is slower than server best
+ *		  -1 - error locating the text file
+ *		  0  - successful submission to the server
+ *
+ * Retrieve the server's current fastest roadmap length.
+ -------------------------------------------------------------------*/
 int testRecord(int localRecord) {
 	int remoteRecord = getFastestRecordOnBlob();
 	char filename[32];
@@ -140,6 +181,15 @@ int testRecord(int localRecord) {
 	return 0;
 }
 
+/*-------------------------------------------------------------------
+ * Function 	: checkForUpdates
+ * Inputs	: const char *local_ver
+ * Outputs	: 1  - outdated local version
+ *		  -1 - unable to retrieve server version
+ *		  0  - up-to-date
+ *
+ * Retrieve the server's current fastest roadmap length.
+ -------------------------------------------------------------------*/
 int checkForUpdates(const char *local_ver) {
 	char *url = "https://api.github.com/repos/SevenChords/CipesAtHome/releases/latest";
 	char *data = handle_get(url);
@@ -161,8 +211,3 @@ int checkForUpdates(const char *local_ver) {
 	cJSON_Delete(json);
 	return 0;
 }
-
-/*
-int main() {
-	//checkForUpdates();
-}*/
