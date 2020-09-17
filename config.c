@@ -3,6 +3,14 @@
 #include <libconfig.h>
 #include "config.h"
 
+/*-------------------------------------------------------------------
+ * Function 	: getConfig
+ * Inputs	: 
+ * Outputs	: config_t config
+ *
+ * This uses the libconfig library to parse a user-modifiable config file.
+ * The config structure can be accessed to obtain specific config settings.
+ -------------------------------------------------------------------*/
 config_t *getConfig() {
 	config_t *config = malloc(sizeof(config_t));
 	config_init(config);
@@ -13,26 +21,3 @@ config_t *getConfig() {
 
 	return config;
 }
-
-/*
-int main() {
-	// Example of extracting config information
-	config_t *config = getConfig();
-	const char *buf = malloc(32);
-	int value;
-
-	if (config_lookup_int(config, "select", &value))
-		printf("Select = %d\n", value);
-	if (config_lookup_int(config, "randomise", &value))
-		printf("Randomise = %d\n", value);
-	if (config_lookup_int(config, "logLevel", &value))
-		printf("logLevel = %d\n", value);
-	if (config_lookup_int(config, "workerCount", &value))
-		printf("workerCount = %d\n", value);
-	if (config_lookup_string(config, "Username", &buf))
-		printf("Username = %s\n", buf);
-	if (config_lookup_string(config, "Version", &buf))
-		printf("Version = %s\n", buf);
-
-	return 1;
-}*/
