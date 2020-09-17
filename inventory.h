@@ -245,6 +245,12 @@ int indexOfItemInInventory(struct Item *inventory, struct Item item);
 // Count the number of non-NULL and non-BLOCKED items
 int countItemsInInventory(struct Item *inventory);
 
+// Moves all items one position towards the back of the array to fill up the first null item
+void shiftUpToFillNull(struct Item *inventory);
+
+// Move all items one position towards the front of the inventory to fill up the first null item
+void shiftDownToFillNull(struct  Item *inventory);
+
 // Copy inventory to a new pointer
 struct Item *copyInventory(struct Item* oldInventory);
 

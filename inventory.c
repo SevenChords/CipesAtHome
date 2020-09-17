@@ -309,6 +309,45 @@ char *getItemName(Alpha_Sort a_key) {
 	return "NULL ITEM";
 }
 
+void shiftDownToFillNull(struct  Item *inventory) {
+	// First find the index of the first null
+	int firstNull = -1;
+	for (int i = 0; i < 20; i++) {
+		if (inventory[i].a_key == -1) {
+			firstNull = i;
+			break;
+		}
+	}
+	
+	// Now shift all items up in the inventory to place a null at the end of the inventory
+	for (int i = firstNull; i < 20 - 1; i++) {
+		inventory[i] = inventory[i+1];
+	}
+	
+	// Set the last inventory slot to null
+	inventory[19] = (struct Item) {-1, -1};
+	
+	return;
+}
+
+void shiftUpToFillNull(struct Item *inventory) {
+	// First find the index of the first null
+	int firstNull = -1;
+	for (int i = 0; i < 20; i++) {
+		if (inventory[i].a_key == -1) {
+			firstNull = i;
+			break;
+		}
+	}
+	
+	// Now shift all items further down in the inventory to make room for a new item
+	for (int i = firstNull; i > 0; i--) {
+		inventory[i] = inventory[i - 1];
+	}
+	
+	return;
+}
+
 int itemInInventory(enum Alpha_Sort a_key, struct Item *inventory) {
 	for (int i = 0; i < 20; i++) {
 		if (inventory[i].a_key == a_key)
