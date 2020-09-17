@@ -67,7 +67,7 @@ struct OptimizeResult {
 	struct BranchPath *last;
 };
 
-void shiftDownLegalMoves(struct BranchPath *node, int index);
+void shiftDownLegalMoves(struct BranchPath *node, int lowerBound, int uppderBound);
 
 void softMin(struct BranchPath *node);
 
@@ -122,7 +122,7 @@ void fulfillRecipes(struct BranchPath *curNode, int recipeIndex);
 
 void freeInvFrames(int **invFrames);
 
-void tryTossInventoryItem(struct BranchPath *curNode, struct Item *tempInventory, struct MoveDescription useDescription, int *tempOutputsFulfilled, int numOutputsFulfilled, int tossedIndex, struct Item output, int tempFrames, int viableItems);
+void tryTossInventoryItem(struct BranchPath *curNode, struct Item *tempInventory, struct MoveDescription useDescription, int *tempOutputsFulfilled, int numOutputsFulfilled, struct Item output, int tempFrames, int viableItems);
 
 void finalizeLegalMove(struct BranchPath *node, int tempFrames, struct MoveDescription useDescription, struct Item *tempInventory, int *tempOutputsFulfilled, int numOutputsFulfilled, enum HandleOutput tossType, struct Item toss, int tossIndex);
 
@@ -180,12 +180,6 @@ void insertIntoLegalMoves(int insertIndex, struct BranchPath *newLegalMove, stru
 // Find out where to place a new legalMove in the array of legalMoves
 int getInsertionIndex(struct BranchPath *node, int frames);
 
-// Moves all items one position towards the back of the array to fill up the first null item
-void shiftUpToFillNull(struct Item *inventory);
-
-// Move all items one position towards the front of the inventory to fill up the first null item
-void shiftDownToFillNull(struct  Item *inventory);
-
 // Swaps a set of item indices when determining that it's faster to choose two ingredients in reverse order
 void swapItems(int *ingredientLoc, int *ingredientOffset);
 
@@ -195,7 +189,7 @@ int *copyOutputsFulfilled(int *oldOutputsFulfilled);
 void getCurNode(struct BranchPath *node, int stepIndex);
 
 // Frees all pointers when we go back up a node
-int freeNode(struct BranchPath *node);
+void freeNode(struct BranchPath *node);
 
 // Print the results of all states observed in the current stack
 // filename represents the output roadmap filename
