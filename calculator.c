@@ -1506,8 +1506,8 @@ void periodicCheckForUpdate(struct Job job) {
 	int update = checkForUpdates(job.local_ver);
 	if (update == -1) {
 		printf("Please check your internet connection in order to continue.\n");
-		printf("Otherwise, we can't submit compelted roadmaps to the server!\n");
-		exit(-1);
+		printf("Otherwise, we can't submit completed roadmaps to the server!\n");
+		printf("Continuing for now. If the issue persists, please terminate the program and test your internet.");
 	}
 	else if (update == 1) {
 		printf("Please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!");
@@ -2904,9 +2904,9 @@ struct Result calculateOrder(struct Job job) {
 		
 		
 		// For profiling
-		if (total_dives == 100) {
+		/*if (total_dives == 100) {
 			exit(1);
-		}
+		}*/
 		
 	}
 }
