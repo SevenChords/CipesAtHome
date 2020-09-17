@@ -2675,12 +2675,18 @@ struct Result calculateOrder(struct Job job) {
 	#===============================================================================
 	*/
 	
+	
+	// TODO: Add functionality to keep evaluating near the current record
+	// I reset iteration_count, but I need to not return until we reach the iteration limit
+	// Cache the record after writing to a file and return the record frame_count
 	// How many times a worker is evaluating a new random branch
 	int total_dives = 0;
 	
 	// Deepest node at any particular point
 	struct BranchPath *curNode = NULL;
 	struct BranchPath *root;
+	
+	struct Result result_cache = (struct Result) {-1, -1};
 	
 	//Start main loop
 	while (1) {
@@ -2709,7 +2715,7 @@ struct Result calculateOrder(struct Job job) {
 		int configBool = (iterationCount < 100000 || (select == 0 && randomise == 0));
 		
 		// Periodic check for current version
-		if (total_dives % 10 == 0) {
+		if (total_dives % 50 == 0) {
 			periodicCheckForUpdate(job);
 		}
 		// Start iteration loop
@@ -2727,31 +2733,36 @@ struct Result calculateOrder(struct Job job) {
 				// Apply a frame penalty if the final move did not toss an item.
 				applyJumpStorageFramePenalty(curNode);
 				
-				if (curNode->description.totalFramesTaken < job.current_frame_record + BUFFER_SEARCH_FRAMES) {
+				if (curNode->description.totalFramesTaken < getLocalRecord() + BUFFER_SEARCH_FRAMES) {
 					// A finished roadmap has been generated
 					// Rearrange the roadmap to save frames
 					struct OptimizeResult optimizeResult = optimizeRoadmap(root);
-					
-					if (optimizeResult.last->description.totalFramesTaken < job.current_frame_record) {
-						job.current_frame_record = optimizeResult.last->description.totalFramesTaken;
-						char *filename = malloc(sizeof(char) * 17);
-						sprintf(filename, "results/%d.txt", optimizeResult.last->description.totalFramesTaken);
-						printResults(filename, optimizeResult.root);
-						char tmp[100];
-						sprintf(tmp, "New local fastest roadmap found! %d frames, saved %d after rearranging", optimizeResult.last->description.totalFramesTaken, curNode->description.totalFramesTaken - optimizeResult.last->description.totalFramesTaken);
-						recipeLog(6, "Calculator", "Info", "Roadmap", tmp);
-						free(filename);
-						freeAllNodes(curNode);
-						freeAllNodes(optimizeResult.last);
-						struct Result result = (struct Result) {job.current_frame_record, job.callNumber};
-						
-						// Reset the iteration count so we continue to explore near this record
-						iterationCount = 0;
-						return result;
+					int fasterRoadmapFound = 0;
+					#pragma omp critical
+					{
+						if (optimizeResult.last->description.totalFramesTaken < getLocalRecord()) {
+							setLocalRecord(optimizeResult.last->description.totalFramesTaken);
+							char *filename = malloc(sizeof(char) * 17);
+							sprintf(filename, "results/%d.txt", optimizeResult.last->description.totalFramesTaken);
+							printResults(filename, optimizeResult.root);
+							char tmp[100];
+							sprintf(tmp, "New local fastest roadmap found! %d frames, saved %d after rearranging", optimizeResult.last->description.totalFramesTaken, curNode->description.totalFramesTaken - optimizeResult.last->description.totalFramesTaken);
+							recipeLog(6, "Calculator", "Info", "Roadmap", tmp);
+							free(filename);
+							freeAllNodes(optimizeResult.last);
+							result_cache = (struct Result) {optimizeResult.last->description.totalFramesTaken, job.callNumber};
+							
+							// Reset the iteration count so we continue to explore near this record
+							iterationCount = 0;
+							fasterRoadmapFound = 1;
+						}
 					}
 					
-					// Otherwise, free the optimized roadmap
-					freeAllNodes(optimizeResult.last);
+					
+					if (!fasterRoadmapFound) {
+						// Otherwise, free the optimized roadmap
+						freeAllNodes(optimizeResult.last);
+					}
 				}
 				
 				// Regardless of record status, it's time to go back up and find new endstates
@@ -2804,8 +2815,12 @@ struct Result calculateOrder(struct Job job) {
 				
 				// All legal moves evaluated and listed!
 				
-				// Filter out all legal moves that would exceed the current frame limit
-				filterLegalMovesExceedFrameLimit(curNode, job.current_frame_record + BUFFER_SEARCH_FRAMES);
+				// Protect race condition of the local record
+				#pragma omp critical
+				{
+					// Filter out all legal moves that would exceed the current frame limit
+					filterLegalMovesExceedFrameLimit(curNode, getLocalRecord() + BUFFER_SEARCH_FRAMES);
+				}
 				
 				if (curNode->moves == 0) {
 					// Filter out all legal moves that use 2 ingredients in the very first legal move
@@ -2848,8 +2863,12 @@ struct Result calculateOrder(struct Job job) {
 				
 			}
 			else {
-				// Filter out all legal moves that would exceed the current frame limit
-				filterLegalMovesExceedFrameLimit(curNode, job.current_frame_record + BUFFER_SEARCH_FRAMES);
+				// Protect race condition of the local record
+				#pragma omp critical
+				{
+					// Filter out all legal moves that would exceed the current frame limit
+					filterLegalMovesExceedFrameLimit(curNode, getLocalRecord() + BUFFER_SEARCH_FRAMES);
+				}
 				
 				if (curNode->numLegalMoves == 0) {
 					// No legal moves are left to evaluate, go back up...
@@ -2900,6 +2919,12 @@ struct Result calculateOrder(struct Job job) {
 		cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
 		
 		printf("[Thread %d completed 100K iterations in %f seconds]\n", job.callNumber, cpu_time_used);
+		
+		// Check the cache to see if a result was generated
+		if (result_cache.frames > -1) {
+			// Return the cached result
+			return result_cache;
+		}
 		
 		
 		// For profiling
