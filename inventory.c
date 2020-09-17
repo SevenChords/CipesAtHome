@@ -306,7 +306,7 @@ char *getItemName(Alpha_Sort a_key) {
 		}
 	}
 	
-	return NULL;
+	return "NULL ITEM";
 }
 
 int itemInInventory(enum Alpha_Sort a_key, struct Item *inventory) {
