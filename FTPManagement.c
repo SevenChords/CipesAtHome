@@ -7,6 +7,7 @@
 #include "FTPManagement.h"
 #include <libconfig.h>
 #include "config.h"
+#include "logger.h"
 
 struct memory {
 	char *data;
@@ -130,6 +131,12 @@ int testRecord(int localRecord) {
 	nickname[19] = '\0';
 	handle_post("https://hundorecipes.azurewebsites.net/api/uploadAndVerify", fp, localRecord, nickname);
 	free(config);
+	
+	char temp[59];
+	sprintf(temp, "New fastest roadmap of %d uploaded to the server!", localRecord);
+	
+	recipeLog(1, "Submit", "File", "Upload", temp);
+	
 	return 0;
 }
 
