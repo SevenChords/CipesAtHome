@@ -623,7 +623,7 @@ int stateOK(struct Item *inventory, int *outputsCreated, struct Recipe *recipeLi
 	// With the given inventory, can the remaining recipes be fulfilled?
 		
 	// If Chapter 5 has not been done, verify that Thunder Rage is in the inventory
-	if (outputsCreated[getIndexOfRecipe(getItem(Dried_Bouquet))] == 0 && !itemInInventory(Thunder_Rage, inventory)) {
+	if (outputsCreated[getIndexOfRecipe(getItem(Dried_Bouquet))] == 0 && indexOfItemInInventory(inventory, getItem(Thunder_Rage)) == -1) {
 		return 0;
 	}
 	

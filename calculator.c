@@ -1198,11 +1198,11 @@ void insertIntoLegalMoves(int insertIndex, struct BranchPath *newLegalMove, stru
  -------------------------------------------------------------------*/
 int itemComboInInventory(struct ItemCombination combo, struct Item *inventory) {
 	if (combo.numItems == 1) {
-		return itemInInventory(combo.item1.a_key, inventory);
+		return indexOfItemInInventory(inventory, combo.item1) > -1;
 	}
 	
-	return	itemInInventory(combo.item1.a_key, inventory) &&
-		itemInInventory(combo.item2.a_key, inventory);
+	return	indexOfItemInInventory(inventory, combo.item1) > -1 &&
+		indexOfItemInInventory(inventory, combo.item2) > -1;
 }
 
 /*-------------------------------------------------------------------
@@ -2792,7 +2792,7 @@ struct Result calculateOrder(struct Job job) {
 				
 				// The first item is trading the Mousse Cake and 2 Hot Dogs for a Dried Bouquet
 				// Inventory must contain both items, and Hot Dog must be in a slot such that it can be duplicated
-				if (curNode->outputCreated[getIndexOfRecipe(getItem(Dried_Bouquet))] == 0 && itemInInventory(Mousse_Cake, curNode->inventory) &&
+				if (curNode->outputCreated[getIndexOfRecipe(getItem(Dried_Bouquet))] == 0 && indexOfItemInInventory(curNode->inventory, getItem(Mousse_Cake)) > -1 &&
 				    indexOfItemInInventory(curNode->inventory, getItem(Hot_Dog)) >= 10) {
 					fulfillChapter5(curNode);
 				}
