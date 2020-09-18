@@ -32,7 +32,6 @@ int main() {
 	current_frame_record = 9999;
 	config_t *config = getConfig();
 	config_lookup_int(config, "workerCount", &workerCount);
-	const int workers = workerCount;
 	init_level_cfg();
 	const char *local_ver;
 	config_lookup_string(config, "Version", &local_ver);
@@ -65,7 +64,7 @@ int main() {
 	initializeRecipeList();
 	
 	// Create workerCount threads
-	omp_set_num_threads(workers);
+	omp_set_num_threads(workerCount);
 	#pragma omp parallel
 	{
 		int ID = omp_get_thread_num();
