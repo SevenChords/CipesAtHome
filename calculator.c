@@ -2717,7 +2717,6 @@ struct Result calculateOrder(struct Job job) {
 					// A finished roadmap has been generated
 					// Rearrange the roadmap to save frames
 					struct OptimizeResult optimizeResult = optimizeRoadmap(root);
-					int fasterRoadmapFound = 0;
 					#pragma omp critical
 					{
 						if (optimizeResult.last->description.totalFramesTaken < getLocalRecord()) {
@@ -2733,7 +2732,6 @@ struct Result calculateOrder(struct Job job) {
 							
 							// Reset the iteration count so we continue to explore near this record
 							iterationCount = 0;
-							fasterRoadmapFound = 1;
 						}
 					}
 					
