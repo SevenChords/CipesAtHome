@@ -12,6 +12,8 @@
 #include "cJSON.h"
 #include <curl/curl.h>
 #include "logger.h"
+#include <sys/stat.h>
+#include <sys/types.h>
 
 int current_frame_record;
 
@@ -30,6 +32,7 @@ int main() {
 	current_frame_record = 9999;
 	config_t *config = getConfig();
 	config_lookup_int(config, "workerCount", &workerCount);
+	const int workers = workerCount;
 	init_level_cfg();
 	const char *local_ver;
 	config_lookup_string(config, "Version", &local_ver);
@@ -50,7 +53,11 @@ int main() {
 		printf("Please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!");
 		return -1;
 	}
-	
+
+	// Verify that the results folder exists
+	// If not, create the directory
+	mkdir("./results", 0777);
+
 	// Initialize global variables in calculator.c
 	// This does not need to be done in parallel, as these globals will
 	// persist through all parallel calls to calculator.c
@@ -58,8 +65,7 @@ int main() {
 	initializeRecipeList();
 	
 	// Create workerCount threads
-	double threads[workerCount];
-	omp_set_num_threads(workerCount);
+	omp_set_num_threads(workers);
 	#pragma omp parallel
 	{
 		int ID = omp_get_thread_num();
