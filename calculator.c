@@ -2729,7 +2729,6 @@ struct Result calculateOrder(struct Job job) {
 							sprintf(tmp, "New local fastest roadmap found! %d frames, saved %d after rearranging", optimizeResult.last->description.totalFramesTaken, curNode->description.totalFramesTaken - optimizeResult.last->description.totalFramesTaken);
 							recipeLog(1, "Calculator", "Info", "Roadmap", tmp);
 							free(filename);
-							freeAllNodes(optimizeResult.last);
 							result_cache = (struct Result) {optimizeResult.last->description.totalFramesTaken, job.callNumber};
 							
 							// Reset the iteration count so we continue to explore near this record
@@ -2738,11 +2737,7 @@ struct Result calculateOrder(struct Job job) {
 						}
 					}
 					
-					
-					if (!fasterRoadmapFound) {
-						// Otherwise, free the optimized roadmap
-						freeAllNodes(optimizeResult.last);
-					}
+					freeAllNodes(optimizeResult.last);
 				}
 				
 				// Regardless of record status, it's time to go back up and find new endstates
