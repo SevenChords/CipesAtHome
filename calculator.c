@@ -1702,8 +1702,11 @@ void printOutputsCreated(struct BranchPath *curNode, FILE *fp) {
  -------------------------------------------------------------------*/
 int printResults(char *filename, struct BranchPath *path) {
 	FILE *fp = fopen(filename, "w");
-	flockfile(fp);
-	
+	if (fp == NULL) {
+		printf("Could not locate \"results\" folder... Please make sure the folder is there or create it!\n");
+		printf("Press ENTER to exit.\n");
+		getchar();
+	}
 	// Write header information
 	printFileHeader(fp);
 	
@@ -1747,7 +1750,6 @@ int printResults(char *filename, struct BranchPath *path) {
 	} while (curNode != NULL);
 	
 	fclose(fp);
-	funlockfile(fp);
 	
 	recipeLog(5, "Calculator", "File", "Write", "Data for roadmap written.");
 	
@@ -2704,11 +2706,6 @@ struct Result calculateOrder(struct Job job) {
 		sprintf(temp2, "Searching New Branch %d", total_dives);
 		recipeLog(3, "Calculator", "Info", temp1, temp2);
 		
-		clock_t start, end;
-		double cpu_time_used;
-		
-		start = clock();
-		
 		// Handle the case where the user may choose to disable both randomise and select,
 		// in which case they would always iterate down the same path, even if we reset every n iterations
 		// Set to 1,000,000 iterations before resetting at the root
@@ -2914,11 +2911,6 @@ struct Result calculateOrder(struct Job job) {
 		// We have passed the iteration maximum
 		// Free everything before reinitializing
 		freeAllNodes(curNode);
-		
-		end = clock();
-		cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-		
-		printf("[Thread %d completed 100K iterations in %f seconds]\n", job.callNumber, cpu_time_used);
 		
 		// Check the cache to see if a result was generated
 		if (result_cache.frames > -1) {
