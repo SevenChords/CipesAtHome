@@ -1061,11 +1061,18 @@ void handleSelectAndRandom(struct BranchPath *curNode, int select, int randomise
 	
 	// Old method of handling select
 	// Somewhat random process of picking the quicker moves to recurse down
-	// Arbitrarily remove the first listed move with a given probability
-	if (select && curNode->moves < 55) {
-		while (curNode->numLegalMoves > 1 && rand() % 100 < 50) {
-			freeLegalMove(curNode, 0);
+	// Arbitrarily skip over the fastest legal move with a given probability
+	if (select && curNode->moves < 55 && curNode->numLegalMoves > 0) {
+		int nextMoveIndex = 0;
+		while (nextMoveIndex < curNode->numLegalMoves - 1 && rand() % 100 < 50) {
+			nextMoveIndex++;
 		}
+
+		// Take the legal move at nextMoveIndex and move it to the front of the array
+		struct BranchPath *nextMove = curNode->legalMoves[nextMoveIndex];
+		curNode->legalMoves[nextMoveIndex] = NULL;
+		shiftDownLegalMoves(curNode, 0, nextMoveIndex);
+		curNode->legalMoves[0] = nextMove;
 	}
 	
 	// When not doing the select methodology, and opting for randomize
@@ -1492,26 +1499,6 @@ struct OptimizeResult optimizeRoadmap(struct BranchPath *root) {
 	result.root = newRoot;
 	result.last = newNode;
 	return result;
-}
-
-/*-------------------------------------------------------------------
- * Function 	: periodicCheckForUpdate
- * Inputs	: struct Job	job
- *
- * Check the current program version on Github. In the event the user's
- * program version is determined to be out-of-date, exit out of the
- * program with an error message.
- -------------------------------------------------------------------*/
-void periodicCheckForUpdate(struct Job job) {
-	int update = checkForUpdates(job.local_ver);
-	if (update == -1) {
-		printf("Could not get latest version from Github.\n");
-		printf("Continuing for now. If the issue persists for more than 10 minutes, please terminate the program and test your internet.\n");
-	}
-	else if (update == 1) {
-		printf("Please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!\n");
-		exit(-1);
-	}
 }
 
 /*-------------------------------------------------------------------
@@ -2710,11 +2697,7 @@ struct Result calculateOrder(struct Job job) {
 		// in which case they would always iterate down the same path, even if we reset every n iterations
 		// Set to 1,000,000 iterations before resetting at the root
 		int configBool = (iterationCount < 100000 || (select == 0 && randomise == 0));
-		
-		// Periodic check for current version
-		if (total_dives % 50 == 0) {
-			periodicCheckForUpdate(job);
-		}
+	
 		// Start iteration loop
 		while (configBool) {
 			// In the rare occassion that the root node runs out of legal moves due to "select",
@@ -2744,7 +2727,7 @@ struct Result calculateOrder(struct Job job) {
 							printResults(filename, optimizeResult.root);
 							char tmp[100];
 							sprintf(tmp, "New local fastest roadmap found! %d frames, saved %d after rearranging", optimizeResult.last->description.totalFramesTaken, curNode->description.totalFramesTaken - optimizeResult.last->description.totalFramesTaken);
-							recipeLog(6, "Calculator", "Info", "Roadmap", tmp);
+							recipeLog(1, "Calculator", "Info", "Roadmap", tmp);
 							free(filename);
 							freeAllNodes(optimizeResult.last);
 							result_cache = (struct Result) {optimizeResult.last->description.totalFramesTaken, job.callNumber};
