@@ -36,6 +36,8 @@ int recipeLog(int level, char *process, char *subProcess, char *activity, char *
 			FILE* fp = fopen("recipes.log", "a");
 			fputs(date, fp);
 			fputs(data, fp);
+
+			fclose(fp);
 		}
 	}
 	return 0;
