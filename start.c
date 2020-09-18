@@ -44,8 +44,9 @@ int main() {
 	
 	int update = checkForUpdates(local_ver);
 	if (update == -1) {
-		printf("Please check your internet connection in order to continue.\n");
+		printf("Could not check version on Github. Please check your internet connection.\n");
 		printf("Otherwise, we can't submit compelted roadmaps to the server!\n");
+		printf("Alternatively you may have been rate-limited. Please wait a while and try again.\n");
 		return -1;
 	}
 	else if (update == 1) {
@@ -86,32 +87,23 @@ int main() {
 			}
 			
 			testRecord(result.frames);
+
+			// Double check the latest release on Github
+			#pragma omp critical
+			{
+				update = checkForUpdates(local_ver);
+				if (update == -1) {
+					printf("Could not check version on Github. Please check your internet connection.\n");
+					printf("Otherwise, completed roadmaps may be inaccurate!\n");
+				}
+				else if (update == 1) {
+					//printf("Please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!\n");
+					exit(1);
+				}
+			}
 			cycle_count++;
 		}
 	}
 	
-	/*struct Job job;
-	job.callNumber = 0;
-	job.startingInventory = startingInventory;
-	job.recipeList = recipeList;
-	job.current_frame_record = malloc(sizeof(int));
-	job.local_ver = local_ver;
-	
-	while (1) {
-		*(job.current_frame_record) = current_frame_record;
-		job.result.frames = -1; // If these are set to -1, then we know there has not been a result produced
-		job.result.callNumber = -1;
-		struct Result result = calculateOrder(job);
-
-		if (result.frames < current_frame_record && result.frames > -1) {
-			testRecord(result.frames);
-			current_frame_record = result.frames;
-			
-			// Add log
-		}
-
-		cycle_count++;
-	}
-	
-	return 0;*/
+	return 0;
 }

@@ -26,9 +26,6 @@ void setLocalRecord(int frames);
 // Defined in calculator.c
 struct BranchPath *initializeRoot(struct Job job);
 
-// Defined in calculator.c
-void periodicCheckForUpdate(struct Job job);
-
 // Used to test behavior of various functions as roadmaps are calculated and verified
 void userDebugSession(struct Job job);
 
