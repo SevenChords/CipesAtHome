@@ -261,11 +261,7 @@ enum Alpha_Sort getAlphaKey(enum Type_Sort item) {
  * if sorts changed the inventory at all.
  -------------------------------------------------------------------*/
 int compareInventories(enum Type_Sort *inv1, enum Type_Sort *inv2) {
-	for (int i = 0; i < 20; i++) {
-		if (inv1[i] != inv2[i])
-			return 0;
-	}
-	return 1;
+	return memcmp((void*)inv1, (void*)inv2, sizeof(enum Type_Sort) * 20) != 0;
 }
 
 /*-------------------------------------------------------------------
@@ -383,11 +379,7 @@ enum Type_Sort *copyInventory(enum Type_Sort* oldInventory) {
  * string counterpart. Also handles the case of a null item.
  -------------------------------------------------------------------*/
 char *getItemName(enum Type_Sort t_key) {
-	if (t_key < 0) {
-		return "NULL ITEM";
-	}
-	
-	return itemNames[t_key];
+	return t_key < 0 ? "NULL ITEM" : itemNames[t_key];
 }
 
 /*-------------------------------------------------------------------
@@ -407,12 +399,10 @@ void shiftDownToFillNull(enum Type_Sort *inventory) {
 			break;
 		}
 	}
-	
+
 	// Now shift all items up in the inventory to place a null at the end of the inventory
-	for (int i = firstNull; i < 20 - 1; i++) {
-		inventory[i] = inventory[i+1];
-	}
-	
+	memmove(&inventory[firstNull], &inventory[firstNull + 1], (19 - firstNull) * sizeof(enum Type_Sort));
+
 	// Set the last inventory slot to null
 	inventory[19] = -1;
 	
@@ -438,9 +428,7 @@ void shiftUpToFillNull(enum Type_Sort *inventory) {
 	}
 	
 	// Now shift all items further down in the inventory to make room for a new item
-	for (int i = firstNull; i > 0; i--) {
-		inventory[i] = inventory[i - 1];
-	}
+	memmove(&inventory[1], inventory, firstNull * sizeof(enum Type_Sort));
 	
 	return;
 }
