@@ -3,3 +3,5 @@ CipesAtHome/Release/
 CipesAtHome/.vs/**
 results/
 recipes.log
+*.ipch
+*.db
