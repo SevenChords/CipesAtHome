@@ -175,7 +175,7 @@ void createCookDescription1Item(struct BranchPath *node, struct Recipe recipe, s
 	}
 	
 	// Determine how many frames will be needed to select that item
-	*tempFrames = invFrames[viableItems][ingredientLoc[0]-ingredientOffset[0]];
+	*tempFrames = invFrames[viableItems-1][ingredientLoc[0]-ingredientOffset[0]];
 		
 	// Describe what items were used
 	
@@ -215,7 +215,7 @@ void createCookDescription2Items(struct BranchPath *node, struct Recipe recipe, 
 	}
 	
 	// Calculate the number of frames needed to grab the first item
-	*tempFrames += invFrames[viableItems][ingredientLoc[0]-ingredientOffset[0]];
+	*tempFrames += invFrames[viableItems-1][ingredientLoc[0]-ingredientOffset[0]];
 	
 	// Set each inventory index to null if the item was in the first 10 slots
 	if (ingredientLoc[0] < 10) {
@@ -229,11 +229,11 @@ void createCookDescription2Items(struct BranchPath *node, struct Recipe recipe, 
 	// First ingredient is always removed from the menu, so there is always 1 less viable item
 	if (ingredientLoc[1] > ingredientLoc[0]) {
 		// In this case, the 2nd ingredient has "moved up" one slot since the 1st ingredient vanishes
-		*tempFrames += invFrames[viableItems-1][ingredientLoc[1]-ingredientOffset[1]-1];
+		*tempFrames += invFrames[viableItems-2][ingredientLoc[1]-ingredientOffset[1]-1];
 	}
 	else {
 		// In this case, the 2nd ingredient was found earlier on than the 1st ingredient, so no change to index
-		*tempFrames += invFrames[viableItems-1][ingredientLoc[1]-ingredientOffset[1]];
+		*tempFrames += invFrames[viableItems-2][ingredientLoc[1]-ingredientOffset[1]];
 	}
 	
 	// Describe what items were used
@@ -654,9 +654,9 @@ void handleChapter5EarlySortEndItems(struct BranchPath *node, enum Type_Sort *in
 			}
 			
 			// Calculate the frames of these actions
-			int temp_frames_KM = TOSS_FRAMES + invFrames[20-countNullsInInventory(kmcs_temp_inventory, 10, 20) -1][KM_place_index];
-			int temp_frames_CS = TOSS_FRAMES + invFrames[20-countNullsInInventory(kmcs_temp_inventory, 10, 20) -1][CS_place_index];
-			int temp_frames_TR = 		    invFrames[20-countNullsInInventory(kmcs_temp_inventory, 10, 20) -1][TR_use_index];
+			int temp_frames_KM = TOSS_FRAMES + invFrames[20-countNullsInInventory(kmcs_temp_inventory, 10, 20)-1][KM_place_index];
+			int temp_frames_CS = TOSS_FRAMES + invFrames[20-countNullsInInventory(kmcs_temp_inventory, 10, 20)-1][CS_place_index];
+			int temp_frames_TR = 		    invFrames[20-countNullsInInventory(kmcs_temp_inventory, 10, 20)-1][TR_use_index];
 			int temp_frame_sum = frames_DB + frames_CO + temp_frames_KM + temp_frames_CS + temp_frames_TR + sort_frames;
 			
 			// Determine if the remaining inventory is sufficient to fulfill all remaining recipes
@@ -709,7 +709,7 @@ void handleChapter5Eval(struct BranchPath *node, enum Type_Sort *inventory, int 
 		
 		// Calculate the needed frames
 		if (KM_upper_bound == 10) {
-			temp_frames_KM = TOSS_FRAMES + invFrames[20-countNullsInInventory(inventory, 10, 20) -1][KM_place_index];
+			temp_frames_KM = TOSS_FRAMES + invFrames[20-countNullsInInventory(inventory, 10, 20)-1][KM_place_index];
 			km_temp_inventory[KM_place_index] = -1;
 		}
 		else {
@@ -776,8 +776,8 @@ void handleChapter5LateSortEndItems(struct BranchPath *node, enum Type_Sort *inv
 			cs_temp_inventory[TR_use_index] = -1;
 		}
 		// Calculate the frames of these actions
-		int temp_frames_CS = TOSS_FRAMES + invFrames[20-countNullsInInventory(cs_temp_inventory, 10, 20) -1][CS_place_index];
-		int temp_frames_TR = 		    invFrames[20-countNullsInInventory(cs_temp_inventory, 10, 20) -1][TR_use_index];
+		int temp_frames_CS = TOSS_FRAMES + invFrames[20-countNullsInInventory(cs_temp_inventory, 10, 20)-1][CS_place_index];
+		int temp_frames_TR = 		    invFrames[20-countNullsInInventory(cs_temp_inventory, 10, 20)-1][TR_use_index];
 		int temp_frame_sum = frames_DB + frames_CO + frames_KM + temp_frames_CS + temp_frames_TR + sort_frames;
 		
 		if (stateOK(cs_temp_inventory, outputsFulfilled, recipeList)) {
@@ -1362,7 +1362,7 @@ struct OptimizeResult optimizeRoadmap(struct BranchPath *root) {
 				
 				if (combo.numItems == 1) {
 					// Only one ingredient to navigate to
-					temp_frames += invFrames[20 - countNullsInInventory(newNode->inventory, 10, 20)][indexItem1];
+					temp_frames += invFrames[20 - countNullsInInventory(newNode->inventory, 10, 20)-1][indexItem1];
 					temp_description->numItems = 1;
 					temp_description->item1 = combo.item1;
 					temp_description->itemIndex1 = indexItem1;
@@ -1377,16 +1377,16 @@ struct OptimizeResult optimizeRoadmap(struct BranchPath *root) {
 					temp_description->numItems = 2;
 					
 					if (indexItem1 > indexItem2) {
-						temp_frames += invFrames[20 - countNullsInInventory(newNode->inventory, 10, 20)][indexItem1];
-						temp_frames += invFrames[19 - countNullsInInventory(newNode->inventory, 10, 20)][indexItem2];
+						temp_frames += invFrames[20 - countNullsInInventory(newNode->inventory, 10, 20)-1][indexItem1];
+						temp_frames += invFrames[19 - countNullsInInventory(newNode->inventory, 10, 20)-1][indexItem2];
 						temp_description->item1 = combo.item1;
 						temp_description->itemIndex1 = indexItem1;
 						temp_description->item2 = combo.item2;
 						temp_description->itemIndex2 = indexItem2;
 					}
 					else {
-						temp_frames += invFrames[20 - countNullsInInventory(newNode->inventory, 10, 20)][indexItem1];
-						temp_frames += invFrames[19 - countNullsInInventory(newNode->inventory, 10, 20)][indexItem2];
+						temp_frames += invFrames[20 - countNullsInInventory(newNode->inventory, 10, 20)-1][indexItem2];
+						temp_frames += invFrames[19 - countNullsInInventory(newNode->inventory, 10, 20)-1][indexItem1];
 						temp_description->item1 = combo.item2;
 						temp_description->itemIndex1 = indexItem2;
 						temp_description->item2 = combo.item1;
