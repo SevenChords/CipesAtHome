@@ -4,6 +4,7 @@
 #include "inventory.h"
 #include "logger.h"
 
+#define INVENTORY_SIZE
 #define INVENTORY_MAX_SIZE 21
 #define NUM_ITEMS 107
 
@@ -261,7 +262,7 @@ enum Alpha_Sort getAlphaKey(enum Type_Sort item) {
  * if sorts changed the inventory at all.
  -------------------------------------------------------------------*/
 int compareInventories(enum Type_Sort *inv1, enum Type_Sort *inv2) {
-	return memcmp((void*)inv1, (void*)inv2, sizeof(enum Type_Sort) * 20) != 0;
+	return memcmp((void*)inv1, (void*)inv2, sizeof(enum Type_Sort) * INVENTORY_SIZE) != 0;
 }
 
 /*-------------------------------------------------------------------
@@ -330,7 +331,7 @@ int countNullsInInventory(enum Type_Sort *inventory, int minIndex, int maxIndex)
  * item. If not found, return -1.
  -------------------------------------------------------------------*/
 int indexOfItemInInventory(enum Type_Sort *inventory, enum Type_Sort item) {
-	for (int i = 0; i < 20; i++) {
+	for (int i = 0; i < INVENTORY_SIZE; i++) {
 		if (inventory[i] == item)
 			return i;
 	}
@@ -347,7 +348,7 @@ int indexOfItemInInventory(enum Type_Sort *inventory, enum Type_Sort item) {
  -------------------------------------------------------------------*/
 int countItemsInInventory(enum Type_Sort *inventory) {
 	int count = 0;
-	for (int i = 0; i < 20; i++) {
+	for (int i = 0; i < INVENTORY_SIZE; i++) {
 		if (inventory[i] != -1) {
 			count++;
 		}
@@ -365,8 +366,8 @@ int countItemsInInventory(enum Type_Sort *inventory) {
  * allocated inventory.
  -------------------------------------------------------------------*/
 enum Type_Sort *copyInventory(enum Type_Sort* oldInventory) {
-	enum Type_Sort *newInventory = malloc(sizeof(enum Type_Sort) * 20);
-	memcpy((void *)newInventory, (void *)oldInventory, sizeof(enum Type_Sort) * 20);
+	enum Type_Sort *newInventory = malloc(sizeof(enum Type_Sort) * INVENTORY_SIZE);
+	memcpy((void *)newInventory, (void *)oldInventory, sizeof(enum Type_Sort) * INVENTORY_SIZE);
 	return newInventory;
 }
 
@@ -393,7 +394,7 @@ char *getItemName(enum Type_Sort t_key) {
 void shiftDownToFillNull(enum Type_Sort *inventory) {
 	// First find the index of the first null
 	int firstNull = -1;
-	for (int i = 0; i < 20; i++) {
+	for (int i = 0; i < INVENTORY_SIZE; i++) {
 		if (inventory[i] == -1) {
 			firstNull = i;
 			break;
@@ -401,10 +402,10 @@ void shiftDownToFillNull(enum Type_Sort *inventory) {
 	}
 
 	// Now shift all items up in the inventory to place a null at the end of the inventory
-	memmove(&inventory[firstNull], &inventory[firstNull + 1], (19 - firstNull) * sizeof(enum Type_Sort));
+	memmove(&inventory[firstNull], &inventory[firstNull + 1], (INVENTORY_SIZE - 1 - firstNull) * sizeof(enum Type_Sort));
 
 	// Set the last inventory slot to null
-	inventory[19] = -1;
+	inventory[INVENTORY_SIZE - 1] = -1;
 	
 	return;
 }
@@ -420,7 +421,7 @@ void shiftDownToFillNull(enum Type_Sort *inventory) {
 void shiftUpToFillNull(enum Type_Sort *inventory) {
 	// First find the index of the first null
 	int firstNull = -1;
-	for (int i = 0; i < 20; i++) {
+	for (int i = 0; i < INVENTORY_SIZE; i++) {
 		if (inventory[i] == -1) {
 			firstNull = i;
 			break;
