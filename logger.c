@@ -28,8 +28,8 @@ int recipeLog(int level, char *process, char *subProcess, char *activity, char *
 		char data[200];
 		sprintf(date, "[%d-%02d-%02d %02d:%02d:%02d]", year, month, day, hours, mins, secs);
 		sprintf(data, "[%s][%s][%s][%s]\n", process, subProcess, activity, entry);
-		printf(date);
-		printf(data);
+		printf("%s", date);
+		printf("%s", data);
 
 		FILE* fp = fopen("recipes.log", "a");
 		fputs(date, fp);
