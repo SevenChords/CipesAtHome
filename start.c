@@ -47,10 +47,14 @@ int main() {
 		printf("Could not check version on Github. Please check your internet connection.\n");
 		printf("Otherwise, we can't submit compelted roadmaps to the server!\n");
 		printf("Alternatively you may have been rate-limited. Please wait a while and try again.\n");
+		printf("Press ENTER to quit.\n");
+		getchar();
 		return -1;
 	}
 	else if (update == 1) {
 		printf("Please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!");
+		printf("Press ENTER to quit.");
+		getchar();
 		return -1;
 	}
 
