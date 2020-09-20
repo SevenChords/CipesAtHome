@@ -14,7 +14,7 @@ struct Result {
 
 struct Job {
 	int callNumber;
-	struct Item *startingInventory;
+	enum Type_Sort *startingInventory;
 	int current_frame_record;
 	struct Result result;
 	const char *local_ver;
