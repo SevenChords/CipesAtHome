@@ -88,27 +88,7 @@ int *copyOutputsFulfilled(int *oldOutputsFulfilled) {
 }
 
 /*-------------------------------------------------------------------
- * Function 	: countTotalSorts
- * Inputs	: struct BranchPath *node
- * 
- * Traverse through the current roadmap to count the total number of sorts
- * TODO: This function can be obsoleted by adding a totalSorts attribute
- *	 to struct BranchPath to negate this lengthy while loop
- -------------------------------------------------------------------*/
-int countTotalSorts(struct BranchPath *node) {
-	int sorts = 0;
-	do {
-		if (node->description.action >= Sort_Alpha_Asc && node->description.action <= Sort_Type_Des) {
-			sorts++;
-		}
-		node = node->prev;
-	} while (node != NULL);
-	
-	return sorts;
-}
-
-/*-------------------------------------------------------------------
- * Function 	: createLegalMove
+ * Function 	: createChapter5Struct
  * Inputs	: int				DB_place_index
  *		  int				CO_place_index
  *		  int				KM_place_index
@@ -283,6 +263,13 @@ struct BranchPath *createLegalMove(struct BranchPath *node, enum Type_Sort *inve
 	newLegalMove->numOutputsCreated = numOutputsFulfilled;
 	newLegalMove->legalMoves = NULL;
 	newLegalMove->numLegalMoves = 0;
+	if (description.action >= Sort_Alpha_Asc && description.action <= Sort_Type_Des) {
+		newLegalMove->totalSorts = node->totalSorts + 1;
+	}
+	else {
+		newLegalMove->totalSorts = node->totalSorts;
+	}
+
 	return newLegalMove;
 }
 
@@ -1090,7 +1077,7 @@ void handleSorts(struct BranchPath *curNode) {
 	// Count the number of sorts for capping purposes
 	// Limit the number of sorts allowed in a roadmap
 	// NOTE: Reduced from 10 to 6 based off of the current set of fastest roadmaps
-	if (countTotalSorts(curNode) < 6) {
+	if (curNode->totalSorts < 6) {
 		// Perform the 4 different sorts
 		for (enum Action sort = Sort_Alpha_Asc; sort <= Sort_Type_Des; sort++) {
 			enum Type_Sort *sorted_inventory = getSortedInventory(curNode->inventory, sort);
@@ -1157,6 +1144,7 @@ struct BranchPath *initializeRoot(struct Job job) {
 	root->numOutputsCreated = 0;
 	root->legalMoves = NULL;
 	root->numLegalMoves = 0;
+	root->totalSorts = 0;
 	return root;
 }
 

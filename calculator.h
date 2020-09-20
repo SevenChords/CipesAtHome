@@ -60,6 +60,7 @@ struct BranchPath {
 	int numOutputsCreated;		// Number of valid outputCreated entries to eliminate a lengthy for-loop
 	struct BranchPath **legalMoves;// Represents possible next paths to take
 	int numLegalMoves;
+	int totalSorts;
 };
 
 struct OptimizeResult {
@@ -118,8 +119,6 @@ void fulfillChapter5(struct BranchPath *curNode);
 
 void fulfillRecipes(struct BranchPath *curNode, int recipeIndex);
 
-void freeInvFrames(int **invFrames);
-
 void tryTossInventoryItem(struct BranchPath *curNode, enum Type_Sort *tempInventory, struct MoveDescription useDescription, int *tempOutputsFulfilled, int numOutputsFulfilled, enum Type_Sort output, int tempFrames, int viableItems);
 
 void finalizeLegalMove(struct BranchPath *node, int tempFrames, struct MoveDescription useDescription, enum Type_Sort *tempInventory, int *tempOutputsFulfilled, int numOutputsFulfilled, enum HandleOutput tossType, enum Type_Sort toss, int tossIndex);
@@ -153,9 +152,6 @@ void shiftUpLegalMoves(struct BranchPath *node, int startIndex);
 // Remove node's legal moves which exceed the current best frame record
 void filterLegalMovesExceedFrameLimit(struct BranchPath *node, int frames);
 
-// Traverse back to previous nodes to count the total number of sorts
-int countTotalSorts(struct BranchPath *node);
-
 // Evaluates all possible placements of the Keel Mango and Courage Shell
 // and all possible locations and types of sorting that can place the Coconut into a position where it can be duplicated
 void handleChapter5Eval(struct BranchPath *node, enum Type_Sort *inventory, int *outputsFulfilled, int numOutputsFulfilled, int frames_DB, int frames_CO, int DB_place_index, int CO_place_index);
@@ -182,9 +178,6 @@ int getInsertionIndex(struct BranchPath *node, int frames);
 void swapItems(int *ingredientLoc, int *ingredientOffset);
 
 int *copyOutputsFulfilled(int *oldOutputsFulfilled);
-
-// Iterate through nodes to find the current node
-void getCurNode(struct BranchPath *node, int stepIndex);
 
 // Frees all pointers when we go back up a node
 void freeNode(struct BranchPath *node);
