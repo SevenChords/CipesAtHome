@@ -163,7 +163,9 @@
     <ClInclude Include="..\start.h" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="..\config.txt" />
+    <Text Include="..\config.txt">
+      <DeploymentContent>true</DeploymentContent>
+    </Text>
     <Text Include="..\inventory.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

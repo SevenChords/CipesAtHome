@@ -10,8 +10,6 @@
 #include <time.h>
 #include <string.h>
 
-// TODO: Eliminate the need to filter legal moves which exceed frame limit by not appending them in the first place
-
 #define NUM_RECIPES 58 			// Including Chapter 5 representation
 #define CHOOSE_2ND_INGREDIENT_FRAMES 56 	// Penalty for choosing a 2nd item
 #define TOSS_FRAMES 32				// Penalty for having to toss an item
@@ -370,10 +368,15 @@ void finalizeChapter5Eval(struct BranchPath *node, enum Type_Sort *inventory, en
  *		  int				tossIndex
  * 
  * Given input parameters, construct a new legal move to represent
- * a valid recipe move
+ * a valid recipe move. Also checks to see if the legal move exceeds
+ * the frame limit
  -------------------------------------------------------------------*/
 void finalizeLegalMove(struct BranchPath *node, int tempFrames, struct MoveDescription useDescription, enum Type_Sort *tempInventory, int *tempOutputsFulfilled, int numOutputsFulfilled, enum HandleOutput tossType, enum Type_Sort toss, int tossIndex) {
-	// This is a viable state that doesn't increase frames at all (output was auto-placed)
+	// Determine if the legal move exceeds the frame limit. If so, return out
+	if (useDescription.totalFramesTaken > getLocalRecord() + BUFFER_SEARCH_FRAMES) {
+		return;
+	}
+	
 	// Determine where to insert this legal move into the list of legal moves (sorted by frames taken)
 	int insertIndex = getInsertionIndex(node, tempFrames);
 	
@@ -1937,6 +1940,7 @@ void tryTossInventoryItem(struct BranchPath *curNode, enum Type_Sort *tempInvent
 		
 		// Calculate the additional tossed frames.
 		int replacedFrames = tempFrames + invFrames[viableItems][tossedIndex+1];
+
 		useDescription.framesTaken += invFrames[viableItems][tossedIndex+1];
 		useDescription.totalFramesTaken += invFrames[viableItems][tossedIndex+1];
 		
@@ -2772,13 +2776,6 @@ struct Result calculateOrder(struct Job job) {
 				
 				// All legal moves evaluated and listed!
 				
-				// Protect race condition of the local record
-				#pragma omp critical
-				{
-					// Filter out all legal moves that would exceed the current frame limit
-					filterLegalMovesExceedFrameLimit(curNode, getLocalRecord() + BUFFER_SEARCH_FRAMES);
-				}
-				
 				if (curNode->moves == 0) {
 					// Filter out all legal moves that use 2 ingredients in the very first legal move
 					filterOut2Ingredients(curNode);
@@ -2821,11 +2818,6 @@ struct Result calculateOrder(struct Job job) {
 			}
 			else {
 				// Protect race condition of the local record
-				#pragma omp critical
-				{
-					// Filter out all legal moves that would exceed the current frame limit
-					filterLegalMovesExceedFrameLimit(curNode, getLocalRecord() + BUFFER_SEARCH_FRAMES);
-				}
 				
 				if (curNode->numLegalMoves == 0) {
 					// No legal moves are left to evaluate, go back up...

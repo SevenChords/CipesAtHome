@@ -97,7 +97,7 @@ int main() {
 					printf("Otherwise, completed roadmaps may be inaccurate!\n");
 				}
 				else if (update == 1) {
-					//printf("Please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!\n");
+					printf("Please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!\n");
 					exit(1);
 				}
 			}
