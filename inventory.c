@@ -4,7 +4,7 @@
 #include "inventory.h"
 #include "logger.h"
 
-#define INVENTORY_SIZE
+#define INVENTORY_SIZE 20
 #define INVENTORY_MAX_SIZE 21
 #define NUM_ITEMS 107
 
@@ -262,7 +262,7 @@ enum Alpha_Sort getAlphaKey(enum Type_Sort item) {
  * if sorts changed the inventory at all.
  -------------------------------------------------------------------*/
 int compareInventories(enum Type_Sort *inv1, enum Type_Sort *inv2) {
-	return memcmp((void*)inv1, (void*)inv2, sizeof(enum Type_Sort) * INVENTORY_SIZE) != 0;
+	return memcmp((void*)inv1, (void*)inv2, sizeof(enum Type_Sort) * INVENTORY_SIZE) == 0;
 }
 
 /*-------------------------------------------------------------------
