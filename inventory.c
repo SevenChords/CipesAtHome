@@ -9,7 +9,6 @@
 
 typedef enum Alpha_Sort Alpha_Sort;
 typedef enum Type_Sort Type_Sort;
-typedef struct Item Item;
 typedef struct ItemName ItemName;
 
 /*====================NOTES====================
@@ -20,253 +19,271 @@ typedef struct ItemName ItemName;
   the alphabetical key as the main item identifier.
 ====================     ====================*/
 
-Item items[] = {
-	{POW_Block, POW_Block_t},
-	{Icicle_Pop, Icicle_Pop_t},
-	{Fright_Mask, Fright_Mask_t},
-	{Spicy_Soup, Spicy_Soup_t},
-	{Ink_Pasta, Ink_Pasta_t},
-	{Couples_Cake, Couples_Cake_t},
-	{Point_Swap, Point_Swap_t},
-	{Space_Food, Space_Food_t},
-	{Ultra_Shroom, Ultra_Shroom_t},
-	{Golden_Leaf, Golden_Leaf_t},
-	{Cake_Mix, Cake_Mix_t},
-	{Courage_Shell, Courage_Shell_t},
-	{Courage_Meal, Courage_Meal_t},
-	{Thunder_Bolt, Thunder_Bolt_t},
-	{Thunder_Rage, Thunder_Rage_t},
-	{Koopa_Tea, Koopa_Tea_t},
-	{Turtley_Leaf, Turtley_Leaf_t},
-	{Koopasta, Koopasta_t},
-	{Koopa_Bun, Koopa_Bun_t},
-	{Spicy_Pasta, Spicy_Pasta_t},
-	{Omelette_Meal, Omelette_Meal_t},
-	{Mushroom, Mushroom_t},
-	{Shroom_Fry, Shroom_Fry_t},
-	{Shroom_Crepe, Shroom_Crepe_t},
-	{Shroom_Cake, Shroom_Cake_t},
-	{Shroom_Steak, Shroom_Steak_t},
-	{Shroom_Roast, Shroom_Roast_t},
-	{Shooting_Star, Shooting_Star_t},
-	{Gold_Bar, Gold_Bar_t},
-	{Gold_Bar_x_3, Gold_Bar_x_3_t},
-	{Life_Shroom, Life_Shroom_t},
-	{Dizzy_Dial, Dizzy_Dial_t},
-	{Shroom_Broth, Shroom_Broth_t},
-	{Ice_Storm, Ice_Storm_t},
-	{Coconut_Bomb, Coconut_Bomb_t},
-	{Coco_Candy, Coco_Candy_t},
-	{Spite_Pouch, Spite_Pouch_t},
-	{Mistake, Mistake_t},
-	{Dried_Shroom, Dried_Shroom_t},
-	{Inn_Coupon, Inn_Coupon_t},
-	{Choco_Cake, Choco_Cake_t},
-	{Trial_Stew, Trial_Stew_t},
-	{Slow_Shroom, Slow_Shroom_t},
-	{Gradual_Syrup, Gradual_Syrup_t},
-	{Super_Shroom, Super_Shroom_t},
-	{HP_Drain, HP_Drain_t},
-	{Tasty_Tonic, Tasty_Tonic_t},
-	{Stopwatch, Stopwatch_t},
-	{Spaghetti, Spaghetti_t},
-	{Inky_Sauce, Inky_Sauce_t},
-	{Whacka_Bump, Whacka_Bump_t},
-	{Horsetail, Horsetail_t},
-	{Repel_Cape, Repel_Cape_t},
-	{Boos_Sheet, Boos_Sheet_t},
-	{Power_Punch, Power_Punch_t},
-	{Keel_Mango, Keel_Mango_t},
-	{Poison_Shroom, Poison_Shroom_t},
-	{Dried_Bouquet, Dried_Bouquet_t},
-	{Mystery, Mystery_t},
-	{Zess_Cookie, Zess_Cookie_t},
-	{Zess_Special, Zess_Special_t},
-	{Zess_Dynamite, Zess_Dynamite_t},
-	{Zess_Tea, Zess_Tea_t},
-	{Zess_Dinner, Zess_Dinner_t},
-	{Zess_Deluxe, Zess_Deluxe_t},
-	{Zess_Frappe, Zess_Frappe_t},
-	{Sleepy_Sheep, Sleepy_Sheep_t},
-	{Love_Pudding, Love_Pudding_t},
-	{Honey_Candy, Honey_Candy_t},
-	{Honey_Shroom, Honey_Shroom_t},
-	{Honey_Super, Honey_Super_t},
-	{Honey_Ultra, Honey_Ultra_t},
-	{Honey_Syrup, Honey_Syrup_t},
-	{Egg_Bomb, Egg_Bomb_t},
-	{Volt_Shroom, Volt_Shroom_t},
-	{Electro_Pop, Electro_Pop_t},
-	{Peach_Tart, Peach_Tart_t},
-	{Peachy_Peach, Peachy_Peach_t},
-	{Fire_Pop, Fire_Pop_t},
-	{Fire_Flower, Fire_Flower_t},
-	{Mystic_Egg, Mystic_Egg_t},
-	{Mr_Softener, Mr_Softener_t},
-	{Fruit_Parfait, Fruit_Parfait_t},
-	{Fresh_Juice, Fresh_Juice_t},
-	{Healthy_Salad, Healthy_Salad_t},
-	{Meteor_Meal, Meteor_Meal_t},
-	{Hot_Dog, Hot_Dog_t},
-	{Ruin_Powder, Ruin_Powder_t},
-	{Mango_Delight, Mango_Delight_t},
-	{Mini_Mr_Mini, Mini_Mr_Mini_t},
-	{Mousse_Cake, Mousse_Cake_t},
-	{Maple_Shroom, Maple_Shroom_t},
-	{Maple_Super, Maple_Super_t},
-	{Maple_Ultra, Maple_Ultra_t},
-	{Maple_Syrup, Maple_Syrup_t},
-	{Fried_Egg, Fried_Egg_t},
-	{Heartful_Cake, Heartful_Cake_t},
-	{Coconut, Coconut_t},
-	{Snow_Bunny, Snow_Bunny_t},
-	{Earth_Quake, Earth_Quake_t},
-	{Hot_Sauce, Hot_Sauce_t},
-	{Jelly_Shroom, Jelly_Shroom_t},
-	{Jelly_Super, Jelly_Super_t},
-	{Jelly_Ultra, Jelly_Ultra_t},
-	{Jelly_Candy, Jelly_Candy_t},
-	{Jammin_Jelly, Jammin_Jelly_t},
-	{Fresh_Pasta, Fresh_Pasta_t}
+Alpha_Sort items[] = {
+	Mushroom_a,
+	Super_Shroom_a,
+	Ultra_Shroom_a,
+	Life_Shroom_a,
+	Slow_Shroom_a,
+	Dried_Shroom_a,
+	Honey_Syrup_a,
+	Maple_Syrup_a,
+	Jammin_Jelly_a,
+	Gradual_Syrup_a,
+	Tasty_Tonic_a,
+	POW_Block_a,
+	Fire_Flower_a,
+	Ice_Storm_a,
+	Earth_Quake_a,
+	Thunder_Bolt_a,
+	Thunder_Rage_a,
+	Shooting_Star_a,
+	Volt_Shroom_a,
+	Repel_Cape_a,
+	Boos_Sheet_a,
+	Ruin_Powder_a,
+	Sleepy_Sheep_a,
+	Dizzy_Dial_a,
+	Stopwatch_a,
+	Power_Punch_a,
+	Mini_Mr_Mini_a,
+	Courage_Shell_a,
+	Mr_Softener_a,
+	HP_Drain_a,
+	Point_Swap_a,
+	Fright_Mask_a,
+	Mystery_a,
+	Inn_Coupon_a,
+	Gold_Bar_a,
+	Gold_Bar_x_3_a,
+	Whacka_Bump_a,
+	Hot_Dog_a,
+	Coconut_a,
+	Dried_Bouquet_a,
+	Mystic_Egg_a,
+	Golden_Leaf_a,
+	Keel_Mango_a,
+	Fresh_Pasta_a,
+	Cake_Mix_a,
+	Hot_Sauce_a,
+	Turtley_Leaf_a,
+	Horsetail_a,
+	Peachy_Peach_a,
+	Spite_Pouch_a,
+	Shroom_Fry_a,
+	Shroom_Roast_a,
+	Shroom_Steak_a,
+	Honey_Shroom_a,
+	Maple_Shroom_a,
+	Jelly_Shroom_a,
+	Honey_Super_a,
+	Maple_Super_a,
+	Jelly_Super_a,
+	Honey_Ultra_a,
+	Maple_Ultra_a,
+	Jelly_Ultra_a,
+	Zess_Dinner_a,
+	Zess_Special_a,
+	Zess_Deluxe_a,
+	Spaghetti_a,
+	Koopasta_a,
+	Spicy_Pasta_a,
+	Ink_Pasta_a,
+	Spicy_Soup_a,
+	Fried_Egg_a,
+	Omelette_Meal_a,
+	Koopa_Bun_a,
+	Healthy_Salad_a,
+	Meteor_Meal_a,
+	Couples_Cake_a,
+	Mousse_Cake_a,
+	Shroom_Cake_a,
+	Choco_Cake_a,
+	Heartful_Cake_a,
+	Fruit_Parfait_a,
+	Mango_Delight_a,
+	Love_Pudding_a,
+	Zess_Cookie_a,
+	Shroom_Crepe_a,
+	Peach_Tart_a,
+	Koopa_Tea_a,
+	Zess_Tea_a,
+	Shroom_Broth_a,
+	Fresh_Juice_a,
+	Inky_Sauce_a,
+	Icicle_Pop_a,
+	Zess_Frappe_a,
+	Snow_Bunny_a,
+	Coco_Candy_a,
+	Honey_Candy_a,
+	Jelly_Candy_a,
+	Electro_Pop_a,
+	Fire_Pop_a,
+	Space_Food_a,
+	Poison_Shroom_a,
+	Trial_Stew_a,
+	Courage_Meal_a,
+	Coconut_Bomb_a,
+	Egg_Bomb_a,
+	Zess_Dynamite_a,
+	Mistake_a
+};
+
+char *itemNames[NUM_ITEMS] = {
+	"Mushroom",
+	"Super_Shroom",
+	"Ultra_Shroom",
+	"Life_Shroom",
+	"Slow_Shroom",
+	"Dried_Shroom",
+	"Honey_Syrup",
+	"Maple_Syrup",
+	"Jammin_Jelly",
+	"Gradual_Syrup",
+	"Tasty_Tonic",
+	"POW_Block",
+	"Fire_Flower",
+	"Ice_Storm",
+	"Earth_Quake",
+	"Thunder_Bolt",
+	"Thunder_Rage",
+	"Shooting_Star",
+	"Volt_Shroom",
+	"Repel_Cape",
+	"Boos_Sheet",
+	"Ruin_Powder",
+	"Sleepy_Sheep",
+	"Dizzy_Dial",
+	"Stopwatch",
+	"Power_Punch",
+	"Mini_Mr_Mini",
+	"Courage_Shell",
+	"Mr_Softener",
+	"HP_Drain",
+	"Point_Swap",
+	"Fright_Mask",
+	"Mystery",
+	"Inn_Coupon",
+	"Gold_Bar",
+	"Gold_Bar_x_3",
+	"Whacka_Bump",
+	"Hot_Dog",
+	"Coconut",
+	"Dried_Bouquet",
+	"Mystic_Egg",
+	"Golden_Leaf",
+	"Keel_Mango",
+	"Fresh_Pasta",
+	"Cake_Mix",
+	"Hot_Sauce",
+	"Turtley_Leaf",
+	"Horsetail",
+	"Peachy_Peach",
+	"Spite_Pouch",
+	"Shroom_Fry",
+	"Shroom_Roast",
+	"Shroom_Steak",
+	"Honey_Shroom",
+	"Maple_Shroom",
+	"Jelly_Shroom",
+	"Honey_Super",
+	"Maple_Super",
+	"Jelly_Super",
+	"Honey_Ultra",
+	"Maple_Ultra",
+	"Jelly_Ultra",
+	"Zess_Dinner",
+	"Zess_Special",
+	"Zess_Deluxe",
+	"Spaghetti",
+	"Koopasta",
+	"Spicy_Pasta",
+	"Ink_Pasta",
+	"Spicy_Soup",
+	"Fried_Egg",
+	"Omelette_Meal",
+	"Koopa_Bun",
+	"Healthy_Salad",
+	"Meteor_Meal",
+	"Couples_Cake",
+	"Mousse_Cake",
+	"Shroom_Cake",
+	"Choco_Cake",
+	"Heartful_Cake",
+	"Fruit_Parfait",
+	"Mango_Delight",
+	"Love_Pudding",
+	"Zess_Cookie",
+	"Shroom_Crepe",
+	"Peach_Tart",
+	"Koopa_Tea",
+	"Zess_Tea",
+	"Shroom_Broth",
+	"Fresh_Juice",
+	"Inky_Sauce",
+	"Icicle_Pop",
+	"Zess_Frappe",
+	"Snow_Bunny",
+	"Coco_Candy",
+	"Honey_Candy",
+	"Jelly_Candy",
+	"Electro_Pop",
+	"Fire_Pop",
+	"Space_Food",
+	"Poison_Shroom",
+	"Trial_Stew",
+	"Courage_Meal",
+	"Coconut_Bomb",
+	"Egg_Bomb",
+	"Zess_Dynamite",
+	"Mistake"
 };
 
 /*-------------------------------------------------------------------
- * Function 	: getItem
- * Inputs	: enum Alpha_Sort a_key
- * Outputs	: struct Item 	  item
+ * Function 	: getAlphaKey
+ * Inputs	: struct Type_Sort item
+ * Outputs	: enum Alpha_Sort alpha_key
  *
- * Use an item's a_key to retrieve its Item struct from the above array
+ * Use items array to get alpha key for a given item when we need to sort.
  -------------------------------------------------------------------*/
-struct Item getItem(enum Alpha_Sort a_key) {
-	return items[a_key];
+enum Alpha_Sort getAlphaKey(enum Type_Sort item) {
+	return items[item];
 }
-
-ItemName itemNames[] = {
-	{POW_Block, "POW Block"},
-	{Icicle_Pop, "Icicle Pop"},
-	{Fright_Mask, "Fright Mask"},
-	{Spicy_Soup, "Spicy Soup"},
-	{Ink_Pasta, "Ink Pasta"},
-	{Couples_Cake, "Couples Cake"},
-	{Point_Swap, "Point Swap"},
-	{Space_Food, "Space Food"},
-	{Ultra_Shroom, "Ultra Shroom"},
-	{Golden_Leaf, "Golden Leaf"},
-	{Cake_Mix, "Cake Mix"},
-	{Courage_Shell, "Courage Shell"},
-	{Courage_Meal, "Courage Meal"},
-	{Thunder_Bolt, "Thunder Bolt"},
-	{Thunder_Rage, "Thunder Rage"},
-	{Koopa_Tea, "Koopa Tea"},
-	{Turtley_Leaf, "Turtley Leaf"},
-	{Koopasta, "Koopasta"},
-	{Koopa_Bun, "Koopa Bun"},
-	{Spicy_Pasta, "Spicy Pasta"},
-	{Omelette_Meal, "Omelette Meal"},
-	{Mushroom, "Mushroom"},
-	{Shroom_Fry, "Shroom Fry"},
-	{Shroom_Crepe, "Shroom Crepe"},
-	{Shroom_Cake, "Shroom Cake"},
-	{Shroom_Steak, "Shroom Steak"},
-	{Shroom_Roast, "Shroom Roast"},
-	{Shooting_Star, "Shooting Star"},
-	{Gold_Bar, "Gold Bar"},
-	{Gold_Bar_x_3, "Gold Bar x 3"},
-	{Life_Shroom, "Life Shroom"},
-	{Dizzy_Dial, "Dizzy Dial"},
-	{Shroom_Broth, "Shroom Broth"},
-	{Ice_Storm, "Ice Storm"},
-	{Coconut_Bomb, "Coconut Bomb"},
-	{Coco_Candy, "Coco Candy"},
-	{Spite_Pouch, "Spite Pouch"},
-	{Mistake, "Mistake"},
-	{Dried_Shroom, "Dried Shroom"},
-	{Inn_Coupon, "Inn Coupon"},
-	{Choco_Cake, "Choco Cake"},
-	{Trial_Stew, "Trial Stew"},
-	{Slow_Shroom, "Slow Shroom"},
-	{Gradual_Syrup, "Gradual Syrup"},
-	{Super_Shroom, "Super Shroom"},
-	{HP_Drain, "HP Drain"},
-	{Tasty_Tonic, "Tasty Tonic"},
-	{Stopwatch, "Stopwatch"},
-	{Spaghetti, "Spaghetti"},
-	{Inky_Sauce, "Inky Sauce"},
-	{Whacka_Bump, "Whacka Bump"},
-	{Horsetail, "Horsetail"},
-	{Repel_Cape, "Repel Cape"},
-	{Boos_Sheet, "Boos Sheet"},
-	{Power_Punch, "Power Punch"},
-	{Keel_Mango, "Keel Mango"},
-	{Poison_Shroom, "Poison Shroom"},
-	{Dried_Bouquet, "Dried Bouquet"},
-	{Mystery, "Mystery"},
-	{Zess_Cookie, "Zess Cookie"},
-	{Zess_Special, "Zess Special"},
-	{Zess_Dynamite, "Zess Dynamite"},
-	{Zess_Tea, "Zess Tea"},
-	{Zess_Dinner, "Zess Dinner"},
-	{Zess_Deluxe, "Zess Deluxe"},
-	{Zess_Frappe, "Zess Frappe"},
-	{Sleepy_Sheep, "Sleepy Sheep"},
-	{Love_Pudding, "Love Pudding"},
-	{Honey_Candy, "Honey Candy"},
-	{Honey_Shroom, "Honey Shroom"},
-	{Honey_Super, "Honey Super"},
-	{Honey_Ultra, "Honey Ultra"},
-	{Honey_Syrup, "Honey Syrup"},
-	{Egg_Bomb, "Egg Bomb"},
-	{Volt_Shroom, "Volt Shroom"},
-	{Electro_Pop, "Electro Pop"},
-	{Peach_Tart, "Peach Tart"},
-	{Peachy_Peach, "Peachy Peach"},
-	{Fire_Pop, "Fire Pop"},
-	{Fire_Flower, "Fire Flower"},
-	{Mystic_Egg, "Mystic Egg"},
-	{Mr_Softener, "Mr. Softener"},
-	{Fruit_Parfait, "Fruit Parfait"},
-	{Fresh_Juice, "Fresh Juice"},
-	{Healthy_Salad, "Healthy Salad"},
-	{Meteor_Meal, "Meteor Meal"},
-	{Hot_Dog, "Hot Dog"},
-	{Ruin_Powder, "Ruin Powder"},
-	{Mango_Delight, "Mango Delight"},
-	{Mini_Mr_Mini, "Mini Mr. Mini"},
-	{Mousse_Cake, "Mousse Cake"},
-	{Maple_Shroom, "Maple Shroom"},
-	{Maple_Super, "Maple Super"},
-	{Maple_Ultra, "Maple Ultra"},
-	{Maple_Syrup, "Maple Syrup"},
-	{Fried_Egg, "Fried Egg"},
-	{Heartful_Cake, "Heartful Cake"},
-	{Coconut, "Coconut"},
-	{Snow_Bunny, "Snow Bunny"},
-	{Earth_Quake, "Earth Quake"},
-	{Hot_Sauce, "Hot Sauce"},
-	{Jelly_Shroom, "Jelly Shroom"},
-	{Jelly_Super, "Jelly Super"},
-	{Jelly_Ultra, "Jelly Ultra"},
-	{Jelly_Candy, "Jelly Candy"},
-	{Jammin_Jelly, "Jammin' Jelly"},
-	{Fresh_Pasta, "Fresh Pasta"}
-};
 
 /*-------------------------------------------------------------------
  * Function 	: compareInventories
- * Inputs	: struct Item 	*inv1
- * 		  struct Item	*inv2
+ * Inputs	: struct Type_Sort *inv1
+ * 		  struct Type_Sort *inv2
  * Outputs	: 0 - inventories are different
  *		  1 - inventories are identical
  *
  * Compare two inventories for any differences. This is used to determine
  * if sorts changed the inventory at all.
  -------------------------------------------------------------------*/
-int compareInventories(struct Item *inv1, struct Item *inv2) {
+int compareInventories(enum Type_Sort *inv1, enum Type_Sort *inv2) {
 	for (int i = 0; i < 20; i++) {
-		if (inv1[i].a_key != inv2[i].a_key)
+		if (inv1[i] != inv2[i])
 			return 0;
 	}
 	return 1;
+}
+
+/*-------------------------------------------------------------------
+ * Function 	: itemComboInInventory
+ * Inputs	: struct ItemCombination	combo
+ *		  enum Type_Sort		*inventory
+ * Outputs	: int (0 or 1)
+ *
+ * Determine whether the items in a recipe combination exist in the
+ * inventory. In the case of a 1 item recipe, only check for the one item.
+ -------------------------------------------------------------------*/
+int itemComboInInventory(struct ItemCombination combo, enum Type_Sort *inventory) {
+	if (combo.numItems == 1) {
+		return indexOfItemInInventory(inventory, combo.item1) > -1;
+	}
+	
+	return	indexOfItemInInventory(inventory, combo.item1) > -1 &&
+		indexOfItemInInventory(inventory, combo.item2) > -1;
 }
 
 /*-------------------------------------------------------------------
@@ -290,18 +307,18 @@ int itemInDependentIndices(int index, int *dependentIndices, int numDependentInd
 
 /*-------------------------------------------------------------------
  * Function 	: countNullsInInventory
- * Inputs	: struct Item 	*inventory
- *		  int		minIndex
- *		  int		maxIndex
+ * Inputs	: struct Type_Sort *inventory
+ *		  int		    minIndex
+ *		  int		    maxIndex
  * Outputs	: The number of nulls in the inventory
  *
  * Traverse through the inventory and count the number of blank entries
  * in the inventory.
  -------------------------------------------------------------------*/
-int countNullsInInventory(struct Item *inventory, int minIndex, int maxIndex) {
+int countNullsInInventory(enum Type_Sort *inventory, int minIndex, int maxIndex) {
 	int count = 0;
 	for (int i = minIndex; i < maxIndex; i++) {
-		if ((int) inventory[i].a_key == -1)
+		if (inventory[i] == -1)
 			count++;
 	}
 	return count;
@@ -309,16 +326,16 @@ int countNullsInInventory(struct Item *inventory, int minIndex, int maxIndex) {
 
 /*-------------------------------------------------------------------
  * Function 	: indexOfItemInInventory
- * Inputs	: struct Item 	*inventory
- *		  struct Item	item
+ * Inputs	: struct Type_Sort *inventory
+ *		  struct Type_Sort item
  * Outputs	: index of item in inventory
  *
  * Traverse through the inventory and find the location of the provided
  * item. If not found, return -1.
  -------------------------------------------------------------------*/
-int indexOfItemInInventory(struct Item *inventory, struct Item item) {
+int indexOfItemInInventory(enum Type_Sort *inventory, enum Type_Sort item) {
 	for (int i = 0; i < 20; i++) {
-		if (inventory[i].a_key == item.a_key)
+		if (inventory[i] == item)
 			return i;
 	}
 	return -1;
@@ -326,16 +343,16 @@ int indexOfItemInInventory(struct Item *inventory, struct Item item) {
 
 /*-------------------------------------------------------------------
  * Function 	: countItemsInInventory
- * Inputs	: struct Item 	*inventory
+ * Inputs	: enum Type_Sort 	*inventory
  * Outputs	: number of item in inventory
  *
  * Traverse through the inventory and count the number of valid items
  * in the inventory. This excludes blank (NULL) entries.
  -------------------------------------------------------------------*/
-int countItemsInInventory(struct Item *inventory) {
+int countItemsInInventory(enum Type_Sort *inventory) {
 	int count = 0;
 	for (int i = 0; i < 20; i++) {
-		if (inventory[i].a_key != -1) {
+		if (inventory[i] != -1) {
 			count++;
 		}
 	}
@@ -345,15 +362,15 @@ int countItemsInInventory(struct Item *inventory) {
 			
 /*-------------------------------------------------------------------
  * Function 	: copyInventory
- * Inputs	: struct Item 	*oldInventory
- * Outputs	: struct Item	*newInventory
+ * Inputs	: enum Type_Sort *oldInventory
+ * Outputs	: enum Type_Sort *newInventory
  *
  * Perform a simple memcpy to duplicate an old inventory to a newly
  * allocated inventory.
  -------------------------------------------------------------------*/
-struct Item *copyInventory(struct Item* oldInventory) {
-	struct Item *newInventory = malloc(sizeof(struct Item) * 20);
-	memcpy((void *)newInventory, (void *)oldInventory, sizeof(struct Item) * 20);
+enum Type_Sort *copyInventory(enum Type_Sort* oldInventory) {
+	enum Type_Sort *newInventory = malloc(sizeof(enum Type_Sort) * 20);
+	memcpy((void *)newInventory, (void *)oldInventory, sizeof(enum Type_Sort) * 20);
 	return newInventory;
 }
 
@@ -365,29 +382,27 @@ struct Item *copyInventory(struct Item* oldInventory) {
  * Access the itemNames array to associate an item's a_key with its
  * string counterpart. Also handles the case of a null item.
  -------------------------------------------------------------------*/
-char *getItemName(Alpha_Sort a_key) {
-	for (int i = 0; i < NUM_ITEMS; i++) {
-		if (itemNames[i].a_key == a_key) {
-			return itemNames[i].name;
-		}
+char *getItemName(enum Type_Sort t_key) {
+	if (t_key < 0) {
+		return "NULL ITEM";
 	}
 	
-	return "NULL ITEM";
+	return itemNames[t_key];
 }
 
 /*-------------------------------------------------------------------
  * Function 	: shiftDownToFillNull
- * Inputs	: struct Item	*inventory
+ * Inputs	: enum Type_Sort	*inventory
  *
  * There is a null in the inventory. Shift items after the null towards
  * the beginning of the array to fill in the null. Then place the null
  * at the end of the array.
  -------------------------------------------------------------------*/
-void shiftDownToFillNull(struct  Item *inventory) {
+void shiftDownToFillNull(enum Type_Sort *inventory) {
 	// First find the index of the first null
 	int firstNull = -1;
 	for (int i = 0; i < 20; i++) {
-		if (inventory[i].a_key == -1) {
+		if (inventory[i] == -1) {
 			firstNull = i;
 			break;
 		}
@@ -399,24 +414,24 @@ void shiftDownToFillNull(struct  Item *inventory) {
 	}
 	
 	// Set the last inventory slot to null
-	inventory[19] = (struct Item) {-1, -1};
+	inventory[19] = -1;
 	
 	return;
 }
 
 /*-------------------------------------------------------------------
  * Function 	: shiftUpToFillNull
- * Inputs	: struct Item	*inventory
+ * Inputs	: enum Type_Sort *inventory
  *
  * There is a null in the inventory. Shift items before the null towards
  * the end of the array to fill in the null. A new item will be placed
  * at the start of the inventory after return.
  -------------------------------------------------------------------*/
-void shiftUpToFillNull(struct Item *inventory) {
+void shiftUpToFillNull(enum Type_Sort *inventory) {
 	// First find the index of the first null
 	int firstNull = -1;
 	for (int i = 0; i < 20; i++) {
-		if (inventory[i].a_key == -1) {
+		if (inventory[i] == -1) {
 			firstNull = i;
 			break;
 		}
@@ -462,32 +477,32 @@ int **getInventoryFrames() {
 /*-------------------------------------------------------------------
  * Function 	: getStartingInventory
  * Inputs	: 
- * Outputs	: Item *inventory
+ * Outputs	: enum Type_Sort *inventory
  *
  * Returns a pointer to an array which contains all items we start with
  -------------------------------------------------------------------*/
-Item *getStartingInventory() {
-	static Item inventory[] = {
-		{Golden_Leaf, Golden_Leaf_t},
-		{Peachy_Peach, Peachy_Peach_t},
-		{Shooting_Star, Shooting_Star_t},
-		{Ultra_Shroom, Ultra_Shroom_t},
-		{Cake_Mix, Cake_Mix_t},
-		{Thunder_Rage, Thunder_Rage_t},
-		{Turtley_Leaf, Turtley_Leaf_t},
-		{Life_Shroom, Life_Shroom_t},
-		{Ice_Storm, Ice_Storm_t},
-		{Slow_Shroom, Slow_Shroom_t},
-		{Mystery, Mystery_t},
-		{Honey_Syrup, Honey_Syrup_t},
-		{Volt_Shroom, Volt_Shroom_t},
-		{Fire_Flower, Fire_Flower_t},
-		{Mystic_Egg, Mystic_Egg_t},
-		{Hot_Dog, Hot_Dog_t},
-		{Ruin_Powder, Ruin_Powder_t},
-		{Maple_Syrup, Maple_Syrup_t},
-		{Hot_Sauce, Hot_Sauce_t},
-		{Jammin_Jelly, Jammin_Jelly_t}
+enum Type_Sort *getStartingInventory() {
+	static enum Type_Sort inventory[] = {
+		Golden_Leaf,
+		Peachy_Peach,
+		Shooting_Star,
+		Ultra_Shroom,
+		Cake_Mix,
+		Thunder_Rage,
+		Turtley_Leaf,
+		Life_Shroom,
+		Ice_Storm,
+		Slow_Shroom,
+		Mystery,
+		Honey_Syrup,
+		Volt_Shroom,
+		Fire_Flower,
+		Mystic_Egg,
+		Hot_Dog,
+		Ruin_Powder,
+		Maple_Syrup,
+		Hot_Sauce,
+		Jammin_Jelly
 	};
 	
 	return inventory;
