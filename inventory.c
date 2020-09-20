@@ -459,7 +459,7 @@ int **getInventoryFrames() {
 		}
 		inv_frames[i] = frames;
 	}
-	recipeLog(2, "Inventory", "Frames", "Generate", "Inventory Frames Generated");
+	recipeLog(5, "Inventory", "Frames", "Generate", "Inventory Frames Generated");
 	return inv_frames;
 }
 
