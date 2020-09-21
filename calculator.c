@@ -127,26 +127,21 @@ struct CH5 *createChapter5Struct(int DB_place_index, int CO_place_index, int KM_
  * Compartmentalization of generating a MoveDescription struct
  * based on various parameters dependent on what recip we're cooking
  -------------------------------------------------------------------*/
-struct MoveDescription createCookDescription(struct BranchPath *node, struct Recipe recipe, struct ItemCombination combo, enum Type_Sort *tempInventory, int *tempFrames, int viableItems) {
+struct MoveDescription createCookDescription(struct BranchPath *node, struct Recipe recipe, struct ItemCombination combo, struct Inventory tempInventory, int *tempFrames, int viableItems) {
 	struct MoveDescription useDescription;
 	useDescription.action = Cook;
 	
 	int ingredientLoc[2];
-	int ingredientOffset[2];
 	
 	// Determine the locations of both ingredients
 	ingredientLoc[0] = indexOfItemInInventory(tempInventory, combo.item1);
 	ingredientLoc[1] = indexOfItemInInventory(tempInventory, combo.item2);
 	
-	// Determine the offset by NULLs before the desired items, as NULLs do not appear during the inventory navigation
-	ingredientOffset[0] = countNullsInInventory(tempInventory, 0, ingredientLoc[0]);
-	ingredientOffset[1] = countNullsInInventory(tempInventory, 0, ingredientLoc[1]);
-	
 	if (combo.numItems == 1) {
-		createCookDescription1Item(node, recipe, combo, tempInventory, ingredientLoc, ingredientOffset, tempFrames, viableItems, &useDescription);
+		createCookDescription1Item(node, recipe, combo, tempInventory, ingredientLoc, tempFrames, viableItems, &useDescription);
 	}
 	else {
-		createCookDescription2Items(node, recipe, combo, tempInventory, ingredientLoc, ingredientOffset, tempFrames, viableItems, &useDescription);
+		createCookDescription2Items(node, recipe, combo, tempInventory, ingredientLoc, tempFrames, viableItems, &useDescription);
 	}
 	
 	return useDescription;
@@ -168,18 +163,17 @@ struct MoveDescription createCookDescription(struct BranchPath *node, struct Rec
  * length 1. Generates Cook structure and points to this structure
  * in useDescription.
  -------------------------------------------------------------------*/
-void createCookDescription1Item(struct BranchPath *node, struct Recipe recipe, struct ItemCombination combo, enum Type_Sort *tempInventory, int *ingredientLoc, int *ingredientOffset, int *tempFrames, int viableItems, struct MoveDescription *useDescription) {
+void createCookDescription1Item(struct BranchPath *node, struct Recipe recipe, struct ItemCombination combo, struct Inventory tempInventory, int *ingredientLoc, int *tempFrames, int viableItems, struct MoveDescription *useDescription) {
 	// This is a potentially viable recipe with 1 ingredient
 	// Modify the inventory if the ingredient was in the first 10 slots
 	if (ingredientLoc[0] < 10) {
-		tempInventory[ingredientLoc[0]] = -1;
+		// Shift the inventory towards the front of the array to fill the null
+		tempInventory = shiftDownInventory(tempInventory, ingredientLoc[0]);
 	}
 	
 	// Determine how many frames will be needed to select that item
-	*tempFrames = invFrames[viableItems-1][ingredientLoc[0]-ingredientOffset[0]];
-		
-	// Describe what items were used
-	
+	*tempFrames = invFrames[viableItems - 1][ingredientLoc[0]];
+
 	generateCook(useDescription, combo, recipe, ingredientLoc, 0);
 	generateFramesTaken(useDescription, node, *tempFrames);
 }
@@ -200,7 +194,7 @@ void createCookDescription1Item(struct BranchPath *node, struct Recipe recipe, s
  * length 2. Swaps items if it's faster to choose the second item first.
  * Generates Cook structure and points to this structure in useDescription.
  -------------------------------------------------------------------*/
-void createCookDescription2Items(struct BranchPath *node, struct Recipe recipe, struct ItemCombination combo, enum Type_Sort *tempInventory, int *ingredientLoc, int *ingredientOffset, int *tempFrames, int viableItems, struct MoveDescription *useDescription) {
+void createCookDescription2Items(struct BranchPath *node, struct Recipe recipe, struct ItemCombination combo, struct Inventory tempInventory, int *ingredientLoc, int *tempFrames, int viableItems, struct MoveDescription *useDescription) {
 	// This is a potentially viable recipe with 2 ingredients
 	//Baseline frames based on how many times we need to access the menu
 	*tempFrames = CHOOSE_2ND_INGREDIENT_FRAMES;
@@ -209,32 +203,32 @@ void createCookDescription2Items(struct BranchPath *node, struct Recipe recipe, 
 	// The first picked item always vanishes from the list of ingredients when picking the 2nd ingredient
 	// There are some configurations where it is 2 frames faster to pick the ingredients in the reverse order
 	int swap = 0;
-	if (selectSecondItemFirst(node, combo, ingredientLoc, ingredientOffset, viableItems)) {
+	if (selectSecondItemFirst(node, combo, ingredientLoc, viableItems)) {
 		// It's faster to select the 2nd item, so make it the priority and switch the order
-		swapItems(ingredientLoc, ingredientOffset);
+		swapItems(ingredientLoc);
 		swap = 1;
 	}
 	
 	// Calculate the number of frames needed to grab the first item
-	*tempFrames += invFrames[viableItems-1][ingredientLoc[0]-ingredientOffset[0]];
-	
-	// Set each inventory index to null if the item was in the first 10 slots
-	if (ingredientLoc[0] < 10) {
-		tempInventory[ingredientLoc[0]] = -1;
-	}
-	if (ingredientLoc[1] < 10) {
-		tempInventory[ingredientLoc[1]] = -1;
-	}
+	*tempFrames += invFrames[tempInventory.inventoryLength - 1][ingredientLoc[0]];
 	
 	// Determine the frames needed for the 2nd ingredient
 	// First ingredient is always removed from the menu, so there is always 1 less viable item
 	if (ingredientLoc[1] > ingredientLoc[0]) {
 		// In this case, the 2nd ingredient has "moved up" one slot since the 1st ingredient vanishes
-		*tempFrames += invFrames[viableItems-2][ingredientLoc[1]-ingredientOffset[1]-1];
+		*tempFrames += invFrames[tempInventory.inventoryLength - 2][ingredientLoc[1] - 1];
 	}
 	else {
 		// In this case, the 2nd ingredient was found earlier on than the 1st ingredient, so no change to index
-		*tempFrames += invFrames[viableItems-2][ingredientLoc[1]-ingredientOffset[1]];
+		*tempFrames += invFrames[tempInventory.inventoryLength - 2][ingredientLoc[1]];
+	}
+	
+	// Set each inventory index to null if the item was in the first 10 slots
+	if (ingredientLoc[0] < 10) {
+		tempInventory = shiftDownInventory(tempInventory, ingredientLoc[0]);
+	}
+	if (ingredientLoc[1] < 10) {
+		tempInventory = shiftDownInventory(tempInventory, ingredientLoc[1]);
 	}
 	
 	// Describe what items were used
@@ -253,7 +247,7 @@ void createCookDescription2Items(struct BranchPath *node, struct Recipe recipe, 
  * 
  * Given the input parameters, allocate and set attributes for a legalMove node
  -------------------------------------------------------------------*/
-struct BranchPath *createLegalMove(struct BranchPath *node, enum Type_Sort *inventory, struct MoveDescription description, int *outputsFulfilled, int numOutputsFulfilled) {
+struct BranchPath *createLegalMove(struct BranchPath *node, struct Inventory inventory, struct MoveDescription description, int *outputsFulfilled, int numOutputsFulfilled) {
 	struct BranchPath *newLegalMove = malloc(sizeof(struct BranchPath));
 	newLegalMove->moves = node->moves + 1;
 	newLegalMove->inventory = inventory;
@@ -272,22 +266,6 @@ struct BranchPath *createLegalMove(struct BranchPath *node, enum Type_Sort *inve
 	}
 
 	return newLegalMove;
-}
-
-/*-------------------------------------------------------------------
- * Function 	: filterLegalMovesExceedFrameLimit
- * Inputs	: struct BranchPath		*node
- *		  int				frames
- * 
- * Pop any legal moves which exceed frames (the current server best)
- -------------------------------------------------------------------*/
-void filterLegalMovesExceedFrameLimit(struct BranchPath *node, int frames) {
-	for (int i = 0; i < node->numLegalMoves; i++) {
-		if (node->legalMoves[i]->description.totalFramesTaken > frames) {
-			freeLegalMove(node, i);
-			i--; // Update i so we don't skip over the newly moved legalMoves
-		}
-	}
 }
 
 /*-------------------------------------------------------------------
@@ -322,12 +300,10 @@ void filterOut2Ingredients(struct BranchPath *node) {
  * 
  * Given input parameters, construct a new legal move to represent CH5
  -------------------------------------------------------------------*/
-void finalizeChapter5Eval(struct BranchPath *node, enum Type_Sort *inventory, enum Action sort, struct CH5 *ch5Data, int temp_frame_sum, int *outputsFulfilled, int numOutputsFulfilled) {
+void finalizeChapter5Eval(struct BranchPath *node, struct Inventory inventory, enum Action sort, struct CH5 *ch5Data, int temp_frame_sum, int *outputsFulfilled, int numOutputsFulfilled) {
 	// Get the index of where to insert this legal move to
 	int insertIndex = getInsertionIndex(node, temp_frame_sum);
-	
-	// Copy the inventory
-	enum Type_Sort *legalInventory = copyInventory(inventory);
+
 	struct MoveDescription description;
 	description.action = Ch5;
 	description.data = ch5Data;
@@ -336,7 +312,7 @@ void finalizeChapter5Eval(struct BranchPath *node, enum Type_Sort *inventory, en
 	int *copyOfOutputsFulfilled = copyOutputsFulfilled(outputsFulfilled);
 	
 	// Create the legalMove node
-	struct BranchPath *legalMove = createLegalMove(node, legalInventory, description, copyOfOutputsFulfilled, numOutputsFulfilled);
+	struct BranchPath *legalMove = createLegalMove(node, inventory, description, copyOfOutputsFulfilled, numOutputsFulfilled);
 	
 	// Apend the legal move
 	insertIntoLegalMoves(insertIndex, legalMove, node);
@@ -359,7 +335,7 @@ void finalizeChapter5Eval(struct BranchPath *node, enum Type_Sort *inventory, en
  * a valid recipe move. Also checks to see if the legal move exceeds
  * the frame limit
  -------------------------------------------------------------------*/
-void finalizeLegalMove(struct BranchPath *node, int tempFrames, struct MoveDescription useDescription, enum Type_Sort *tempInventory, int *tempOutputsFulfilled, int numOutputsFulfilled, enum HandleOutput tossType, enum Type_Sort toss, int tossIndex) {
+void finalizeLegalMove(struct BranchPath *node, int tempFrames, struct MoveDescription useDescription, struct Inventory tempInventory, int *tempOutputsFulfilled, int numOutputsFulfilled, enum HandleOutput tossType, enum Type_Sort toss, int tossIndex) {
 	// Determine if the legal move exceeds the frame limit. If so, return out
 	if (useDescription.totalFramesTaken > getLocalRecord() + BUFFER_SEARCH_FRAMES) {
 		return;
@@ -368,7 +344,6 @@ void finalizeLegalMove(struct BranchPath *node, int tempFrames, struct MoveDescr
 	// Determine where to insert this legal move into the list of legal moves (sorted by frames taken)
 	int insertIndex = getInsertionIndex(node, tempFrames);
 	
-	enum Type_Sort *legalInventory = copyInventory(tempInventory);
 	struct Cook *cookNew = malloc(sizeof(struct Cook));
 	copyCook(cookNew, (struct Cook *)useDescription.data);
 	cookNew->handleOutput = tossType;
@@ -378,7 +353,7 @@ void finalizeLegalMove(struct BranchPath *node, int tempFrames, struct MoveDescr
 	int *copyOfOutputsFulfilled = copyOutputsFulfilled(tempOutputsFulfilled);
 	
 	// Create the legalMove node
-	struct BranchPath *newLegalMove = createLegalMove(node, legalInventory, useDescription, copyOfOutputsFulfilled, numOutputsFulfilled);
+	struct BranchPath *newLegalMove = createLegalMove(node, tempInventory, useDescription, copyOfOutputsFulfilled, numOutputsFulfilled);
 	
 	// Insert this new move into the current node's legalMove array
 	insertIntoLegalMoves(insertIndex, newLegalMove, node);
@@ -438,10 +413,6 @@ void freeNode(struct BranchPath *node) {
 	if (node->description.data != NULL) {
 		free(node->description.data);
 	}
-	// Root node accesses starting inventory from passed-in parameter... Do not free it
-	if (node->moves > 0) {
-		free(node->inventory);
-	}
 	free(node->outputCreated);
 	if (node->legalMoves != NULL) {
 		while (node->numLegalMoves > 0) {
@@ -466,33 +437,30 @@ void fulfillChapter5(struct BranchPath *curNode) {
 	tempOutputsFulfilled[getIndexOfRecipe(Dried_Bouquet)] = 1;
 	int numOutputsFulfilled = curNode->numOutputsCreated + 1;
 	
-	// Create a temp inventory
-	enum Type_Sort *tempInventory = copyInventory(curNode->inventory);
-	
 	// Determine how many spaces are available in the inventory for frame calculation purposes
-	int viableItems = countItemsInInventory(tempInventory);
+	int viableItems = curNode->inventory.inventoryLength;
 	
+	struct Inventory newInventory = curNode->inventory;
+
 	// If the Mousse Cake is in the first 10 slots, change it to NULL
-	int mousse_cake_index = indexOfItemInInventory(tempInventory, Mousse_Cake);
+	int mousse_cake_index = indexOfItemInInventory(newInventory, Mousse_Cake);
 	if (mousse_cake_index < 10) {
-		tempInventory[mousse_cake_index] = -1;
+		newInventory = shiftDownInventory(newInventory, mousse_cake_index);
 		viableItems--;
 	}
 	
 	// Handle allocation of the first 2 CH5 items (Dried Bouquet and Coconut)
-	int nullsInInventory = countNullsInInventory(tempInventory, 0, 10);
-	switch (nullsInInventory) {
+	switch (newInventory.numNulls) {
 		case 0 :
-			handleDBCOAllocation0Nulls(curNode, tempInventory, tempOutputsFulfilled, numOutputsFulfilled, viableItems);
+			handleDBCOAllocation0Nulls(curNode, newInventory, tempOutputsFulfilled, numOutputsFulfilled, viableItems);
 			break;
 		case 1 :
-			handleDBCOAllocation1Null(curNode, tempInventory, tempOutputsFulfilled, numOutputsFulfilled, viableItems);
+			handleDBCOAllocation1Null(curNode, newInventory, tempOutputsFulfilled, numOutputsFulfilled, viableItems);
 			break;
 		default :
-			handleDBCOAllocation2Nulls(curNode, tempInventory, tempOutputsFulfilled, numOutputsFulfilled, viableItems);
+			handleDBCOAllocation2Nulls(curNode, newInventory, tempOutputsFulfilled, numOutputsFulfilled, viableItems);
 	}
-	
-	free(tempInventory);
+
 	free(tempOutputsFulfilled);
 }
 
@@ -517,7 +485,7 @@ void fulfillRecipes(struct BranchPath *curNode, int recipeIndex) {
 		// This is a recipe that can be fulfilled right now!
 		
 		// Copy the inventory
-		enum Type_Sort *tempInventory = copyInventory(curNode->inventory);
+		struct Inventory newInventory = curNode->inventory;
 		
 		// Mark that this output has been fulfilled for viability determination
 		int *tempOutputsFulfilled = copyOutputsFulfilled(curNode->outputCreated);
@@ -525,20 +493,19 @@ void fulfillRecipes(struct BranchPath *curNode, int recipeIndex) {
 		int numOutputsFulfilled = curNode->numOutputsCreated + 1;
 		
 		// Determine how many viable items are in the list (No NULLS or BLOCKED)
-		int viableItems = countItemsInInventory(tempInventory);
+		int viableItems = newInventory.numNulls;
 
 		int tempFrames;
 		
-		struct MoveDescription useDescription = createCookDescription(curNode, recipe, combo, tempInventory, &tempFrames, viableItems);
+		struct MoveDescription useDescription = createCookDescription(curNode, recipe, combo, newInventory, &tempFrames, viableItems);
 		
 		// Store the base useDescription's cook pointer to be freed later
 		struct Cook *cookBase = (struct Cook *)useDescription.data;
 		
 		// Handle allocation of the output
-		handleRecipeOutput(curNode, tempInventory, tempFrames, useDescription, tempOutputsFulfilled, numOutputsFulfilled, recipe.output, viableItems);
+		handleRecipeOutput(curNode, newInventory, tempFrames, useDescription, tempOutputsFulfilled, numOutputsFulfilled, recipe.output, viableItems);
 		
 		free(cookBase);
-		free(tempInventory);
 		free(tempOutputsFulfilled);
 	}
 }
@@ -624,40 +591,34 @@ int getInsertionIndex(struct BranchPath *curNode, int frames) {
  * Coconut and the Keel Mango. Place the Keel Mango and Courage Shell
  * in various inventory locations. Determine if the move is legal.
  -------------------------------------------------------------------*/
-void handleChapter5EarlySortEndItems(struct BranchPath *node, enum Type_Sort *inventory, int *outputsFulfilled, int numOutputsFulfilled, int sort_frames, enum Action sort, int frames_DB, int frames_CO, int DB_place_index, int CO_place_index) {
+void handleChapter5EarlySortEndItems(struct BranchPath *node, struct Inventory inventory, int *outputsFulfilled, int numOutputsFulfilled, int sort_frames, enum Action sort, int frames_DB, int frames_CO, int DB_place_index, int CO_place_index) {
 	// Place the Keel Mango and Courage Shell
 	for (int KM_place_index = 0; KM_place_index < 10; KM_place_index++) {
 		for (int CS_place_index = KM_place_index + 1; CS_place_index < 10; CS_place_index++) {
 			// Replace the 1st chosen item with the Keel Mango
-			enum Type_Sort *kmcs_temp_inventory = copyInventory(inventory);
-			kmcs_temp_inventory[KM_place_index] = -1;
-			shiftUpToFillNull(kmcs_temp_inventory);
-			kmcs_temp_inventory[0] = Keel_Mango;
+			struct Inventory kmcs_temp_inventory = inventory;
+			replaceItem(kmcs_temp_inventory, KM_place_index, Keel_Mango);
 			
 			// Replace the 2nd chosen item with the Courage Shell
-			kmcs_temp_inventory[CS_place_index] = -1;
-			shiftUpToFillNull(kmcs_temp_inventory);
-			kmcs_temp_inventory[0] = Courage_Shell;
+			replaceItem(kmcs_temp_inventory, CS_place_index, Courage_Shell);
 			
 			// Ensure the Thunder Rage is still in the inventory
 			int TR_use_index = indexOfItemInInventory(kmcs_temp_inventory, Thunder_Rage);
 			if (TR_use_index == -1) {
-				// Thunder Rage is no longer in the inventory.
-				free(kmcs_temp_inventory);
+				// Thunder Rage is no longer in the inventory
 				continue;
 			}
 			
 			// The Thunder Rage is still in the inventory.
 			// The next event is using the Thunder Rage item before resuming the 2nd session of recipe fulfillment
 			if (TR_use_index < 10) {
-				// Using the Thunder Rage will cause a NULL to appear in that slot
-				kmcs_temp_inventory[TR_use_index] = -1;
+				kmcs_temp_inventory = shiftDownInventory(kmcs_temp_inventory, TR_use_index);
 			}
 			
 			// Calculate the frames of these actions
-			int temp_frames_KM = TOSS_FRAMES + invFrames[20-countNullsInInventory(kmcs_temp_inventory, 10, 20)-1][KM_place_index];
-			int temp_frames_CS = TOSS_FRAMES + invFrames[20-countNullsInInventory(kmcs_temp_inventory, 10, 20)-1][CS_place_index];
-			int temp_frames_TR = 		    invFrames[20-countNullsInInventory(kmcs_temp_inventory, 10, 20)-1][TR_use_index];
+			int temp_frames_KM = TOSS_FRAMES + invFrames[kmcs_temp_inventory.inventoryLength - 1][KM_place_index];
+			int temp_frames_CS = TOSS_FRAMES + invFrames[kmcs_temp_inventory.inventoryLength - 1][CS_place_index];
+			int temp_frames_TR = 		       invFrames[kmcs_temp_inventory.inventoryLength - 1][TR_use_index];
 			int temp_frame_sum = frames_DB + frames_CO + temp_frames_KM + temp_frames_CS + temp_frames_TR + sort_frames;
 			
 			// Determine if the remaining inventory is sufficient to fulfill all remaining recipes
@@ -665,8 +626,6 @@ void handleChapter5EarlySortEndItems(struct BranchPath *node, enum Type_Sort *in
 				struct CH5 *ch5Data = createChapter5Struct(DB_place_index, CO_place_index, KM_place_index, CS_place_index, TR_use_index, sort, 0);
 				finalizeChapter5Eval(node, kmcs_temp_inventory, sort, ch5Data, temp_frame_sum, outputsFulfilled, numOutputsFulfilled);
 			}
-			
-			free(kmcs_temp_inventory);
 		}
 	}
 }
@@ -688,7 +647,7 @@ void handleChapter5EarlySortEndItems(struct BranchPath *node, enum Type_Sort *in
  * placing the Keel Mango by tossing various inventory items and
  * evaluate legal moves.
  -------------------------------------------------------------------*/
-void handleChapter5Eval(struct BranchPath *node, enum Type_Sort *inventory, int *outputsFulfilled, int numOutputsFulfilled, int frames_DB, int frames_CO, int DB_place_index, int CO_place_index) {
+void handleChapter5Eval(struct BranchPath *node, struct Inventory inventory, int *outputsFulfilled, int numOutputsFulfilled, int frames_DB, int frames_CO, int DB_place_index, int CO_place_index) {
 	// Evaluate sorting before the Keel Mango
 	handleChapter5Sorts(node, inventory, outputsFulfilled, numOutputsFulfilled, frames_DB, frames_CO, -1, DB_place_index, CO_place_index, -1);
 	
@@ -698,40 +657,33 @@ void handleChapter5Eval(struct BranchPath *node, enum Type_Sort *inventory, int 
 	
 	// Restrict the bounds if there is still a NULL in the inventory
 	// because the Keel Mango can only go in the first slot
-	if (countNullsInInventory(inventory, 0, 10) >= 1) {
+	if (inventory.numNulls >= 1) {
 		KM_upper_bound = 1;
 	}
 	
 	// Place the Keel Mango
 	for (int KM_place_index = 0; KM_place_index < KM_upper_bound; KM_place_index++) {
 		// Making a copy of the temp inventory for what it looks like after the allocation of the KM
-		enum Type_Sort *km_temp_inventory = copyInventory(inventory);
+		struct Inventory km_temp_inventory = inventory;
 		int temp_frames_KM;
 		
 		// Calculate the needed frames
 		if (KM_upper_bound == 10) {
-			temp_frames_KM = TOSS_FRAMES + invFrames[20-countNullsInInventory(inventory, 10, 20)-1][KM_place_index];
-			km_temp_inventory[KM_place_index] = -1;
+			temp_frames_KM = TOSS_FRAMES + invFrames[km_temp_inventory.inventoryLength-1][KM_place_index];
+			km_temp_inventory = replaceItem(km_temp_inventory, KM_place_index, Keel_Mango);
 		}
 		else {
 			temp_frames_KM = 0;
+			km_temp_inventory = addItem(km_temp_inventory, Keel_Mango);
 		}
-		
-		// Update the inventory such that all items above the null are moved down one place
-		shiftUpToFillNull(km_temp_inventory);
-
-		// The vacancy at the start of the inventory is now occupied with the new item
-		km_temp_inventory[0] = Keel_Mango;
 		
 		// Ensure the Coconut is in the remaining inventory
 		if (indexOfItemInInventory(km_temp_inventory, Coconut) == -1) {
-			free(km_temp_inventory);
 			continue;
 		}
 		
 		// Perform all sorts
 		handleChapter5Sorts(node, km_temp_inventory, outputsFulfilled, numOutputsFulfilled, frames_DB, frames_CO, temp_frames_KM, DB_place_index, CO_place_index, KM_place_index);
-		free(km_temp_inventory);
 	}		
 }
 
@@ -754,39 +706,37 @@ void handleChapter5Eval(struct BranchPath *node, enum Type_Sort *inventory, int 
  * Keel Mango. Place the Courage Shell in various inventory locations.
  * Determine if a move is legal.
  -------------------------------------------------------------------*/
-void handleChapter5LateSortEndItems(struct BranchPath *node, enum Type_Sort *inventory, int *outputsFulfilled, int numOutputsFulfilled, int sort_frames, enum Action sort, int frames_DB, int frames_CO, int frames_KM, int DB_place_index, int CO_place_index, int KM_place_index) {
+void handleChapter5LateSortEndItems(struct BranchPath *node, struct Inventory inventory, int *outputsFulfilled, int numOutputsFulfilled, int sort_frames, enum Action sort, int frames_DB, int frames_CO, int frames_KM, int DB_place_index, int CO_place_index, int KM_place_index) {
 	// Place the Courage Shell
 	for (int CS_place_index = 0; CS_place_index < 10; CS_place_index++) {
 		// Replace the chosen item with the Courage Shell
-		enum Type_Sort *cs_temp_inventory = copyInventory(inventory);
+		struct Inventory cs_temp_inventory = inventory;
+
+		int temp_frames_CS = TOSS_FRAMES + invFrames[cs_temp_inventory.inventoryLength - 1][CS_place_index];
 		
-		cs_temp_inventory[CS_place_index] = -1;
-		shiftUpToFillNull(cs_temp_inventory);
-		cs_temp_inventory[0] = Courage_Shell;
+		cs_temp_inventory = replaceItem(cs_temp_inventory, CS_place_index, Courage_Shell);
 		
 		// Ensure that the Thunder Rage is still in the inventory
 		int TR_use_index = indexOfItemInInventory(cs_temp_inventory, Thunder_Rage);
 		if (TR_use_index == -1) {
-			free(cs_temp_inventory);
 			continue;
 		}
 		
 		// The next event is using the Thunder Rage item before resuming the 2nd session of recipe fulfillment
+		int temp_frames_TR = invFrames[cs_temp_inventory.inventoryLength - 1][TR_use_index];
+
+		// Using the Thunder Rage in slots 1-10 will cause a NULL to appear in that slot
 		if (TR_use_index < 10) {
-			// Using the  Thunder Rage will cause a NULL to appear in that slot
-			cs_temp_inventory[TR_use_index] = -1;
+			cs_temp_inventory = removeItem(cs_temp_inventory, TR_use_index);
 		}
+
 		// Calculate the frames of these actions
-		int temp_frames_CS = TOSS_FRAMES + invFrames[20-countNullsInInventory(cs_temp_inventory, 10, 20)-1][CS_place_index];
-		int temp_frames_TR = 		    invFrames[20-countNullsInInventory(cs_temp_inventory, 10, 20)-1][TR_use_index];
 		int temp_frame_sum = frames_DB + frames_CO + frames_KM + temp_frames_CS + temp_frames_TR + sort_frames;
 		
 		if (stateOK(cs_temp_inventory, outputsFulfilled, recipeList)) {
 			struct CH5 *ch5Data = createChapter5Struct(DB_place_index, CO_place_index, KM_place_index, CS_place_index, TR_use_index, sort, 1);
 			finalizeChapter5Eval(node, cs_temp_inventory, sort, ch5Data, temp_frame_sum, outputsFulfilled, numOutputsFulfilled);
 		}
-			
-		free(cs_temp_inventory);
 	}
 }
 
@@ -809,14 +759,13 @@ void handleChapter5LateSortEndItems(struct BranchPath *node, enum Type_Sort *inv
  * Only continue if a sort places the Coconut in slots 11-20.
  * Then, call an EndItems function to finalize the CH5 evaluation.
  -------------------------------------------------------------------*/
-void handleChapter5Sorts(struct BranchPath *node, enum Type_Sort *inventory, int *outputsFulfilled, int numOutputsFulfilled, int frames_DB, int frames_CO, int frames_KM, int DB_place_index, int CO_place_index, int KM_place_index) {
+void handleChapter5Sorts(struct BranchPath *node, struct Inventory inventory, int *outputsFulfilled, int numOutputsFulfilled, int frames_DB, int frames_CO, int frames_KM, int DB_place_index, int CO_place_index, int KM_place_index) {
 	for (enum Action action = Sort_Alpha_Asc; action <= Sort_Type_Des; action++) {
-		enum Type_Sort *sorted_inventory = getSortedInventory(inventory, action);
+		struct Inventory sorted_inventory = getSortedInventory(inventory, action);
 		
 		// Only bother with further evaluation if the sort placed the Coconut in the latter half of the inventory
 		// because the Coconut is needed for duplication
 		if (indexOfItemInInventory(sorted_inventory, Coconut) < 10) {
-			free(sorted_inventory);
 			continue;
 		}
 		
@@ -843,12 +792,10 @@ void handleChapter5Sorts(struct BranchPath *node, enum Type_Sort *inventory, int
 		
 		if (frames_KM == -1) {
 			handleChapter5EarlySortEndItems(node, sorted_inventory, outputsFulfilled, numOutputsFulfilled, sortFrames, action, frames_DB, frames_CO, DB_place_index, CO_place_index);
-			free(sorted_inventory);
 			continue;
 		}
 		
 		handleChapter5LateSortEndItems(node, sorted_inventory, outputsFulfilled, numOutputsFulfilled, sortFrames, action, frames_DB, frames_CO, frames_KM, DB_place_index, CO_place_index, KM_place_index);
-		free(sorted_inventory);
 	}
 }
 
@@ -863,7 +810,7 @@ void handleChapter5Sorts(struct BranchPath *node, enum Type_Sort *inventory, int
  * Preliminary function to allocate Dried Bouquet and Coconut before
  * evaluating the rest of Chapter 5. There are no nulls in the inventory.
  -------------------------------------------------------------------*/
-void handleDBCOAllocation0Nulls(struct BranchPath *curNode, enum Type_Sort *tempInventory, int *tempOutputsFulfilled, int numOutputsFulfilled, int viableItems) {
+void handleDBCOAllocation0Nulls(struct BranchPath *curNode, struct Inventory tempInventory, int *tempOutputsFulfilled, int numOutputsFulfilled, int viableItems) {
 	// No nulls to utilize for Chapter 5 intermission
 	// Both the DB and CO can only replace items in the first 10 slots
 	// The remaining items always slide down to fill the vacancy
@@ -872,27 +819,21 @@ void handleDBCOAllocation0Nulls(struct BranchPath *curNode, enum Type_Sort *temp
 	for (int temp_index_DB = 0; temp_index_DB < 10; temp_index_DB++) {
 		for (int temp_index_CO = temp_index_DB + 1; temp_index_CO < 10; temp_index_CO++) {
 			// Replace the 1st chosen item with the Dried Bouquet
-			enum Type_Sort *dbco_temp_inventory = copyInventory(tempInventory);
-			dbco_temp_inventory[temp_index_DB] = -1;
-			shiftUpToFillNull(dbco_temp_inventory);
-			dbco_temp_inventory[0] = Dried_Bouquet;
+			struct Inventory dbco_temp_inventory = replaceItem(tempInventory, temp_index_DB, Dried_Bouquet);
 			
 			// Replace the 2nd chosen item with the Coconut
-			dbco_temp_inventory[temp_index_CO] = -1;
-			shiftUpToFillNull(dbco_temp_inventory);
-			dbco_temp_inventory[0] = Coconut;
+			dbco_temp_inventory = replaceItem(dbco_temp_inventory, temp_index_CO, Coconut);
 			
 			// Calculate the frames of these actions
 			int temp_frames_DB = TOSS_FRAMES + invFrames[viableItems-1][temp_index_DB];
 			int temp_frames_CO = TOSS_FRAMES + invFrames[viableItems-1][temp_index_CO];
 			
 			// Only evaulate the remainder of the CH5 intermission if the Thunder Rage is still present in the inventory
-			if (indexOfItemInInventory(dbco_temp_inventory, Thunder_Rage) > -1) {
+			int TR_index = indexOfItemInInventory(dbco_temp_inventory, Thunder_Rage);
+			if (TR_index > -1 && TR_index < dbco_temp_inventory.inventoryLength) {
 				// Handle the allocation of the Coconut sort, Keel Mango, and Courage Shell
 				handleChapter5Eval(curNode, dbco_temp_inventory, tempOutputsFulfilled, numOutputsFulfilled, temp_frames_DB, temp_frames_CO, temp_index_DB, temp_index_CO);
 			}
-			
-			free(dbco_temp_inventory);
 		}
 	}
 }
@@ -908,14 +849,10 @@ void handleDBCOAllocation0Nulls(struct BranchPath *curNode, enum Type_Sort *temp
  * Preliminary function to allocate Dried Bouquet and Coconut before
  * evaluating the rest of Chapter 5. There is 1 null in the inventory.
  -------------------------------------------------------------------*/
-void handleDBCOAllocation1Null(struct BranchPath *curNode, enum Type_Sort *tempInventory, int *tempOutputsFulfilled, int numOutputsFulfilled, int viableItems) {
+void handleDBCOAllocation1Null(struct BranchPath *curNode, struct Inventory tempInventory, int *tempOutputsFulfilled, int numOutputsFulfilled, int viableItems) {
 	// The Dried Bouquet gets auto-placed in the 1st slot,
 	// and everything else gets shifted down one to fill the first NULL
-	shiftUpToFillNull(tempInventory);
-	
-	// The vacancy at the start of the inventory is now occupied with the new item
-	tempInventory[0] = Dried_Bouquet;
-	/*int tempSlotDB = 0;*/
+	tempInventory = addItem(tempInventory, Dried_Bouquet);
 	viableItems++;
 	
 	// Auto-placing takes zero frames
@@ -925,24 +862,20 @@ void handleDBCOAllocation1Null(struct BranchPath *curNode, enum Type_Sort *tempI
 	// Dried Bouquet will always be in the first slot
 	for (int temp_index_CO = 1; temp_index_CO < 10; temp_index_CO++) {
 		// Don't waste time replacing the Dried Bouquet or Thunder Rage with the Coconut
-		if (tempInventory[temp_index_CO] == Thunder_Rage) {
+		if (tempInventory.inventory[temp_index_CO] == Thunder_Rage) {
 			continue;
 		}
+
 		// Replace the item with the Coconut
 		// All items above the replaced item float down one slot
 		// and the Coconut is always placed in slot 1
-		enum Type_Sort *co_temp_inventory = copyInventory(tempInventory);
-		co_temp_inventory[temp_index_CO] = -1;
-		shiftUpToFillNull(co_temp_inventory);
-		co_temp_inventory[0] = Coconut;
+		struct Inventory co_temp_inventory = replaceItem(tempInventory, temp_index_CO, Coconut);
 		
 		// Calculate the number of frames needed to pick this slot for replacement
 		int temp_frames_CO = TOSS_FRAMES + invFrames[viableItems-1][temp_index_CO];
 		
 		// Handle the allocation of the Coconut sort, Keel Mango, and Courage Shell
 		handleChapter5Eval(curNode, co_temp_inventory, tempOutputsFulfilled, numOutputsFulfilled, temp_frames_DB, temp_frames_CO, 0, temp_index_CO);
-		
-		free(co_temp_inventory);
 	}
 }
 
@@ -957,21 +890,15 @@ void handleDBCOAllocation1Null(struct BranchPath *curNode, enum Type_Sort *tempI
  * Preliminary function to allocate Dried Bouquet and Coconut before
  * evaluating the rest of Chapter 5. There are >=2 nulls in the inventory.
  -------------------------------------------------------------------*/
-void handleDBCOAllocation2Nulls(struct BranchPath *curNode, enum Type_Sort *tempInventory, int *tempOutputsFulfilled, int numOutputsFulfilled, int viableItems) {
+void handleDBCOAllocation2Nulls(struct BranchPath *curNode, struct Inventory tempInventory, int *tempOutputsFulfilled, int numOutputsFulfilled, int viableItems) {
 	// The Dried Bouquet gets auto-placed in the 1st slot,
 	// and everything else gets shifted down one slot to fill the first NULL
-	shiftUpToFillNull(tempInventory);
-	
-	// The vacancy at the start of the inventory is now occupied with the new item
-	tempInventory[0] = Dried_Bouquet;
+	tempInventory = addItem(tempInventory, Dried_Bouquet);
 	viableItems++;
 	
 	// The Coconut gets auto-placed in the 1st slot
 	// and everything else gets shifted down one slot to fill the first NULL
-	shiftUpToFillNull(tempInventory);
-	
-	// The vacancy at the start of the inventory is now occupied with the new item
-	tempInventory[0] = Coconut;
+	tempInventory = addItem(tempInventory, Coconut);
 	viableItems++;
 	
 	// Auto-placing takes 0 frames
@@ -998,32 +925,10 @@ void handleDBCOAllocation2Nulls(struct BranchPath *curNode, enum Type_Sort *temp
  * the output (either tossing the output, auto-placing it if there is a
  * null slot, or tossing a different item in the inventory)
  -------------------------------------------------------------------*/
-void handleRecipeOutput(struct BranchPath *curNode, enum Type_Sort *tempInventory, int tempFrames, struct MoveDescription useDescription, int *tempOutputsFulfilled, int numOutputsFulfilled, enum Type_Sort output, int viableItems) {
+void handleRecipeOutput(struct BranchPath *curNode, struct Inventory tempInventory, int tempFrames, struct MoveDescription useDescription, int *tempOutputsFulfilled, int numOutputsFulfilled, enum Type_Sort output, int viableItems) {
 	// Options vary by whether there are NULLs within the inventory
-	if (countNullsInInventory(tempInventory, 0, 10) >= 1) {
-		// If there are NULLs in the inventory, all items before the 1st NULL get shifted down 1 position
-		shiftUpToFillNull(tempInventory);
-	
-		// The vacancy at the start of the inventory is now occupied with the new item
-		tempInventory[0] = ((struct Cook *) useDescription.data)->output;
-		
-		// If there is still another null in the inventory, then we need to move it to the 10th slot due to weird Inventory Overload side-effects
-		if (countNullsInInventory(tempInventory, 0, 10) > 0) {
-			// First find the index of the first null
-			int firstNull = -1;
-			for (int i = 0; i < INVENTORY_SIZE; i++) {
-				if (tempInventory[i] == -1) {
-					firstNull = i;
-					break;
-				}
-			}
-
-			for (int i = firstNull; i < 9; i++) {
-				tempInventory[i] = tempInventory[i + 1];
-			}
-
-			tempInventory[9] = -1;
-		}
+	if (tempInventory.numNulls >= 1) {
+		tempInventory = addItem(tempInventory, ((struct Cook*)useDescription.data)->output);
 
 		// Check to see if this state is viable
 		if(stateOK(tempInventory, tempOutputsFulfilled, recipeList) == 1) {
@@ -1097,7 +1002,7 @@ void handleSorts(struct BranchPath *curNode) {
 	if (curNode->totalSorts < 10) {
 		// Perform the 4 different sorts
 		for (enum Action sort = Sort_Alpha_Asc; sort <= Sort_Type_Des; sort++) {
-			enum Type_Sort *sorted_inventory = getSortedInventory(curNode->inventory, sort);
+			struct Inventory sorted_inventory = getSortedInventory(curNode->inventory, sort);
 		
 			// Only add the legal move if the sort actually changes the inventory
 			if (compareInventories(sorted_inventory, curNode->inventory) == 0) {
@@ -1132,9 +1037,6 @@ void handleSorts(struct BranchPath *curNode) {
 				// Insert this new move into the current node's legalMove array
 				insertIntoLegalMoves(curNode->numLegalMoves, newLegalMove, curNode);
 				assert(curNode->legalMoves[curNode->numLegalMoves-1] != NULL);
-			}
-			else {
-				free(sorted_inventory);
 			}
 		}
 	}
@@ -1207,7 +1109,7 @@ void insertIntoLegalMoves(int insertIndex, struct BranchPath *newLegalMove, stru
 struct BranchPath *copyAllNodes(struct BranchPath *newNode, struct BranchPath *oldNode) {
 	do {
 		newNode->moves = oldNode->moves;
-		newNode->inventory = copyInventory(oldNode->inventory);
+		newNode->inventory = oldNode->inventory;
 		newNode->description = oldNode->description;
 		switch (newNode->description.action) {
 			case (Begin) :
@@ -1352,7 +1254,7 @@ struct OptimizeResult optimizeRoadmap(struct BranchPath *root) {
 			// Look at every node
 			while (newNode != NULL) {
 				// Only want moments when there are no NULLs in the inventory
-				if (countNullsInInventory(newNode->inventory, 0, 10) > 0) {
+				if (newNode->inventory.numNulls > 0) {
 					newNode = newNode->next;
 					continue;
 				}
@@ -1379,7 +1281,7 @@ struct OptimizeResult optimizeRoadmap(struct BranchPath *root) {
 				
 				if (combo.numItems == 1) {
 					// Only one ingredient to navigate to
-					temp_frames += invFrames[20 - countNullsInInventory(newNode->inventory, 10, 20)-1][indexItem1];
+					temp_frames += invFrames[newNode->inventory.inventoryLength-1][indexItem1];
 					temp_description->numItems = 1;
 					temp_description->item1 = combo.item1;
 					temp_description->itemIndex1 = indexItem1;
@@ -1394,16 +1296,16 @@ struct OptimizeResult optimizeRoadmap(struct BranchPath *root) {
 					temp_description->numItems = 2;
 					
 					if (indexItem1 > indexItem2) {
-						temp_frames += invFrames[20 - countNullsInInventory(newNode->inventory, 10, 20)-1][indexItem1];
-						temp_frames += invFrames[19 - countNullsInInventory(newNode->inventory, 10, 20)-1][indexItem2];
+						temp_frames += invFrames[newNode->inventory.inventoryLength - 1][indexItem1];
+						temp_frames += invFrames[newNode->inventory.inventoryLength - 2][indexItem2];
 						temp_description->item1 = combo.item1;
 						temp_description->itemIndex1 = indexItem1;
 						temp_description->item2 = combo.item2;
 						temp_description->itemIndex2 = indexItem2;
 					}
 					else {
-						temp_frames += invFrames[20 - countNullsInInventory(newNode->inventory, 10, 20)-1][indexItem2];
-						temp_frames += invFrames[19 - countNullsInInventory(newNode->inventory, 10, 20)-1][indexItem1];
+						temp_frames += invFrames[newNode->inventory.inventoryLength - 1][indexItem2];
+						temp_frames += invFrames[newNode->inventory.inventoryLength - 2][indexItem1];
 						temp_description->item1 = combo.item2;
 						temp_description->itemIndex1 = indexItem2;
 						temp_description->item2 = combo.item1;
@@ -1450,7 +1352,7 @@ struct OptimizeResult optimizeRoadmap(struct BranchPath *root) {
 		insertNode->next = newNode->next;
 		newNode->next = insertNode;
 		insertNode->moves = insertNode->prev->moves + 1;
-		insertNode->inventory = copyInventory(newNode->inventory);
+		insertNode->inventory = newNode->inventory;
 		insertNode->description.action = Cook;
 		insertNode->description.data = (void *) record_description;
 		insertNode->description.framesTaken = record_frames;
@@ -1617,26 +1519,25 @@ void printFileHeader(FILE *fp) {
  * Print to a txt file the header information for the file.
  -------------------------------------------------------------------*/
 void printInventoryData(struct BranchPath *curNode, FILE *fp) {
-	int nulls = countNullsInInventory(curNode->inventory, 0, 10);
+	int nulls = curNode->inventory.numNulls;
 	for (int i = 0; i < 20; i++) {
-		if (curNode->inventory[i] == -1) {
-			if (i<10) {
-				fprintf(fp, "NULL\t");
-			}
-			else {
-				fprintf(fp, "BLOCKED\t");
-			}
+		if (nulls > 0 && i < 10 && i >= 10 - nulls) {
+			fprintf(fp, "NULL\t");
+			continue;
+		}
+		else if (i > curNode->inventory.inventoryLength) {
+			fprintf(fp, "BLOCKED\t");
 			continue;
 		}
 		
-		int inaccessible = i > (19 - nulls);
+		int inaccessible = i >= (20 - nulls);
 		
 		if (inaccessible) {
 			// This item is inaccessible due to nulls in the inventory
 			fprintf(fp, "(");
 		}
 
-		fprintf(fp, "%s", getItemName(curNode->inventory[i]));
+		fprintf(fp, "%s", getItemName(curNode->inventory.inventory[i]));
 		
 		if (inaccessible) {
 			fprintf(fp, ")");
@@ -1781,9 +1682,9 @@ void printSortData(FILE *fp, enum Action curNodeAction) {
  * to select the second item before the first item originally listed in
  * the recipe combo.
  -------------------------------------------------------------------*/
-int selectSecondItemFirst(struct BranchPath *node, struct ItemCombination combo, int *ingredientLoc, int *ingredientOffset, int viableItems) {
-	return (ingredientLoc[0] - ingredientOffset[0] >= 2 && ingredientLoc[0] > ingredientLoc[1] && ingredientLoc[0] - ingredientLoc[0] <= viableItems/2) || (ingredientLoc[0] < ingredientLoc[1] && ingredientLoc[0] - ingredientOffset[0] >= viableItems/2);
-
+int selectSecondItemFirst(struct BranchPath *node, struct ItemCombination combo, int *ingredientLoc, int viableItems) {
+	return (ingredientLoc[0] >= 2 && ingredientLoc[0] > ingredientLoc[1] && ingredientLoc[0] <= viableItems/2) ||
+		   (ingredientLoc[0] < ingredientLoc[1] && ingredientLoc[0] >= viableItems/2);
 }
 
 /*-------------------------------------------------------------------
@@ -1908,18 +1809,13 @@ void shuffleLegalMoves(struct BranchPath *node) {
  * the first for a given recipe (based on the state of our inventory),
  * swap the item slot locations and offsets (for printing purposes).
  -------------------------------------------------------------------*/
-void swapItems(int *ingredientLoc, int *ingredientOffset) {
+void swapItems(int *ingredientLoc) {
 	int locTemp;
-	int offsetTemp;
 	
 	locTemp = ingredientLoc[0];
 	ingredientLoc[0] = ingredientLoc[1];
 	ingredientLoc[1] = locTemp;
-	
-	offsetTemp = ingredientOffset[0];
-	ingredientOffset[0] = ingredientOffset[1];
-	ingredientOffset[1] = offsetTemp;
-	
+
 	return;
 }
 
@@ -1938,22 +1834,15 @@ void swapItems(int *ingredientLoc, int *ingredientOffset) {
  * For the given recipe, try to toss items in the inventory in order
  * to make room for the recipe output.
  -------------------------------------------------------------------*/
-void tryTossInventoryItem(struct BranchPath *curNode, enum Type_Sort *tempInventory, struct MoveDescription useDescription, int *tempOutputsFulfilled, int numOutputsFulfilled, enum Type_Sort output, int tempFrames, int viableItems) {
+void tryTossInventoryItem(struct BranchPath *curNode, struct Inventory tempInventory, struct MoveDescription useDescription, int *tempOutputsFulfilled, int numOutputsFulfilled, enum Type_Sort output, int tempFrames, int viableItems) {
 	for (int tossedIndex = 0; tossedIndex < 10; tossedIndex++) {
 		// Make a copy of the tempInventory with the replaced item
-		enum Type_Sort *replacedInventory = copyInventory(tempInventory);
-		enum Type_Sort tossedItem = tempInventory[tossedIndex];
+		struct Inventory replacedInventory = tempInventory;
+		enum Type_Sort tossedItem = tempInventory.inventory[tossedIndex];
 		
-		// All items before the selected removal item get moved down 1 position
-		replacedInventory[tossedIndex] = -1;
-		shiftUpToFillNull(replacedInventory);
-		
-		// The vacancy at the start of the inventory is now occupied with the new item
-		replacedInventory[0] = output;
-		
+		replacedInventory = replaceItem(replacedInventory, tossedIndex, output);
+
 		if (stateOK(replacedInventory, tempOutputsFulfilled, recipeList) == 0) {
-			free(replacedInventory);
-			replacedInventory = NULL;
 			return;
 		}
 		
@@ -1964,8 +1853,6 @@ void tryTossInventoryItem(struct BranchPath *curNode, enum Type_Sort *tempInvent
 		useDescription.totalFramesTaken += invFrames[viableItems][tossedIndex+1];
 		
 		finalizeLegalMove(curNode, replacedFrames, useDescription, replacedInventory, tempOutputsFulfilled, numOutputsFulfilled, TossOther, tossedItem, tossedIndex);
-		// Inventory is copied within finalizeLegalMove, so free replacedInventory
-		free(replacedInventory);
 	}
 	
 	return;
@@ -2067,36 +1954,24 @@ int type_sort_reverse(const void *elem1, const void *elem2) {
  *
  * Given the type of sort, use qsort to create a new sorted inventory.
  -------------------------------------------------------------------*/
-enum Type_Sort *getSortedInventory(enum Type_Sort *inventory, enum Action sort) {
-	// We first need to copy the inventory to a new array
-	enum Type_Sort *sorted_inventory = copyInventory(inventory);
-	
-	// Move nulls to the end of the inventory
-	while (countNullsInInventory(sorted_inventory, 0, 10) > 0) {
-		shiftDownToFillNull(sorted_inventory);
-	}
-	
-	// Count BLOCKED indices at end of inventory
-	int blocked = countNullsInInventory(sorted_inventory, 10, 20);
-	
-	// Only sort the portion of the inventory which contains valid items
-
+struct Inventory getSortedInventory(struct Inventory inventory, enum Action sort) {
 	// Use qsort and execute sort function depending on sort type
 	switch(sort) {
 		case Sort_Alpha_Asc :
-			qsort(sorted_inventory, 20 - blocked, sizeof(enum Type_Sort), alpha_sort);
-			return sorted_inventory;
+			qsort((void *)&inventory, 20, sizeof(enum Type_Sort), alpha_sort);
+			return inventory;
 		case Sort_Alpha_Des :
-			qsort(sorted_inventory, 20 - blocked, sizeof(enum Type_Sort), alpha_sort_reverse);
-			return sorted_inventory;
+			qsort((void*)&inventory, 20, sizeof(enum Type_Sort), alpha_sort_reverse);
+			return inventory;
 		case Sort_Type_Asc :
-			qsort(sorted_inventory, 20 - blocked, sizeof(enum Type_Sort), type_sort);
-			return sorted_inventory;
+			qsort((void*)&inventory, 20, sizeof(enum Type_Sort), type_sort);
+			return inventory;
 		case Sort_Type_Des :
-			qsort(sorted_inventory, 20 - blocked, sizeof(enum Type_Sort), type_sort_reverse);
-			return sorted_inventory;
+			qsort((void*)&inventory, 20, sizeof(enum Type_Sort), type_sort_reverse);
+			return inventory;
 		default :
-			return NULL;
+			printf("Error in sorting inventory.\n");
+			exit(2);
 	}
 }
 
@@ -2789,7 +2664,7 @@ struct Result calculateOrder(struct Job job) {
 				// The Mousse Cake and Hot Dog cannot be in a slot such that it is "hidden" due to NULLs in the inventory
 				int MC_index = indexOfItemInInventory(curNode->inventory, Mousse_Cake);
 				int HD_index = indexOfItemInInventory(curNode->inventory, Hot_Dog);
-				int inv_nulls = countNullsInInventory(curNode->inventory, 0, 10);
+				int inv_nulls = curNode->inventory.numNulls;
 				if (curNode->outputCreated[getIndexOfRecipe(Dried_Bouquet)] == 0 && MC_index > -1 && MC_index < 20 - inv_nulls && HD_index >= 10 && HD_index < 20 - inv_nulls) {
 					fulfillChapter5(curNode);
 				}
@@ -2843,8 +2718,6 @@ struct Result calculateOrder(struct Job job) {
 				
 			}
 			else {
-				// Protect race condition of the local record
-				
 				if (curNode->numLegalMoves == 0) {
 					// No legal moves are left to evaluate, go back up...
 					// Wipe away the current node

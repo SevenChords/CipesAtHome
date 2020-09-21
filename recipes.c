@@ -539,7 +539,8 @@ struct Recipe *getRecipeList() {
 	recipes[57].combos[61] = 	parseCombo(1,	Thunder_Bolt, -1);
 	recipes[57].combos[62] = 	parseCombo(1,	Thunder_Rage, -1);
 
-	// TODO: Add log call
+	recipeLog(2, "Recipes", "Data", "Allocate", "Allocated and initialized recipe data.");
+
 	return recipes;
 }
 
@@ -610,17 +611,13 @@ int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCr
 	return 1;
 }
 
-void placeInventoryInMakeableItems(int *makeableItems, enum Type_Sort *inventory) {
-	for (int i = 0; i < 20; i++) {
-		if (inventory[i] == -1) {
-			continue;
-		}
-		
-		makeableItems[inventory[i]] = 1;
+void placeInventoryInMakeableItems(int *makeableItems, struct Inventory inventory) {
+	for (int i = 0; i < inventory.inventoryLength; i++) {
+		makeableItems[inventory.inventory[i]] = 1;
 	}
 }
 
-int stateOK(enum Type_Sort *inventory, int *outputsCreated, struct Recipe *recipeList) {
+int stateOK(struct Inventory inventory, int *outputsCreated, struct Recipe *recipeList) {
 	// With the given inventory, can the remaining recipes be fulfilled?
 		
 	// If Chapter 5 has not been done, verify that Thunder Rage is in the inventory

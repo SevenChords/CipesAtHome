@@ -27,7 +27,7 @@ void setLocalRecord(int frames) {
 
 int main() {
 	int cycle_count = 1;
-	enum Type_Sort *startingInventory = getStartingInventory();
+	struct Inventory startingInventory = getStartingInventory();
 	int workerCount;
 	current_frame_record = 9999;
 	config_t *config = getConfig();

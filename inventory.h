@@ -223,6 +223,12 @@ enum Type_Sort {
 	Mistake
 };
 
+struct Inventory {
+	int numNulls;
+	int inventoryLength;
+	enum Type_Sort inventory[20];
+};
+
 struct ItemCombination {
 	int numItems; // If set to 1, ignore item2
 	enum Type_Sort item1;
@@ -235,11 +241,13 @@ struct Recipe {
 	struct ItemCombination *combos; // Where there are countCombos different ways to cook output
 };
 
+struct Inventory shiftDownInventory(struct Inventory tempInventory, int index);
+
 // Determine if the recipe items can still be fulfilled
 int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCreated, int *dependentIndices, struct Recipe *recipeList);
 
 // Determine if the remaining outputs can be fulfilled with the current given inventory
-int stateOK(enum Type_Sort *inventory, int *outputsCreated, struct Recipe *recipeList);
+int stateOK(struct Inventory inventory, int *outputsCreated, struct Recipe *recipeList);
 
 // Returns the index in the recipeList for the given recipe output "item". -1 if not a recipe output
 int getIndexOfRecipe(enum Type_Sort item);
@@ -247,32 +255,17 @@ int getIndexOfRecipe(enum Type_Sort item);
 struct ItemCombination parseCombo(int itemCount, enum Type_Sort item1, enum Type_Sort item2);
 struct Recipe *getRecipeList();
 
-void placeInventoryInMakeableItems(int *makeableItems, enum Type_Sort *inventory);
+void placeInventoryInMakeableItems(int *makeableItems, struct Inventory inventory);
 
-int itemComboInInventory(struct ItemCombination combo, enum Type_Sort *inventory);
+int itemComboInInventory(struct ItemCombination combo, struct Inventory inventory);
 
 // Returns 1 if the inventories are the same. Return 0 if they are different
-int compareInventories(enum Type_Sort *inv1, enum Type_Sort *inv2);
+int compareInventories(struct Inventory inv1, struct Inventory inv2);
 
 int itemInDependentIndices(int index, int *dependentIndices, int numDependentIndices);
 
-// Count the number of nulls in the inventory that occur before maxIndex
-int countNullsInInventory(enum Type_Sort *inventory, int minIndex, int maxIndex);
-
 // Returns the index of an item in the inventory. -1 if not found
-int indexOfItemInInventory(enum Type_Sort *inventory, enum Type_Sort item);
-
-// Count the number of non-NULL and non-BLOCKED items
-int countItemsInInventory(enum Type_Sort *inventory);
-
-// Moves all items one position towards the back of the array to fill up the first null item
-void shiftUpToFillNull(enum Type_Sort *inventory);
-
-// Move all items one position towards the front of the inventory to fill up the first null item
-void shiftDownToFillNull(enum Type_Sort *inventory);
-
-// Copy inventory to a new pointer
-enum Type_Sort *copyInventory(enum Type_Sort *oldInventory);
+int indexOfItemInInventory(struct Inventory inventory, enum Type_Sort item);
 
 enum Alpha_Sort getAlphaKey(enum Type_Sort item);
 
@@ -286,6 +279,12 @@ int **getInventoryFrames();
 /*struct Type_Sort getTypeKey (Alpha_Sort a_key);*/
 
 // Return array of Item structs for the start of cooking recipes
-enum Type_Sort *getStartingInventory();
+struct Inventory getStartingInventory();
+
+struct Inventory replaceItem(struct Inventory inventory, int index, enum Type_Sort item);
+
+struct Inventory addItem(struct Inventory inventory, enum Type_Sort item);
+
+struct Inventory removeItem(struct Inventory inventory, int index);
 
 #endif

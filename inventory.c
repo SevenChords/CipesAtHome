@@ -253,16 +253,16 @@ enum Alpha_Sort getAlphaKey(enum Type_Sort item) {
 
 /*-------------------------------------------------------------------
  * Function 	: compareInventories
- * Inputs	: struct Type_Sort *inv1
- * 		  struct Type_Sort *inv2
+ * Inputs	: struct Inventory *inv1
+ * 		  struct Inventory *inv2
  * Outputs	: 0 - inventories are different
  *		  1 - inventories are identical
  *
  * Compare two inventories for any differences. This is used to determine
  * if sorts changed the inventory at all.
  -------------------------------------------------------------------*/
-int compareInventories(enum Type_Sort *inv1, enum Type_Sort *inv2) {
-	return memcmp((void*)inv1, (void*)inv2, sizeof(enum Type_Sort) * INVENTORY_SIZE) == 0;
+int compareInventories(struct Inventory inv1, struct Inventory inv2) {
+	return memcmp((void*)&inv1, (void*)&inv2, sizeof(struct Inventory)) == 0;
 }
 
 /*-------------------------------------------------------------------
@@ -276,16 +276,15 @@ int compareInventories(enum Type_Sort *inv1, enum Type_Sort *inv2) {
  * Correctly handles the case where items at the end of our inventory
  * may not be viewable depending on how many NULLs there are in inventory.
  -------------------------------------------------------------------*/
-int itemComboInInventory(struct ItemCombination combo, enum Type_Sort *inventory) {
+int itemComboInInventory(struct ItemCombination combo, struct Inventory inventory) {
 	int indexItem1 = indexOfItemInInventory(inventory, combo.item1);
 	int indexItem2 = indexOfItemInInventory(inventory, combo.item2);
-	int nulls = countNullsInInventory(inventory, 0, 10);
 	
 	if (combo.numItems == 1) {
-		return indexItem1 > -1 && indexItem1 < 20 - nulls;
+		return indexItem1 > -1;
 	}
 	else {
-		return	indexItem1 > -1 && indexItem1 < 20 - nulls && indexItem2 > -1 && indexItem2 < 20 - nulls;
+		return	indexItem1 > -1 && indexItem2 > -1;
 	}
 }
 
@@ -309,72 +308,20 @@ int itemInDependentIndices(int index, int *dependentIndices, int numDependentInd
 }
 
 /*-------------------------------------------------------------------
- * Function 	: countNullsInInventory
- * Inputs	: struct Type_Sort *inventory
- *		  int		    minIndex
- *		  int		    maxIndex
- * Outputs	: The number of nulls in the inventory
- *
- * Traverse through the inventory and count the number of blank entries
- * in the inventory.
- -------------------------------------------------------------------*/
-int countNullsInInventory(enum Type_Sort *inventory, int minIndex, int maxIndex) {
-	int count = 0;
-	for (int i = minIndex; i < maxIndex; i++) {
-		if (inventory[i] == -1)
-			count++;
-	}
-	return count;
-}
-
-/*-------------------------------------------------------------------
  * Function 	: indexOfItemInInventory
- * Inputs	: struct Type_Sort *inventory
+ * Inputs	: struct Inventory *inventory
  *		  struct Type_Sort item
  * Outputs	: index of item in inventory
  *
  * Traverse through the inventory and find the location of the provided
  * item. If not found, return -1.
  -------------------------------------------------------------------*/
-int indexOfItemInInventory(enum Type_Sort *inventory, enum Type_Sort item) {
-	for (int i = 0; i < INVENTORY_SIZE; i++) {
-		if (inventory[i] == item)
-			return i;
+int indexOfItemInInventory(struct Inventory inventory, enum Type_Sort item) {
+	for (int i = 0; i < inventory.inventoryLength; i++) {
+		if (inventory.inventory[i] == item)
+			return i + inventory.numNulls;
 	}
 	return -1;
-}
-
-/*-------------------------------------------------------------------
- * Function 	: countItemsInInventory
- * Inputs	: enum Type_Sort 	*inventory
- * Outputs	: number of item in inventory
- *
- * Traverse through the inventory and count the number of valid items
- * in the inventory. This excludes blank (NULL) entries.
- -------------------------------------------------------------------*/
-int countItemsInInventory(enum Type_Sort *inventory) {
-	int count = 0;
-	for (int i = 0; i < INVENTORY_SIZE; i++) {
-		if (inventory[i] != -1) {
-			count++;
-		}
-	}
-	
-	return count;
-}
-			
-/*-------------------------------------------------------------------
- * Function 	: copyInventory
- * Inputs	: enum Type_Sort *oldInventory
- * Outputs	: enum Type_Sort *newInventory
- *
- * Perform a simple memcpy to duplicate an old inventory to a newly
- * allocated inventory.
- -------------------------------------------------------------------*/
-enum Type_Sort *copyInventory(enum Type_Sort* oldInventory) {
-	enum Type_Sort *newInventory = malloc(sizeof(enum Type_Sort) * INVENTORY_SIZE);
-	memcpy((void *)newInventory, (void *)oldInventory, sizeof(enum Type_Sort) * INVENTORY_SIZE);
-	return newInventory;
 }
 
 /*-------------------------------------------------------------------
@@ -387,57 +334,6 @@ enum Type_Sort *copyInventory(enum Type_Sort* oldInventory) {
  -------------------------------------------------------------------*/
 char *getItemName(enum Type_Sort t_key) {
 	return t_key < 0 ? "NULL ITEM" : itemNames[t_key];
-}
-
-/*-------------------------------------------------------------------
- * Function 	: shiftDownToFillNull
- * Inputs	: enum Type_Sort	*inventory
- *
- * There is a null in the inventory. Shift items after the null towards
- * the beginning of the array to fill in the null. Then place the null
- * at the end of the array.
- -------------------------------------------------------------------*/
-void shiftDownToFillNull(enum Type_Sort *inventory) {
-	// First find the index of the first null
-	int firstNull = -1;
-	for (int i = 0; i < INVENTORY_SIZE; i++) {
-		if (inventory[i] == -1) {
-			firstNull = i;
-			break;
-		}
-	}
-
-	// Now shift all items up in the inventory to place a null at the end of the inventory
-	memmove(&inventory[firstNull], &inventory[firstNull + 1], (INVENTORY_SIZE - 1 - firstNull) * sizeof(enum Type_Sort));
-
-	// Set the last inventory slot to null
-	inventory[INVENTORY_SIZE - 1] = -1;
-	
-	return;
-}
-
-/*-------------------------------------------------------------------
- * Function 	: shiftUpToFillNull
- * Inputs	: enum Type_Sort *inventory
- *
- * There is a null in the inventory. Shift items before the null towards
- * the end of the array to fill in the null. A new item will be placed
- * at the start of the inventory after return.
- -------------------------------------------------------------------*/
-void shiftUpToFillNull(enum Type_Sort *inventory) {
-	// First find the index of the first null
-	int firstNull = -1;
-	for (int i = 0; i < INVENTORY_SIZE; i++) {
-		if (inventory[i] == -1) {
-			firstNull = i;
-			break;
-		}
-	}
-	
-	// Now shift all items further down in the inventory to make room for a new item
-	memmove(&inventory[1], inventory, firstNull * sizeof(enum Type_Sort));
-	
-	return;
 }
 
 /*-------------------------------------------------------------------
@@ -476,29 +372,76 @@ int **getInventoryFrames() {
  *
  * Returns a pointer to an array which contains all items we start with
  -------------------------------------------------------------------*/
-enum Type_Sort *getStartingInventory() {
-	static enum Type_Sort inventory[] = {
-		Golden_Leaf,
-		Peachy_Peach,
-		Shooting_Star,
-		Ultra_Shroom,
-		Cake_Mix,
-		Thunder_Rage,
-		Turtley_Leaf,
-		Life_Shroom,
-		Ice_Storm,
-		Slow_Shroom,
-		Mystery,
-		Honey_Syrup,
-		Volt_Shroom,
-		Fire_Flower,
-		Mystic_Egg,
-		Hot_Dog,
-		Ruin_Powder,
-		Maple_Syrup,
-		Hot_Sauce,
-		Jammin_Jelly
-	};
+struct Inventory getStartingInventory() {
+	static struct Inventory inventory;
+	inventory.numNulls = 0;
+	inventory.inventoryLength = 20;
+	inventory.inventory[0] = Golden_Leaf;
+	inventory.inventory[1] = Peachy_Peach;
+	inventory.inventory[2] = Shooting_Star;
+	inventory.inventory[3] = Ultra_Shroom;
+	inventory.inventory[4] = Cake_Mix;
+	inventory.inventory[5] = Thunder_Rage;
+	inventory.inventory[6] = Turtley_Leaf;
+	inventory.inventory[7] = Life_Shroom;
+	inventory.inventory[8] = Ice_Storm;
+	inventory.inventory[9] = Slow_Shroom;
+	inventory.inventory[10] = Mystery;
+	inventory.inventory[11] = Honey_Syrup;
+	inventory.inventory[12] = Volt_Shroom;
+	inventory.inventory[13] = Fire_Flower;
+	inventory.inventory[14] = Mystic_Egg;
+	inventory.inventory[15] = Hot_Dog;
+	inventory.inventory[16] = Ruin_Powder;
+	inventory.inventory[17] = Maple_Syrup;
+	inventory.inventory[18] = Hot_Sauce;
+	inventory.inventory[19] = Jammin_Jelly;
 	
 	return inventory;
+}
+
+struct Inventory shiftDownInventory(struct Inventory tempInventory, int index) {
+	tempInventory.numNulls++;
+	
+	for (int i = index; i < tempInventory.inventoryLength - 1; i++) {
+		tempInventory.inventory[i] = tempInventory.inventory[i + 1];
+	}
+
+	tempInventory.inventoryLength--;
+
+	return tempInventory;
+}
+
+struct Inventory replaceItem(struct Inventory inventory, int index, enum Type_Sort item) {
+	// Shift items before this index to fill the index
+	for (int i = 0; i < index; i++) {
+		inventory.inventory[i + 1] = inventory.inventory[i];
+	}
+
+	// Vacancy at the beginning of the array is taken up by item
+	inventory.inventory[0] = item;
+	
+	return inventory;
+}
+
+struct Inventory addItem(struct Inventory inventory, enum Type_Sort item) {
+	inventory.numNulls--;
+
+	for (int i = 0; i < inventory.inventoryLength; i++) {
+		inventory.inventory[i + 1] = inventory.inventory[i];
+	}
+
+	inventory.inventoryLength++;
+
+	inventory.inventory[0] = item;
+}
+
+struct Inventory removeItem(struct Inventory inventory, int index) {
+	for (int i = index; i < inventory.inventoryLength - 1; i++) {
+		inventory.inventory[i] = inventory.inventory[i + 1];
+	}
+	inventory.inventory[inventory.inventoryLength] = -1;
+
+	inventory.numNulls++;
+	inventory.inventoryLength--;
 }
