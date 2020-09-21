@@ -19,6 +19,7 @@
 #define REVERSE_TYPE_SORT_FRAMES 41		// Penalty to perform type descending sort
 #define JUMP_STORAGE_NO_TOSS_FRAMES 5		// Penalty for not tossing the last item (because we need to get Jump Storage)
 #define BUFFER_SEARCH_FRAMES 150		// Threshold to try optimizing a roadmap to attempt to beat the current record
+#define INVENTORY_SIZE 20
 
 int **invFrames;
 struct Recipe *recipeList;
@@ -525,7 +526,7 @@ void fulfillRecipes(struct BranchPath *curNode, int recipeIndex) {
 		
 		// Determine how many viable items are in the list (No NULLS or BLOCKED)
 		int viableItems = countItemsInInventory(tempInventory);
-		
+
 		int tempFrames;
 		
 		struct MoveDescription useDescription = createCookDescription(curNode, recipe, combo, tempInventory, &tempFrames, viableItems);
@@ -1005,7 +1006,25 @@ void handleRecipeOutput(struct BranchPath *curNode, enum Type_Sort *tempInventor
 	
 		// The vacancy at the start of the inventory is now occupied with the new item
 		tempInventory[0] = ((struct Cook *) useDescription.data)->output;
-	
+		
+		// If there is still another null in the inventory, then we need to move it to the 10th slot due to weird Inventory Overload side-effects
+		if (countNullsInInventory(tempInventory, 0, 10) > 0) {
+			// First find the index of the first null
+			int firstNull = -1;
+			for (int i = 0; i < INVENTORY_SIZE; i++) {
+				if (tempInventory[i] == -1) {
+					firstNull = i;
+					break;
+				}
+			}
+
+			for (int i = firstNull; i < 9; i++) {
+				tempInventory[i] = tempInventory[i + 1];
+			}
+
+			tempInventory[9] = -1;
+		}
+
 		// Check to see if this state is viable
 		if(stateOK(tempInventory, tempOutputsFulfilled, recipeList) == 1) {
 			finalizeLegalMove(curNode, tempFrames, useDescription, tempInventory, tempOutputsFulfilled, numOutputsFulfilled, Autoplace, -1, -1);
@@ -1074,10 +1093,8 @@ void handleSelectAndRandom(struct BranchPath *curNode, int select, int randomise
  * and if so, generate a legal move to represent the sort.
  -------------------------------------------------------------------*/
 void handleSorts(struct BranchPath *curNode) {
-	// Count the number of sorts for capping purposes
 	// Limit the number of sorts allowed in a roadmap
-	// NOTE: Reduced from 10 to 6 based off of the current set of fastest roadmaps
-	if (curNode->totalSorts < 6) {
+	if (curNode->totalSorts < 10) {
 		// Perform the 4 different sorts
 		for (enum Action sort = Sort_Alpha_Asc; sort <= Sort_Type_Des; sort++) {
 			enum Type_Sort *sorted_inventory = getSortedInventory(curNode->inventory, sort);
@@ -1496,16 +1513,16 @@ void popAllButFirstLegalMove(struct BranchPath *node) {
  -------------------------------------------------------------------*/
 void printCh5Data(struct BranchPath *curNode, struct MoveDescription desc, FILE *fp) {
 	struct CH5 *ch5Data = desc.data;
-	fprintf(fp, "Ch.5 Break: Replace #%d for DB, Replace #%d for CO, ", ch5Data->indexDriedBouquet, ch5Data->indexCoconut);
+	fprintf(fp, "Ch.5 Break: Replace #%d for DB, Replace #%d for CO, ", ch5Data->indexDriedBouquet+1, ch5Data->indexCoconut+1);
 	if (ch5Data->lateSort == 0) {
 		printCh5Sort(ch5Data, fp);
-		fprintf(fp, "Replace #%d for KM, Replace #%d for CS, Use TR in #%d\t", ch5Data->indexKeelMango, ch5Data->indexCourageShell, ch5Data->indexThunderRage);
+		fprintf(fp, "Replace #%d for KM, Replace #%d for CS, Use TR in #%d\t", ch5Data->indexKeelMango+1, ch5Data->indexCourageShell+1, ch5Data->indexThunderRage+1);
 		return;
 	}
 	
-	fprintf(fp, "Replace #%d for KM, ", ch5Data->indexKeelMango);
+	fprintf(fp, "Replace #%d for KM, ", ch5Data->indexKeelMango+1);
 	printCh5Sort(ch5Data, fp);
-	fprintf(fp, "Replace #%d for CS, Use TR in #%d\t", ch5Data->indexCourageShell, ch5Data->indexThunderRage);
+	fprintf(fp, "Replace #%d for CS, Use TR in #%d\t", ch5Data->indexCourageShell+1, ch5Data->indexThunderRage+1);
 }
 
 /*-------------------------------------------------------------------
@@ -1600,6 +1617,7 @@ void printFileHeader(FILE *fp) {
  * Print to a txt file the header information for the file.
  -------------------------------------------------------------------*/
 void printInventoryData(struct BranchPath *curNode, FILE *fp) {
+	int nulls = countNullsInInventory(curNode->inventory, 0, 10);
 	for (int i = 0; i < 20; i++) {
 		if (curNode->inventory[i] == -1) {
 			if (i<10) {
@@ -1610,8 +1628,21 @@ void printInventoryData(struct BranchPath *curNode, FILE *fp) {
 			}
 			continue;
 		}
-			
-		fprintf(fp, "%s\t", getItemName(curNode->inventory[i]));
+		
+		int inaccessible = i > (19 - nulls);
+		
+		if (inaccessible) {
+			// This item is inaccessible due to nulls in the inventory
+			fprintf(fp, "(");
+		}
+
+		fprintf(fp, "%s", getItemName(curNode->inventory[i]));
+		
+		if (inaccessible) {
+			fprintf(fp, ")");
+		}
+
+		fprintf(fp, "\t");
 	}
 }
 
@@ -2615,7 +2646,11 @@ struct Result calculateOrder(struct Job job) {
 	#	or replacing any inventory in the first 10 slots item with the output item
 	#	Attempting to replace an inventory item in slots 11-20 will leave the inventory unchanged
 	#		(In this instance, it's always faster to just toss the output item outright)
+	# If there is a NULL in the inventory, the inventory size is effectively reduced, and we will only be able to see the first 19 items
+	#	Subsequent nulls will cause us to be able to see fewer items at the end of our inventory
 	# If there's a sort, all NULL slots are wiped away and are no longer available, becoming "BLOCKED" at the end of the inventory
+	#	The inventory size will effectively remain the same, but as the NULLs are technically moved to the end of the inventory, we
+	#		will now be able to see the previously "hidden" items
 	# "BLOCKED" spaces are assumed to be permanently unavailable for the remainder of recipe fulfillment
 	# When navigating the inventory, it is assumed all "NULL" and "BLOCKED" spaces are hidden from the player
 	#	For example, if 2 spaces are NULL, the player will only see the other 18 items to navigate through in the inventory
@@ -2751,8 +2786,11 @@ struct Result calculateOrder(struct Job job) {
 				
 				// The first item is trading the Mousse Cake and 2 Hot Dogs for a Dried Bouquet
 				// Inventory must contain both items, and Hot Dog must be in a slot such that it can be duplicated
-				if (curNode->outputCreated[getIndexOfRecipe(Dried_Bouquet)] == 0 && indexOfItemInInventory(curNode->inventory, Mousse_Cake) > -1 &&
-				    indexOfItemInInventory(curNode->inventory, Hot_Dog) >= 10) {
+				// The Mousse Cake and Hot Dog cannot be in a slot such that it is "hidden" due to NULLs in the inventory
+				int MC_index = indexOfItemInInventory(curNode->inventory, Mousse_Cake);
+				int HD_index = indexOfItemInInventory(curNode->inventory, Hot_Dog);
+				int inv_nulls = countNullsInInventory(curNode->inventory, 0, 10);
+				if (curNode->outputCreated[getIndexOfRecipe(Dried_Bouquet)] == 0 && MC_index > -1 && MC_index < 20 - inv_nulls && HD_index >= 10 && HD_index < 20 - inv_nulls) {
 					fulfillChapter5(curNode);
 				}
 				
@@ -2860,9 +2898,9 @@ struct Result calculateOrder(struct Job job) {
 		
 		
 		// For profiling
-		if (total_dives == 100) {
+		/*if (total_dives == 100) {
 			exit(1);
-		}
+		}*/
 		
 	}
 }

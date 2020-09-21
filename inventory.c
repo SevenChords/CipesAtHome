@@ -273,14 +273,20 @@ int compareInventories(enum Type_Sort *inv1, enum Type_Sort *inv2) {
  *
  * Determine whether the items in a recipe combination exist in the
  * inventory. In the case of a 1 item recipe, only check for the one item.
+ * Correctly handles the case where items at the end of our inventory
+ * may not be viewable depending on how many NULLs there are in inventory.
  -------------------------------------------------------------------*/
 int itemComboInInventory(struct ItemCombination combo, enum Type_Sort *inventory) {
-	if (combo.numItems == 1) {
-		return indexOfItemInInventory(inventory, combo.item1) > -1;
-	}
+	int indexItem1 = indexOfItemInInventory(inventory, combo.item1);
+	int indexItem2 = indexOfItemInInventory(inventory, combo.item2);
+	int nulls = countNullsInInventory(inventory, 0, 10);
 	
-	return	indexOfItemInInventory(inventory, combo.item1) > -1 &&
-		indexOfItemInInventory(inventory, combo.item2) > -1;
+	if (combo.numItems == 1) {
+		return indexItem1 > -1 && indexItem1 < 20 - nulls;
+	}
+	else {
+		return	indexItem1 > -1 && indexItem1 < 20 - nulls && indexItem2 > -1 && indexItem2 < 20 - nulls;
+	}
 }
 
 /*-------------------------------------------------------------------

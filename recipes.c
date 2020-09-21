@@ -600,7 +600,7 @@ int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCr
 			}
 		}
 		
-		dependentIndices[recipeIndex] = 0;;
+		dependentIndices[recipeIndex] = 0;
 		if (!canBeProduced) {
 			// The item cannot be produced with the current inventory
 			return 0;
