@@ -1954,7 +1954,7 @@ void tryTossInventoryItem(struct BranchPath *curNode, enum Type_Sort *tempInvent
 		if (stateOK(replacedInventory, tempOutputsFulfilled, recipeList) == 0) {
 			free(replacedInventory);
 			replacedInventory = NULL;
-			return;
+			continue;
 		}
 		
 		// Calculate the additional tossed frames.
