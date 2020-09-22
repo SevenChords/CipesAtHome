@@ -164,14 +164,11 @@ int testRecord(int localRecord) {
 		return -1;
 	}
 
-	const char *username;
-	config_t *config = getConfig();
-	config_lookup_string(config, "Username", &username);
+	const char* username = getConfigStr("Username");
 	char nickname[20];
 	strncpy(nickname, username, 19);
 	nickname[19] = '\0';
 	handle_post("https://hundorecipes.azurewebsites.net/api/uploadAndVerify", fp, localRecord, nickname);
-	free(config);
 	
 	char temp[59];
 	sprintf(temp, "New fastest roadmap of %d uploaded to the server!", localRecord);

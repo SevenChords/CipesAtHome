@@ -117,7 +117,7 @@ void handleSorts(struct BranchPath *curNode);
 // Compartmentalized handling of Chapter 5 prior to handleChapter5Eval
 void fulfillChapter5(struct BranchPath *curNode);
 
-void fulfillRecipes(struct BranchPath *curNode, int recipeIndex);
+void fulfillRecipes(struct BranchPath *curNode);
 
 void tryTossInventoryItem(struct BranchPath *curNode, enum Type_Sort *tempInventory, struct MoveDescription useDescription, int *tempOutputsFulfilled, int numOutputsFulfilled, enum Type_Sort output, int tempFrames, int viableItems);
 
@@ -196,5 +196,12 @@ int type_sort_reverse(const void *elem1, const void *elem2);
 // Written in calculator.c instead of inventory.c because it is dependent on enum Action
 enum Type_Sort *getSortedInventory(enum Type_Sort *inventory, enum Action sort);
 
-int main();
+int getSortFrames(enum Action action);
+
+struct BranchPath* initializeRoot();
+
+void periodicGithubCheck();
+
+// Main routine
+struct Result calculateOrder(int ID);
 #endif

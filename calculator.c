@@ -504,42 +504,60 @@ void fulfillChapter5(struct BranchPath *curNode) {
  * Iterate through all possible combinations of cooking different
  * recipes and create legal moves for them
  -------------------------------------------------------------------*/
-void fulfillRecipes(struct BranchPath *curNode, int recipeIndex) {
-	// Only want ingredient combos that can be fulfilled right now!
-	struct Recipe recipe = recipeList[recipeIndex];
-	struct ItemCombination *combos = recipe.combos;
-	for (int comboIndex = 0; comboIndex < recipe.countCombos; comboIndex++) {
-		struct ItemCombination combo = combos[comboIndex];
-		if (!itemComboInInventory(combo, curNode->inventory)) {
+void fulfillRecipes(struct BranchPath *curNode) {
+	// Only evaluate the 57th recipe (Mistake) when it's the last recipe to fulfill
+	// This is because it is relatively easy to craft this output with many of the previous outputs, and will take minimal frames
+	int upperOutputLimit = (curNode->numOutputsCreated == NUM_RECIPES - 1) ? NUM_RECIPES : (NUM_RECIPES - 1);
+	
+	// Iterate through all recipe ingredient combos
+	for (int recipeIndex = 0; recipeIndex < upperOutputLimit; recipeIndex++) {
+		// Only want recipes that haven't been fulfilled
+		if (curNode->outputCreated[recipeIndex] == 1) {
 			continue;
 		}
-			
-		// This is a recipe that can be fulfilled right now!
-		
-		// Copy the inventory
-		enum Type_Sort *tempInventory = copyInventory(curNode->inventory);
-		
-		// Mark that this output has been fulfilled for viability determination
-		int *tempOutputsFulfilled = copyOutputsFulfilled(curNode->outputCreated);
-		tempOutputsFulfilled[recipeIndex] = 1;
-		int numOutputsFulfilled = curNode->numOutputsCreated + 1;
-		
-		// Determine how many viable items are in the list (No NULLS or BLOCKED)
-		int viableItems = countItemsInInventory(tempInventory);
 
-		int tempFrames;
-		
-		struct MoveDescription useDescription = createCookDescription(curNode, recipe, combo, tempInventory, &tempFrames, viableItems);
-		
-		// Store the base useDescription's cook pointer to be freed later
-		struct Cook *cookBase = (struct Cook *)useDescription.data;
-		
-		// Handle allocation of the output
-		handleRecipeOutput(curNode, tempInventory, tempFrames, useDescription, tempOutputsFulfilled, numOutputsFulfilled, recipe.output, viableItems);
-		
-		free(cookBase);
-		free(tempInventory);
-		free(tempOutputsFulfilled);
+		// Dried Bouquet (Recipe index 56) represents the Chapter 5 intermission
+		// Don't actually use the specified recipe, as it is handled later
+		if (recipeIndex == getIndexOfRecipe(Dried_Bouquet)) {
+			continue;
+		}
+	
+		// Only want ingredient combos that can be fulfilled right now!
+		struct Recipe recipe = recipeList[recipeIndex];
+		struct ItemCombination *combos = recipe.combos;
+		for (int comboIndex = 0; comboIndex < recipe.countCombos; comboIndex++) {
+			struct ItemCombination combo = combos[comboIndex];
+			if (!itemComboInInventory(combo, curNode->inventory)) {
+				continue;
+			}
+
+			// This is a recipe that can be fulfilled right now!
+
+			// Copy the inventory
+			enum Type_Sort* tempInventory = copyInventory(curNode->inventory);
+
+			// Mark that this output has been fulfilled for viability determination
+			int* tempOutputsFulfilled = copyOutputsFulfilled(curNode->outputCreated);
+			tempOutputsFulfilled[recipeIndex] = 1;
+			int numOutputsFulfilled = curNode->numOutputsCreated + 1;
+
+			// Determine how many viable items are in the list (No NULLS or BLOCKED)
+			int viableItems = countItemsInInventory(tempInventory);
+
+			int tempFrames;
+
+			struct MoveDescription useDescription = createCookDescription(curNode, recipe, combo, tempInventory, &tempFrames, viableItems);
+
+			// Store the base useDescription's cook pointer to be freed later
+			struct Cook* cookBase = (struct Cook*)useDescription.data;
+
+			// Handle allocation of the output
+			handleRecipeOutput(curNode, tempInventory, tempFrames, useDescription, tempOutputsFulfilled, numOutputsFulfilled, recipe.output, viableItems);
+
+			free(cookBase);
+			free(tempInventory);
+			free(tempOutputsFulfilled);
+		}
 	}
 }
 
@@ -605,6 +623,23 @@ int getInsertionIndex(struct BranchPath *curNode, int frames) {
 	}
 	
 	return tempIndex;
+}
+
+int getSortFrames(enum Action action) {
+	switch (action) {
+		case Sort_Alpha_Asc:
+			return ALPHA_SORT_FRAMES;
+		case Sort_Alpha_Des:
+			return REVERSE_ALPHA_SORT_FRAMES;
+		case Sort_Type_Asc:
+			return TYPE_SORT_FRAMES;
+		case Sort_Type_Des:
+			return REVERSE_TYPE_SORT_FRAMES;
+		default:
+			// Critical error if we reach this point...
+			// action should be some type of sort
+			exit(-2);
+	}
 }
 
 /*-------------------------------------------------------------------
@@ -821,25 +856,7 @@ void handleChapter5Sorts(struct BranchPath *node, enum Type_Sort *inventory, int
 		}
 		
 		// Handle all placements of the Keel Mango, Courage Shell, and usage of the Thunder Rage
-		int sortFrames;
-		switch (action) {
-			case Sort_Alpha_Asc :
-				sortFrames = ALPHA_SORT_FRAMES;
-				break;
-			case Sort_Alpha_Des :
-				sortFrames = REVERSE_ALPHA_SORT_FRAMES;
-				break;
-			case Sort_Type_Asc :
-				sortFrames = TYPE_SORT_FRAMES;
-				break;
-			case Sort_Type_Des :
-				sortFrames = REVERSE_TYPE_SORT_FRAMES;
-				break;
-			default :
-				// Critical error if we reach this point...
-				// action should be some type of sort
-				exit(-2);
-		}
+		int sortFrames = getSortFrames(action);
 		
 		if (frames_KM == -1) {
 			handleChapter5EarlySortEndItems(node, sorted_inventory, outputsFulfilled, numOutputsFulfilled, sortFrames, action, frames_DB, frames_CO, DB_place_index, CO_place_index);
@@ -1104,24 +1121,7 @@ void handleSorts(struct BranchPath *curNode) {
 				struct MoveDescription description;
 				description.action = sort;
 				description.data = NULL;
-				int sortFrames;
-				switch (sort) {
-					case Sort_Alpha_Asc :
-						sortFrames = ALPHA_SORT_FRAMES;
-						break;
-					case Sort_Alpha_Des :
-						sortFrames = REVERSE_ALPHA_SORT_FRAMES;
-						break;
-					case Sort_Type_Asc :
-						sortFrames = TYPE_SORT_FRAMES;
-						break;
-					case Sort_Type_Des :
-						sortFrames = REVERSE_TYPE_SORT_FRAMES;
-						break;
-					default :
-						// Something went wrong if we reach this point...
-						exit(-2);
-				}
+				int sortFrames = getSortFrames(sort);
 				generateFramesTaken(&description, curNode, sortFrames);
 				description.framesTaken = sortFrames;
 				int *copyOfOutputsFulfilled = copyOutputsFulfilled(curNode->outputCreated);
@@ -1147,10 +1147,10 @@ void handleSorts(struct BranchPath *curNode) {
  *
  * Generate the root of the tree graph
  -------------------------------------------------------------------*/
-struct BranchPath *initializeRoot(struct Job job) {
+struct BranchPath *initializeRoot() {
 	struct BranchPath *root = malloc(sizeof(struct BranchPath));
 	root->moves = 0;
-	root->inventory = job.startingInventory;
+	root->inventory = getStartingInventory();
 	root->description.action = Begin;
 	root->description.data = NULL;
 	root->description.framesTaken = 0;
@@ -1482,6 +1482,24 @@ struct OptimizeResult optimizeRoadmap(struct BranchPath *root) {
 	result.root = newRoot;
 	result.last = newNode;
 	return result;
+}
+
+void periodicGithubCheck() {
+	// Double check the latest release on Github
+	#pragma omp critical
+	{
+		int update = checkForUpdates(getLocalVersion());
+		if (update == -1) {
+			printf("Could not check version on Github. Please check your internet connection.\n");
+			printf("Otherwise, completed roadmaps may be inaccurate!\n");
+		}
+		else if (update == 1) {
+			printf("Please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!\n");
+			printf("Press ENTER to exit the program.\n");
+			getchar();
+			exit(1);
+		}
+	}
 }
 
 /*-------------------------------------------------------------------
@@ -2078,8 +2096,6 @@ enum Type_Sort *getSortedInventory(enum Type_Sort *inventory, enum Action sort) 
 	
 	// Count BLOCKED indices at end of inventory
 	int blocked = countNullsInInventory(sorted_inventory, 10, 20);
-	
-	// Only sort the portion of the inventory which contains valid items
 
 	// Use qsort and execute sort function depending on sort type
 	switch(sort) {
@@ -2100,510 +2116,9 @@ enum Type_Sort *getSortedInventory(enum Type_Sort *inventory, enum Action sort) 
 	}
 }
 
-/*void userDebugSession(struct Job job) {
-	struct BranchPath *root = initializeRoot(job);
-	struct BranchPath *curNode = root;
-	while (1) {
-		int action = -1;
-		printf("Choose an action:\n0 - Cook\n1 - Sort Alpha Asc\n2 - Sort Alpha Des\n3 - Sort Type Asc\n4 - Sort Type Des\n5 - Chapter 5\n");
-		scanf("%d", &action);
-		while (action < 0 || action > 5) {
-			printf("Invalid action. Choose a number between 0-5: ");
-			scanf("%d", &action);
-		}
-		
-		int recipeIndex = -1;
-		enum Type_Sort *newInventory;
-		struct BranchPath *newNode;
-		int *newOutputsFulfilled;
-		int DB_place_index;
-		int CO_place_index;
-		int lateSort;
-		int KM_place_index;
-		int CS_place_index;
-		int TR_use_index;
-		int sort;
-		int remainingCanBeFulfilled;
-		enum Action sortType;
-		switch (action) {
-			case 0 :
-				// Cook
-				printf("Choose the recipe index you are cooking: ");
-				scanf("%d", &recipeIndex);
-				while (recipeIndex <  0 || recipeIndex > NUM_RECIPES) {
-					printf("Invalid recipe index. Choose a number between 0 and 57: ");
-					scanf("%d", &recipeIndex);
-				}
-				
-				struct Recipe recipe = recipeList[recipeIndex];
-				printf("Choose one of the following combos:\n");
-				for (int i = 0; i < recipe.countCombos; i++) {
-					if (recipe.combos[i].numItems == 1) {
-						printf("%d -> Use %s to make %s\n", i, getItemName(recipe.combos[i].item1), getItemName(recipe.output));
-					}
-					else {
-						printf("%d -> Use %s and %s to make %s\n", i, getItemName(recipe.combos[i].item1), getItemName(recipe.combos[i].item2), getItemName(recipe.output));
-					}
-				}
-				
-				// Have user choose one of the recipe combos
-				int comboIndex = -1;
-				scanf("%d", &comboIndex);
-				while (comboIndex < 0 || comboIndex > recipe.countCombos) {
-					printf("Invalid combo index. Choose a number between 0 and %d: ", recipe.countCombos - 1);
-					scanf("%d", &comboIndex);
-				}
-				
-				struct ItemCombination combo = recipe.combos[comboIndex];
-				
-				// Modify the inventory to reflect changes to the inventory
-				newInventory = copyInventory(curNode->inventory);
-				
-				// If either item is in the first 10 slots, set it to null
-				int indexItem1 = indexOfItemInInventory(newInventory, combo.item1);
-				int indexItem2 = indexOfItemInInventory(newInventory, combo.item2);
-				if (indexItem1 < 10) {
-					newInventory[indexItem1] = -1;
-				}
-				if (combo.numItems == 2) {
-					if (indexItem2 < 10) {
-						newInventory[indexItem2] = -1;
-					}
-				}
-				
-				enum HandleOutput handleOutput;
-				if (countNullsInInventory(newInventory, 0, 10) > 0) {
-					printf("Output will be autoplaced.");
-					handleOutput = Autoplace;
-				}
-				else {
-					// Have the user specify what to do with the output
-					printf("How should we handle the output?\n");
-					printf("0 -> Toss the output\n");
-					printf("1 -> Toss a different item\n");
-					int handleOutputInt = -1;
-					scanf("%d", &handleOutputInt);
-					while (handleOutputInt < 0 || handleOutputInt > 1) {
-						printf("Invalid handle value.");
-						scanf("%d", &handleOutputInt);
-					}
-					if (handleOutputInt == 0) {
-						handleOutput = Toss;
-					}
-					else {
-						handleOutput = TossOther;
-					}
-				}
-				
-				enum Type_Sort tossedItem = enum Type_Sort -1;
-				int tossIndex = -1;
-				
-				// If tossing output, no modifications to inventory are necessary
-				if (handleOutput == Toss) {
-					;
-				}
-				else if (handleOutput == Autoplace) {
-					// Shift inventory to fill null
-					shiftUpToFillNull(newInventory);
-					// Occupancy in first index is where new output is placed
-					newInventory[0] = recipe.output;
-				}
-				else {
-					// Toss other
-					// Specify items and their indices to be tossed
-					printf("What index would you like to toss?\n");
-					for (int i = 0; i < 10; i++) {
-						printf("%d -> %s\n", i, getItemName(newInventory[i]));
-					}
-					scanf("%d", &tossIndex);
-					while (tossIndex < 0 || tossIndex >= 10) {
-						printf("Invalid toss index.");
-						scanf("%d", &tossIndex);
-					}
-					
-					tossedItem = newInventory[tossIndex];
-					
-					// Set the tossed item index to null
-					newInventory[tossIndex] = -1;
-					shiftUpToFillNull(newInventory);
-					newInventory[0] = recipe.output;
-				}
-				
-				// Set the outputFulfilled index of the current recipe to 1
-				newOutputsFulfilled = copyOutputsFulfilled(curNode->outputCreated);
-				newOutputsFulfilled[recipeIndex] = 1;
-				
-				// Now for the moment of truth...
-				// Can all the other recipes be fulfilled?
-				remainingCanBeFulfilled = stateOK(newInventory, newOutputsFulfilled, recipeList);
-				if (remainingCanBeFulfilled == 0) {
-					printf("stateOK determined that this move is not possible.\n");
-					exit(1);
-				}
-				
-				printf("This has been determined to be a legal move. Moving to the next node...\n");
-				
-				newNode = malloc(sizeof(struct BranchPath));
-				newNode->prev = curNode;
-				curNode->next = newNode;
-				newNode->moves = curNode->moves + 1;
-				newNode->inventory = newInventory;
-				newNode->description.action = Cook;
-				
-				struct Cook *cook = malloc(sizeof(struct Cook));
-				cook->numItems = combo.numItems;
-				cook->item1 = combo.item1;
-				cook->itemIndex1 = indexItem1;
-				if (combo.numItems == 2) {
-					cook->item2 = combo.item2;
-					cook->itemIndex2 = indexItem2;
-				}
-				else {
-					cook->item2 = -1;
-					cook->itemIndex2 = -1;
-				}
-				cook->output = recipe.output;
-				cook->handleOutput = handleOutput;
-				if (cook->handleOutput == Toss || cook->handleOutput == Autoplace) {
-					cook->toss = -1;
-				}
-				else {
-					cook->toss = tossedItem;
-					cook->indexToss = tossIndex;
-				}
-				newNode->description.data = (void *)cook;
-				newNode->outputCreated = newOutputsFulfilled;
-				newNode->numOutputsCreated = curNode->numOutputsCreated + 1;
-				curNode = newNode;
-				break;
-			case 1 : // Sort Alpha Asc
-				newInventory = getSortedInventory(curNode->inventory, Sort_Alpha_Asc);
-				newNode = malloc(sizeof(struct BranchPath));
-				curNode->next = newNode;
-				newNode->prev = curNode;
-				newNode->moves = curNode->moves + 1;
-				newNode->inventory = newInventory;
-				newNode->description.action = Sort_Alpha_Asc;
-				newNode->description.data = NULL;
-				
-				int *newOutputsFulfilled = copyOutputsFulfilled(curNode->outputCreated);
-				newNode->outputCreated = newOutputsFulfilled;
-				newNode->numOutputsCreated = curNode->numOutputsCreated;
-				curNode = newNode;
-				break;
-			case 2 : // Sort Alpha Des
-				newInventory = getSortedInventory(curNode->inventory, Sort_Alpha_Des);
-				newNode = malloc(sizeof(struct BranchPath));
-				curNode->next = newNode;
-				newNode->prev = curNode;
-				newNode->moves = curNode->moves + 1;
-				newNode->inventory = newInventory;
-				newNode->description.action = Sort_Alpha_Des;
-				newNode->description.data = NULL;
-				
-				newOutputsFulfilled = copyOutputsFulfilled(curNode->outputCreated);
-				newNode->outputCreated = newOutputsFulfilled;
-				newNode->numOutputsCreated = curNode->numOutputsCreated;
-				curNode = newNode;
-				break;
-			case 3 : // Sort Type Asc
-				newInventory = getSortedInventory(curNode->inventory, Sort_Type_Asc);
-				newNode = malloc(sizeof(struct BranchPath));
-				curNode->next = newNode;
-				newNode->prev = curNode;
-				newNode->moves = curNode->moves + 1;
-				newNode->inventory = newInventory;
-				newNode->description.action = Sort_Type_Asc;
-				newNode->description.data = NULL;
-				
-				newOutputsFulfilled = copyOutputsFulfilled(curNode->outputCreated);
-				newNode->outputCreated = newOutputsFulfilled;
-				newNode->numOutputsCreated = curNode->numOutputsCreated;
-				curNode = newNode;
-				break;
-			case 4: // Sort Type Des
-				newInventory = getSortedInventory(curNode->inventory, Sort_Type_Des);
-				newNode = malloc(sizeof(struct BranchPath));
-				curNode->next = newNode;
-				newNode->prev = curNode;
-				newNode->moves = curNode->moves + 1;
-				newNode->inventory = newInventory;
-				newNode->description.action = Sort_Type_Des;
-				newNode->description.data = NULL;
-				
-				newOutputsFulfilled = copyOutputsFulfilled(curNode->outputCreated);
-				newNode->outputCreated = newOutputsFulfilled;
-				newNode->numOutputsCreated = curNode->numOutputsCreated;
-				curNode = newNode;
-				break;
-			case 5 : // CH5
-				newOutputsFulfilled = copyOutputsFulfilled(curNode->outputCreated);
-				newOutputsFulfilled[getIndexOfRecipe(Dried_Bouquet)] = 1;
-			
-				// If Hot Dog is in first half of inventory, inform user and quit
-				if (indexOfItemInInventory(curNode->inventory, getItem(Hot_Dog)) < 10) {
-					printf("We cannot complete Chapter 5 now, as Hot Dog is in the first half of the inventory!");
-					exit(1);
-				}
-				
-				// Dried Bouquet session
-				newInventory = copyInventory(curNode->inventory);
-				int mousse_Cake_Index = indexOfItemInInventory(newInventory, Mousse_Cake);
-				if (mousse_Cake_Index <  10) {
-					newInventory[mousse_Cake_Index] = -1;
-				}
-				
-				// Handle allocation of Dried Bouquet
-				
-				// If there is a null in the inventory, place the Dried Bouquet automatically
-				if (countNullsInInventory(newInventory, 0, 10) > 0) {
-					shiftUpToFillNull(newInventory);
-					newInventory[0] = Dried_Bouquet;
-					DB_place_index = 0;
-					printf("Dried Bouquet was auto-placed in slot 1\n");
-				}
-				else {
-					// Toss an item
-					printf("What index would you like to toss for the Dried Bouquet?\n");
-					for (int i = 0; i < 10; i++) {
-						printf("%d -> %s\n", i, getItemName(newInventory[i]));
-					}
-					scanf("%d", &DB_place_index);
-					while (DB_place_index < 0 || DB_place_index >= 10) {
-						printf("Invalid toss index.");
-						scanf("%d", &DB_place_index);
-					}
-					
-					newInventory[DB_place_index] = -1;
-					shiftUpToFillNull(newInventory);
-					newInventory[0] = Dried_Bouquet;
-				}
-				
-				// Now grab the Coconut
-				
-				// If there is a null in the inventory, place the Coconut automatically
-				if (countNullsInInventory(newInventory, 0, 10) > 0) {
-					shiftUpToFillNull(newInventory);
-					newInventory[0] = Coconut;
-					CO_place_index = 0;
-					printf("Coconut was auto-placed in slot 1\n");
-				}
-				else {
-					// Toss an item
-					printf("What index would you like to toss for the Coconut?\n");
-					for (int i = 0; i < 10; i++) {
-						printf("%d -> %s\n", i, getItemName(newInventory[i]));
-					}
-					scanf("%d", &CO_place_index);
-					while (CO_place_index < 0 || CO_place_index >= 10) {
-						printf("Invalid toss index.");
-						scanf("%d", &CO_place_index);
-					}
-					
-					newInventory[CO_place_index] = -1;
-					shiftUpToFillNull(newInventory);
-					newInventory[0] = Coconut;
-				}
-				
-				// Ask the user to either do an early sort or late sort
-				printf("Early sort or late sort?\n0 - Early Sort\n1 - Late Sort\n");
-				scanf("%d", &lateSort);
-				while (lateSort < 0 || lateSort > 1) {
-					printf("Invalid option.");
-					scanf("%d", &lateSort);
-				}
-				
-				// If early sort, sort the inventory
-				if (lateSort == 0) {
-					printf("What type of sort?\n0 - Alpha Ascending\n1 - Alpha Descending\n2 - Type Ascending\n3 - Type Descending");
-					scanf("%d", &sort);
-					while (sort < 0 || sort > 3) {
-						printf("Invalid option.");
-						scanf("%d", &sort);
-					}
-					
-					switch (sort) {
-						case 0 :
-							sortType = Sort_Alpha_Asc;
-							break;
-						case 1 :
-							sortType = Sort_Alpha_Des;
-							break;
-						case 2 :
-							sortType = Sort_Type_Asc;
-							break;
-						case 3 : sortType = Sort_Type_Des;
-							break;
-					}
-					
-					newInventory = getSortedInventory(newInventory, sortType);
-					
-					// Ask where to place the Keel Mango
-					if (countNullsInInventory(newInventory, 0, 10) > 0) {
-						shiftUpToFillNull(newInventory);
-						newInventory[0] = Keel_Mango;
-						KM_place_index = 0;
-						printf("Keel Mango was auto-placed in slot 1\n");
-					}
-					else {
-						// Ask what item to toss
-						printf("What index would you like to toss for the Keel Mango?\n");
-						for (int i = 0; i < 10; i++) {
-							printf("%d -> %s\n", i, getItemName(newInventory[i]));
-						}
-						scanf("%d", &KM_place_index);
-						while (KM_place_index < 0 || KM_place_index >= 10) {
-							printf("Invalid toss index.");
-							scanf("%d", &KM_place_index);
-						}
-						
-						newInventory[KM_place_index] = -1;
-						shiftUpToFillNull(newInventory);
-						newInventory[0] = Keel_Mango;
-					}
-					
-					// Ask where to place the Courage Shell
-					if (countNullsInInventory(newInventory, 0, 10) > 0) {
-						shiftUpToFillNull(newInventory);
-						newInventory[0] = Courage_Shell;
-						CS_place_index = 0;
-						printf("Courage Shell was auto-placed in slot 1\n");
-					}
-					else {
-						printf("What index would you like to toss for the Courage Shell?\n");
-						for (int i = 0; i < 10; i++) {
-							printf("%d -> %s\n", i, getItemName(newInventory[i]));
-						}
-						scanf("%d", &CS_place_index);
-						while (CS_place_index < 0 || CS_place_index >= 10) {
-							printf("Invalid toss index.");
-							scanf("%d", &CS_place_index);
-						}
-						
-						newInventory[CS_place_index] = -1;
-						shiftUpToFillNull(newInventory);
-						newInventory[0] = Courage_Shell;
-					}
-				}
-				else {
-					// Ask where to place the Keel Mango
-					if (countNullsInInventory(newInventory, 0, 10) > 0) {
-						shiftUpToFillNull(newInventory);
-						newInventory[0] = Keel_Mango;
-						KM_place_index = 0;
-						printf("Keel Mango was auto-placed in slot 1\n");
-					}
-					else {
-						// Ask what item to toss
-						printf("What index would you like to toss for the Keel Mango?\n");
-						for (int i = 0; i < 10; i++) {
-							printf("%d -> %s\n", i, getItemName(newInventory[i]));
-						}
-						scanf("%d", &KM_place_index);
-						while (KM_place_index < 0 || KM_place_index >= 10) {
-							printf("Invalid toss index.");
-							scanf("%d", &KM_place_index);
-						}
-						
-						newInventory[KM_place_index] = -1;
-						shiftUpToFillNull(newInventory);
-						newInventory[0] = Keel_Mango;
-					}
-					
-					printf("What type of sort?\n0 - Alpha Ascending\n1 - Alpha Descending\n2 - Type Ascending\n3 - Type Descending");
-					scanf("%d", &sort);
-					while (sort < 0 || sort > 3) {
-						printf("Invalid option.");
-						scanf("%d", &sort);
-					}
-					
-					switch (sort) {
-						case 0 :
-							sortType = Sort_Alpha_Asc;
-							break;
-						case 1 :
-							sortType = Sort_Alpha_Des;
-							break;
-						case 2 :
-							sortType = Sort_Type_Asc;
-							break;
-						case 3 : sortType = Sort_Type_Des;
-							break;
-					}
-					
-					newInventory = getSortedInventory(newInventory, sortType);
-					
-					// Ask where to place the Courage Shell
-					if (countNullsInInventory(newInventory, 0, 10) > 0) {
-						shiftUpToFillNull(newInventory);
-						newInventory[0] = Courage_Shell;
-						CS_place_index = 0;
-						printf("Courage Shell was auto-placed in slot 1\n");
-					}
-					else {
-						printf("What index would you like to toss for the Courage Shell?\n");
-						for (int i = 0; i < 10; i++) {
-							printf("%d -> %s\n", i, getItemName(newInventory[i]));
-						}
-						scanf("%d", &CS_place_index);
-						while (CS_place_index < 0 || CS_place_index >= 10) {
-							printf("Invalid toss index.");
-							scanf("%d", &CS_place_index);
-						}
-						
-						newInventory[CS_place_index] = -1;
-						shiftUpToFillNull(newInventory);
-						newInventory[0] = Courage_Shell;
-					}
-				}
-				
-				// Lastly, determine if the Thunder Rage leaves the inventory
-				TR_use_index = indexOfItemInInventory(newInventory, Thunder_Rage);
-				if (TR_use_index < 10) {
-					newInventory[TR_use_index] = -1;
-				}
-				
-				// Now, determine if this state is okay
-				remainingCanBeFulfilled = stateOK(newInventory, newOutputsFulfilled, recipeList);
-				if (remainingCanBeFulfilled == 0) {
-					printf("stateOK determined that this move is not possible.\n");
-					exit(1);
-				}
-				
-				printf("This has been determined to be a legal move. Moving to the next node...\n");
-				
-				newNode = malloc(sizeof(struct BranchPath));
-				curNode->next = newNode;
-				newNode->prev = curNode;
-				newNode->moves = curNode->moves + 1;
-				newNode->inventory = newInventory;
-				newNode->description.action = Ch5;
-				newNode->description.data = (void *) createChapter5Struct(DB_place_index, CO_place_index, KM_place_index, CS_place_index, TR_use_index, sortType, lateSort);
-				newNode->outputCreated = newOutputsFulfilled;
-				newNode->numOutputsCreated = curNode->numOutputsCreated + 1;
-				curNode = newNode;
-				break;
-			default :
-				break;
-		}
-		
-		// Print inventory
-		printf("We now have the following inventory:\n");
-		for (int i = 0; i < 20; i++) {
-			printf("%s\n", getItemName(curNode->inventory[i]));
-		}
-		
-		if (curNode->numOutputsCreated == NUM_RECIPES) {
-			printf("Finished roadmap!");
-			printResults("userDebug.txt", root);
-			exit(1);
-		}
-	}
-}*/
-
 /*-------------------------------------------------------------------
  * Function 	: calculateOrder
- * Inputs	: struct Job 		job
+ * Inputs	: int ID
  * Outputs	: struct Result	result
  *
  * This is the main roadmap evaluation function. This calls various
@@ -2612,78 +2127,11 @@ enum Type_Sort *getSortedInventory(enum Type_Sort *inventory, enum Action sort) 
  * a roadmap is found, the data is printed to a .txt file, and the result
  * is passed back to start.c to try submitting to the server.
  -------------------------------------------------------------------*/
-struct Result calculateOrder(struct Job job) {
-	config_t *config = getConfig();
-	
-	int randomise;
-	config_lookup_int(config, "randomise", &randomise);
-	
-	int select;
-	config_lookup_int(config, "select", &select);
-	recipeList = getRecipeList();
-	
-	int debug;
-	config_lookup_int(config, "Debug", &debug);
-	
-	/*if (debug) {
-		userDebugSession(job);
-	}*/
-	
-	/*
-	#===============================================================================
-	# GOAL
-	#===============================================================================
-	# The goal of this program is to find a roadmap of fulfilling all 57 Zess T.
-	# recipes in as few frames as possible.
-	#===============================================================================
-	# RULES & ASSUMPTIONS
-	#===============================================================================
-	# A known glitch has been exploited that allows the ability to duplicate ingredient items
-	# If you use an ingredient in slots 1-10, that slot becomes "NULL" and isn't duplicated
-	# If you use an ingredient in slots 11-20, the item is duplicated
-	# If there's a NULL slot, the recipe output will automatically fill the 1st NULL position
-	# If there's no NULL slots, the player is given the option of tossing either the output item,
-	#	or replacing any inventory in the first 10 slots item with the output item
-	#	Attempting to replace an inventory item in slots 11-20 will leave the inventory unchanged
-	#		(In this instance, it's always faster to just toss the output item outright)
-	# If there is a NULL in the inventory, the inventory size is effectively reduced, and we will only be able to see the first 19 items
-	#	Subsequent nulls will cause us to be able to see fewer items at the end of our inventory
-	# If there's a sort, all NULL slots are wiped away and are no longer available, becoming "BLOCKED" at the end of the inventory
-	#	The inventory size will effectively remain the same, but as the NULLs are technically moved to the end of the inventory, we
-	#		will now be able to see the previously "hidden" items
-	# "BLOCKED" spaces are assumed to be permanently unavailable for the remainder of recipe fulfillment
-	# When navigating the inventory, it is assumed all "NULL" and "BLOCKED" spaces are hidden from the player
-	#	For example, if 2 spaces are NULL, the player will only see the other 18 items to navigate through in the inventory
-	# The first recipe that is fulfilled can only use a single ingredient
-
-
-	# At some point, the player needs to trade 2 Hot Dogs and a Mousse Cake for a Dried Bouquet (Which is only needed for the Space Food recipe)
-	# At another point, the player will need to collect the Keel Mango, Coconut, and Courage Shell after Chapter 5
-	# So there's 2 sessions of recipe-fulfillment that will be needed (Pre-Ch.5 and Post-Ch.5)
-	#===============================================================================
-	# Algorithm Description
-	#===============================================================================
-	# Start Loop
-	# Iterate through all Items that haven't been made already
-	# Iterate through all their recipes that can be made with the current materials
-	# Iterate through all placement options of the output ingredient (Tossing, Autofill, etc)
-	# Determine how many relevant frames are required to fulfill this recipe and add it to a list of "legal moves" for the current state
-	# Pick the Legal Move that takes the least frames, update the inventory based on that move, and recurse the loop again
-	# If no legal moves are available and the end-state has not been reached,
-	#	then return back up a layer and pick the next-fastest legal move at that state to recurse down
-	# Repeat recursion until search space has been exhausted
-	#===============================================================================
-	*/
-	
-	
-	// TODO: Add functionality to keep evaluating near the current record
-	// I reset iteration_count, but I need to not return until we reach the iteration limit
-	// Cache the record after writing to a file and return the record frame_count
-	// How many times a worker is evaluating a new random branch
+struct Result calculateOrder(int ID) {
+	int randomise = getConfigInt("randomise");
+	int select = getConfigInt("select");
 	int total_dives = 0;
-	
-	// Deepest node at any particular point
-	struct BranchPath *curNode = NULL;
+	struct BranchPath *curNode = NULL; // Deepest node at any particular point
 	struct BranchPath *root;
 	
 	struct Result result_cache = (struct Result) {-1, -1};
@@ -2694,13 +2142,13 @@ struct Result calculateOrder(struct Job job) {
 		int iterationCount = 0;
 
 		// Create root of tree path
-		curNode = initializeRoot(job);
+		curNode = initializeRoot();
 		root = curNode; // Necessary when printing results starting from root
 		
 		total_dives++;
 		char temp1[30];
 		char temp2[30];
-		sprintf(temp1, "Call %d", job.callNumber);
+		sprintf(temp1, "Call %d", ID);
 		sprintf(temp2, "Searching New Branch %d", total_dives);
 		recipeLog(3, "Calculator", "Info", temp1, temp2);
 		
@@ -2739,7 +2187,7 @@ struct Result calculateOrder(struct Job job) {
 							sprintf(tmp, "New local fastest roadmap found! %d frames, saved %d after rearranging", optimizeResult.last->description.totalFramesTaken, curNode->description.totalFramesTaken - optimizeResult.last->description.totalFramesTaken);
 							recipeLog(1, "Calculator", "Info", "Roadmap", tmp);
 							free(filename);
-							result_cache = (struct Result) {optimizeResult.last->description.totalFramesTaken, job.callNumber};
+							result_cache = (struct Result) {optimizeResult.last->description.totalFramesTaken, ID};
 							
 							// Reset the iteration count so we continue to explore near this record
 							iterationCount = 0;
@@ -2760,27 +2208,8 @@ struct Result calculateOrder(struct Job job) {
 			else if (curNode->legalMoves == NULL) {
 				// This node has not yet been assigned an array of legal moves.
 				
-				// Generate the list of all possible decisions
-				
-				// Only evaluate the 57th recipe (Mistake) when it's the last recipe to fulfill
-				// This is because it is relatively easy to craft this output with many of the previous outputs, and will take minimal frames
-				int upperOutputLimit = (curNode->numOutputsCreated == NUM_RECIPES - 1) ? NUM_RECIPES : (NUM_RECIPES - 1);
-				
-				// Iterate through all recipe ingredient combos
-				for (int recipeIndex = 0; recipeIndex < upperOutputLimit; recipeIndex++) {
-					// Only want recipes that haven't been fulfilled
-					if (curNode->outputCreated[recipeIndex] == 1) {
-						continue;
-					}
-					
-					// Dried Bouquet (Recipe index 56) represents the Chapter 5 intermission
-					// Don't actually use the specified recipe, as it is handled later
-					if (recipeIndex == getIndexOfRecipe(Dried_Bouquet)) {
-						continue;
-					}
-					
-					fulfillRecipes(curNode, recipeIndex);
-				}
+				// Generate the list of all possible recipes
+				fulfillRecipes(curNode);
 				
 				// Special handling of the 56th recipe, which is representative of the Chapter 5 intermission
 				
@@ -2843,8 +2272,6 @@ struct Result calculateOrder(struct Job job) {
 				
 			}
 			else {
-				// Protect race condition of the local record
-				
 				if (curNode->numLegalMoves == 0) {
 					// No legal moves are left to evaluate, go back up...
 					// Wipe away the current node
@@ -2876,12 +2303,9 @@ struct Result calculateOrder(struct Job job) {
 				if (iterationCount % 10000 == 0) {
 					char temp3[30];
 					char temp4[100];
-					sprintf(temp3, "Call %d", job.callNumber);
-					sprintf(temp4, "%d steps currently taken, %d frames acculumated so far; %dk iterations", stepIndex, curNode->description.totalFramesTaken, iterationCount/1000);
+					sprintf(temp3, "Call %d", ID);
+					sprintf(temp4, "%d steps currently taken, %d frames acculumated so far; %dk iterations", stepIndex, curNode->description.totalFramesTaken, iterationCount / 1000);
 					recipeLog(6, "Calculator", "Info", temp3, temp4);
-					
-					// Double check to see if the local record has been improved
-					job.current_frame_record = getLocalRecord();
 				}
 			}
 		}
@@ -2895,7 +2319,11 @@ struct Result calculateOrder(struct Job job) {
 			// Return the cached result
 			return result_cache;
 		}
-		
+
+		// Period check for Github update
+		if (total_dives % 1000 == 0) {
+			periodicGithubCheck();
+		}
 		
 		// For profiling
 		/*if (total_dives == 100) {

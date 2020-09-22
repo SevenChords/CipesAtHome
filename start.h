@@ -6,31 +6,14 @@
 #include "config.h"
 #include "calculator.h"
 
-
 struct Result {
 	int frames;
 	int callNumber;
 };
 
-struct Job {
-	int callNumber;
-	enum Type_Sort *startingInventory;
-	int current_frame_record;
-	struct Result result;
-	const char *local_ver;
-};
-
 int getLocalRecord();
 void setLocalRecord(int frames);
-
-// Defined in calculator.c
-struct BranchPath *initializeRoot(struct Job job);
-
-// Used to test behavior of various functions as roadmaps are calculated and verified
-void userDebugSession(struct Job job);
-
-// Main routine
-struct Result calculateOrder(struct Job job);
+const char* getLocalVersion();
 
 int main(); // Main method for entire algorithm
 

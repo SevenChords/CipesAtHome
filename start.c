@@ -16,33 +16,32 @@
 #include <sys/types.h>
 
 int current_frame_record;
+const char *local_ver;
 
 int getLocalRecord() {
 	return current_frame_record;
 }
-
 void setLocalRecord(int frames) {
 	current_frame_record = frames;
 }
 
+const char *getLocalVersion() {
+	return local_ver;
+}
+
 int main() {
 	int cycle_count = 1;
-	enum Type_Sort *startingInventory = getStartingInventory();
-	int workerCount;
 	current_frame_record = 9999;
-	config_t *config = getConfig();
-	config_lookup_int(config, "workerCount", &workerCount);
+	initConfig();
+
+	// If select and randomise are both 0, the same roadmap will be calculated on every thread, so set threads = 1
+	int workerCount = getConfigInt("select") || getConfigInt("randomise") ? getConfigInt("workerCount") : 1;
+	local_ver = getConfigStr("Version");
 	init_level_cfg();
-	const char *local_ver;
-	config_lookup_string(config, "Version", &local_ver);
-	
-	// Seed the RNG for the select config option
-	srand(time(0));
-	
-	// Initialize libcurl
-	curl_global_init(CURL_GLOBAL_DEFAULT);
-	
+	srand(time(0)); // Seed the RNG for the select config option
+	curl_global_init(CURL_GLOBAL_DEFAULT);	// Initialize libcurl
 	int update = checkForUpdates(local_ver);
+	
 	if (update == -1) {
 		printf("Could not check version on Github. Please check your internet connection.\n");
 		printf("Otherwise, we can't submit compelted roadmaps to the server!\n");
@@ -73,17 +72,9 @@ int main() {
 	#pragma omp parallel
 	{
 		int ID = omp_get_thread_num();
-		struct Job job;
-		job.callNumber = ID;
-		job.startingInventory = startingInventory;
-		job.current_frame_record = current_frame_record;
-		job.local_ver = local_ver;
 		
 		while (1) {
-			job.current_frame_record = current_frame_record;
-			job.result.frames = -1;
-			job.result.callNumber = -1;
-			struct Result result = calculateOrder(job);
+			struct Result result = calculateOrder(ID);
 			
 			#pragma omp critical
 			{
@@ -91,20 +82,6 @@ int main() {
 			}
 			
 			testRecord(result.frames);
-
-			// Double check the latest release on Github
-			#pragma omp critical
-			{
-				update = checkForUpdates(local_ver);
-				if (update == -1) {
-					printf("Could not check version on Github. Please check your internet connection.\n");
-					printf("Otherwise, completed roadmaps may be inaccurate!\n");
-				}
-				else if (update == 1) {
-					printf("Please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!\n");
-					exit(1);
-				}
-			}
 			cycle_count++;
 		}
 	}
