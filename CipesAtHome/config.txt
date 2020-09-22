@@ -56,7 +56,7 @@
 # your CPU (depending on how many you need    #
 # for your other activities)                  #
 ###############################################
-  workerCount = 8  #(default: 4)               
+  workerCount = 4  #(default: 4)               
 ###############################################
 
 ###############################################
@@ -64,7 +64,7 @@
 ###############################################
 # Your username under which your records are  #
 # Uploaded to the remote server               #
-  Username = "Malleo Win32"                     
+  Username = "DefaultUser"                     
 ###############################################
 
 ###############################################
