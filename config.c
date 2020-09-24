@@ -18,7 +18,9 @@ void initConfig() {
 	config_init(configInstance);
 	if (config_read_file(configInstance, "config.txt") == CONFIG_FALSE) {
 		printf("Could not read config file! Please assure that config.txt is in the root directory and is formatted correctly.\n");
-		return NULL;
+		printf("Press ENTER to exit.");
+		getchar();
+		exit(1);
 	}
 
 	config = configInstance;
