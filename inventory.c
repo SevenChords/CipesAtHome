@@ -12,14 +12,6 @@ typedef enum Alpha_Sort Alpha_Sort;
 typedef enum Type_Sort Type_Sort;
 typedef struct ItemName ItemName;
 
-/*====================NOTES====================
-- Items are interpreted based on the Alpha_Sort enumerator value. A function can later be written to conver this to a string.
-  - This negates the need to allocate memory to handle strings, which will reduce issues in the future.
-  - Using the alpha key as the main identifier also negates the need to have a function to obtain the alpha key along with the type key.
-- Each item in the inventory is represented with a struct which contains both its alphabetical and type sort keys, again using
-  the alphabetical key as the main item identifier.
-====================     ====================*/
-
 Alpha_Sort items[] = {
 	Mushroom_a,
 	Super_Shroom_a,
@@ -243,11 +235,11 @@ char *itemNames[NUM_ITEMS] = {
 /*-------------------------------------------------------------------
  * Function 	: getAlphaKey
  * Inputs	: struct Type_Sort item
- * Outputs	: enum Alpha_Sort alpha_key
+ * Outputs	: Alpha_Sort alpha_key
  *
  * Use items array to get alpha key for a given item when we need to sort.
  -------------------------------------------------------------------*/
-enum Alpha_Sort getAlphaKey(enum Type_Sort item) {
+Alpha_Sort getAlphaKey(enum Type_Sort item) {
 	return items[item];
 }
 
@@ -373,19 +365,27 @@ int countItemsInInventory(enum Type_Sort *inventory) {
  -------------------------------------------------------------------*/
 enum Type_Sort *copyInventory(enum Type_Sort* oldInventory) {
 	enum Type_Sort *newInventory = malloc(sizeof(enum Type_Sort) * INVENTORY_SIZE);
+
+	if (newInventory == NULL) {
+		printf("Fatal error! Ran out of heap memory.\n");
+		printf("Press enter to quit.");
+		char exitChar = getchar();
+		exit(1);
+	}
+
 	memcpy((void *)newInventory, (void *)oldInventory, sizeof(enum Type_Sort) * INVENTORY_SIZE);
 	return newInventory;
 }
 
 /*-------------------------------------------------------------------
  * Function 	: getItemName
- * Inputs	: enum Alpha_Sort 	a_key
+ * Inputs	: enum Type_Sort t_key
  * Outputs	: char			*itemName
  *
  * Access the itemNames array to associate an item's a_key with its
  * string counterpart. Also handles the case of a null item.
  -------------------------------------------------------------------*/
-char *getItemName(enum Type_Sort t_key) {
+char *getItemName(Type_Sort t_key) {
 	return t_key < 0 ? "NULL ITEM" : itemNames[t_key];
 }
 
@@ -457,6 +457,14 @@ int **getInventoryFrames() {
 
 	for (int i = 0; i < INVENTORY_MAX_SIZE; i++) {
 		int *frames = malloc(sizeof(int) * (i+1));
+
+		if (frames == NULL) {
+			printf("Fatal error! Ran out of heap memory.\n");
+			printf("Press enter to quit.");
+			char exitChar = getchar();
+			exit(1);
+		}
+
 		for (int j = 0; j < i + 1; j++) {
 			if (j < i+1-j)
 				frames[j] = frameList[j];

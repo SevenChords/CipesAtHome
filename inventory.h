@@ -235,17 +235,14 @@ struct Recipe {
 	struct ItemCombination *combos; // Where there are countCombos different ways to cook output
 };
 
-// Determine if the recipe items can still be fulfilled
-int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCreated, int *dependentIndices, struct Recipe *recipeList);
-
-// Determine if the remaining outputs can be fulfilled with the current given inventory
-int stateOK(enum Type_Sort *inventory, int *outputsCreated, struct Recipe *recipeList);
-
-// Returns the index in the recipeList for the given recipe output "item". -1 if not a recipe output
+// Recipe functions
+int checkRecipe(struct ItemCombination combo, int* makeableItems, int* outputsCreated, int* dependentRecipes, struct Recipe* recipeList);
 int getIndexOfRecipe(enum Type_Sort item);
+struct Recipe* getRecipeList();
+int stateOK(enum Type_Sort* inventory, int* outputsCreated, struct Recipe* recipeList);
+
 
 struct ItemCombination parseCombo(int itemCount, enum Type_Sort item1, enum Type_Sort item2);
-struct Recipe *getRecipeList();
 
 void placeInventoryInMakeableItems(int *makeableItems, enum Type_Sort *inventory);
 
