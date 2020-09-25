@@ -5,3 +5,5 @@ results/
 recipes.log
 *.ipch
 *.db
+*.o
+recipesAtHome
