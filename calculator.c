@@ -1241,11 +1241,10 @@ struct OptimizeResult optimizeRoadmap(struct BranchPath *root) {
 			struct ItemCombination combo = recipe.combos[recipe_combo_index];
 			newNode = newRoot;
 			
-			// Look at every node
-			while (newNode != NULL) {
+			// Look at every node after the first
+			while ((newNode = newNode->next) != NULL) {
 				// Only want moments when there are no NULLs in the inventory
 				if (newNode->inventory.nulls > 0) {
-					newNode = newNode->next;
 					continue;
 				}
 				
@@ -1253,12 +1252,9 @@ struct OptimizeResult optimizeRoadmap(struct BranchPath *root) {
 				int indexItem1 = indexOfItemInInventory(newNode->inventory, combo.item1);
 				int indexItem2 = indexOfItemInInventory(newNode->inventory, combo.item2);
 				if (indexItem1 == -1 || (combo.numItems == 2 && indexItem2 == -1)) {
-					newNode = newNode->next;
 					continue;
 				}
-				
 				if (indexItem1 < 10 || (combo.numItems == 2 && indexItem2 < 10)) {
-					newNode = newNode->next;
 					continue;
 				}
 				
@@ -1318,8 +1314,6 @@ struct OptimizeResult optimizeRoadmap(struct BranchPath *root) {
 				else {
 					free(temp_description);
 				}
-				
-				newNode = newNode->next;
 			}
 		}
 		
