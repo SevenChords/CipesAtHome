@@ -4,6 +4,7 @@
 #include "inventory.h"
 #include "logger.h"
 
+#define VOLATILE_INVENTORY_SIZE 10
 #define INVENTORY_SIZE 20
 #define INVENTORY_MAX_SIZE 21
 #define NUM_ITEMS 107
@@ -262,7 +263,11 @@ enum Alpha_Sort getAlphaKey(enum Type_Sort item) {
  * if sorts changed the inventory at all.
  -------------------------------------------------------------------*/
 int compareInventories(struct Inventory inv1, struct Inventory inv2) {
-	return memcmp((void*)&inv1, (void*)&inv2, sizeof(struct Inventory)) == 0;
+	return inv1.nulls == inv2.nulls && inv1.length == inv2.length
+           && memcmp((void*)(inv1.inventory + inv1.nulls),
+                     (void*)(inv2.inventory + inv2.nulls),
+                     (inv1.length - inv1.nulls)
+                     * sizeof(enum Type_Sort)) == 0;
 }
 
 /*-------------------------------------------------------------------
@@ -278,14 +283,15 @@ int compareInventories(struct Inventory inv1, struct Inventory inv2) {
  -------------------------------------------------------------------*/
 int itemComboInInventory(struct ItemCombination combo, struct Inventory inventory) {
 	int indexItem1 = indexOfItemInInventory(inventory, combo.item1);
-	int indexItem2 = indexOfItemInInventory(inventory, combo.item2);
-	
-	if (combo.numItems == 1) {
-		return indexItem1 > -1;
+    if (indexItem1 == -1) {
+        return 0;
+    }
+	else if (combo.numItems == 1) {
+		return 1;
 	}
-	else {
-		return	indexItem1 > -1 && indexItem2 > -1;
-	}
+
+    int indexItem2 = indexOfItemInInventory(inventory, combo.item2);
+    return indexItem2 != -1;
 }
 
 /*-------------------------------------------------------------------
@@ -317,10 +323,16 @@ int itemInDependentIndices(int index, int *dependentIndices, int numDependentInd
  * item. If not found, return -1.
  -------------------------------------------------------------------*/
 int indexOfItemInInventory(struct Inventory inventory, enum Type_Sort item) {
-	for (int i = 0; i < inventory.inventoryLength; i++) {
+    int i;
+	for (i = inventory.nulls; i < VOLATILE_INVENTORY_SIZE; ++i) {
 		if (inventory.inventory[i] == item)
-			return i + inventory.numNulls;
+			return i;
 	}
+    int visibleLength = inventory.length - inventory.nulls;
+    for (; i < visibleLength; ++i) {
+        if (inventory.inventory[i] == item)
+            return i;
+    }
 	return -1;
 }
 
@@ -333,7 +345,7 @@ int indexOfItemInInventory(struct Inventory inventory, enum Type_Sort item) {
  * string counterpart. Also handles the case of a null item.
  -------------------------------------------------------------------*/
 char *getItemName(enum Type_Sort t_key) {
-	return t_key < 0 ? "NULL ITEM" : itemNames[t_key];
+	return itemNames[t_key];
 }
 
 /*-------------------------------------------------------------------
@@ -374,8 +386,8 @@ int **getInventoryFrames() {
  -------------------------------------------------------------------*/
 struct Inventory getStartingInventory() {
 	static struct Inventory inventory;
-	inventory.numNulls = 0;
-	inventory.inventoryLength = 20;
+	inventory.nulls = 0;
+	inventory.length = 20;
 	inventory.inventory[0] = Golden_Leaf;
 	inventory.inventory[1] = Peachy_Peach;
 	inventory.inventory[2] = Shooting_Star;
@@ -400,48 +412,22 @@ struct Inventory getStartingInventory() {
 	return inventory;
 }
 
-struct Inventory shiftDownInventory(struct Inventory tempInventory, int index) {
-	tempInventory.numNulls++;
-	
-	for (int i = index; i < tempInventory.inventoryLength - 1; i++) {
-		tempInventory.inventory[i] = tempInventory.inventory[i + 1];
-	}
+struct Inventory replaceItem(struct Inventory inventory, int index, Type_Sort item) {
+    memmove(inventory.inventory + 1, inventory.inventory, index * sizeof(Type_Sort));
+    inventory.inventory[inventory.nulls] = item;
 
-	tempInventory.inventoryLength--;
-
-	return tempInventory;
-}
-
-struct Inventory replaceItem(struct Inventory inventory, int index, enum Type_Sort item) {
-	// Shift items before this index to fill the index
-	for (int i = 0; i < index; i++) {
-		inventory.inventory[i + 1] = inventory.inventory[i];
-	}
-
-	// Vacancy at the beginning of the array is taken up by item
-	inventory.inventory[0] = item;
-	
 	return inventory;
 }
 
-struct Inventory addItem(struct Inventory inventory, enum Type_Sort item) {
-	inventory.numNulls--;
+struct Inventory addItem(struct Inventory inventory, Type_Sort item) {
+    inventory.inventory[--inventory.nulls] = item;
 
-	for (int i = 0; i < inventory.inventoryLength; i++) {
-		inventory.inventory[i + 1] = inventory.inventory[i];
-	}
-
-	inventory.inventoryLength++;
-
-	inventory.inventory[0] = item;
+    return inventory;
 }
 
 struct Inventory removeItem(struct Inventory inventory, int index) {
-	for (int i = index; i < inventory.inventoryLength - 1; i++) {
-		inventory.inventory[i] = inventory.inventory[i + 1];
-	}
-	inventory.inventory[inventory.inventoryLength] = -1;
-
-	inventory.numNulls++;
-	inventory.inventoryLength--;
+    memmove(inventory.inventory + 1, inventory.inventory, index * sizeof(Type_Sort));
+	++inventory.nulls;
+    
+    return inventory;
 }

@@ -224,8 +224,8 @@ enum Type_Sort {
 };
 
 struct Inventory {
-	int numNulls;
-	int inventoryLength;
+	size_t nulls;
+	size_t length;
 	enum Type_Sort inventory[20];
 };
 
