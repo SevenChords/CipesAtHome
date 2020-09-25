@@ -1,6 +1,19 @@
 CC=gcc
-CFLAGS=-lcurl -lconfig -fopenmp -Wall
-DEPS = start.c inventory.c recipes.c config.c FTPManagement.c cJSON.c calculator.c logger.c
+CFLAGS=-lcurl -lconfig -fopenmp -Wall -O2
+TARGET=recipesAtHome
+DEPS=start.h inventory.h recipes.h config.h FTPManagement.h cJSON.h calculator.h logger.h
+OBJ=start.o inventory.o recipes.o config.o FTPManagement.o cJSON.o calculator.o logger.o
 
-recipesmake: start.c
-	$(CC) -o start $(DEPS) $(CFLAGS)
+default: $(TARGET)
+
+%.o: %.c $(DEPS)
+	$(CC) -c -o $@ $< $(CFLAGS)
+
+$(TARGET): $(OBJ)
+	$(CC) -o $@ $^ $(CFLAGS)
+
+.PHONY: clean
+
+clean:
+	$(RM) ./*.o
+	$(RM) ./$(TARGET)
