@@ -1,21 +1,6 @@
-inventorymake: inventory.c
-	gcc -o inventory inventory.c -g -I.
+CC=gcc
+CFLAGS=-lcurl -lconfig -fopenmp -Wall
+DEPS = start.c inventory.c recipes.c config.c FTPManagement.c cJSON.c calculator.c logger.c
 
-ftpmake: FTPManagement.c
-	gcc FTPManagement.c cJSON.c -lcurl -o FTPManagement -g
-
-logmake: logger.c
-	gcc -o logger logger.c -g
-
-configmake: config.c
-	gcc -o config config.c -lconfig -g
-
-recipemake: recipes.c
-	gcc -o recipes recipes.c inventory.c -g -Wall
-
-calculatormake: calculator.c
-	gcc -o calculator calculator.c inventory.c recipes.c FTPManagement.c cJSON.c -lcurl -g -Wall
-
-startmake: start.c
-	gcc -o start start.c inventory.c recipes.c config.c FTPManagement.c cJSON.c calculator.c logger.c -lcurl -lconfig -fopenmp -Wall -g -pg
-
+recipesmake: start.c
+	$(CC) -o start $(DEPS) $(CFLAGS)
