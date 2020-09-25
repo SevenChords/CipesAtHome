@@ -554,20 +554,20 @@ int getIndexOfRecipe(enum Type_Sort item) {
 }
 
 void copyDependentIndices(int *newDependentIndices, int *dependentIndices) {
-    memcpy((void *)newDependentIndices, (void *)dependentIndices, sizeof(int) * NUM_RECIPES);
+	memcpy((void *)newDependentIndices, (void *)dependentIndices, sizeof(int) * NUM_RECIPES);
 }
 
 // Returns 1 if true, 0 if false
 int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCreated, int *dependentIndices, struct Recipe *recipeList) {
 	// Determine if the recipe items can still be fulfilled
 	for (int i = 0; i < combo.numItems; i++) {
-        enum Type_Sort ingredient = i == 0 ? combo.item1 : combo.item2;
+		enum Type_Sort ingredient = i == 0 ? combo.item1 : combo.item2;
 		// Check if we already have the item or know we can make it
 		if (makeableItems[ingredient]) {
 			continue;
 		}
 		
-        int recipeIndex = getIndexOfRecipe(ingredient);
+		int recipeIndex = getIndexOfRecipe(ingredient);
 
 		if (recipeIndex == -1) {
 			// The item cannot ever be created
@@ -586,8 +586,8 @@ int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCr
 		for (int j = 0; j < recipeList[recipeIndex].countCombos; ++j) {
 			struct ItemCombination newRecipe = recipeList[recipeIndex].combos[j];
 			if (checkRecipe(newRecipe, makeableItems, outputsCreated, dependentIndices, recipeList)) {
-                // Don't explore this item in the future.
-                makeableItems[ingredient] = 1;
+				// Don't explore this item in the future.
+				makeableItems[ingredient] = 1;
 				break;
 			}
 		}
