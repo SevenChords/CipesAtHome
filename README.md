@@ -31,11 +31,8 @@ Welcome to CipesAtHome! This is a depth-first-search brute-forcer which implemen
 ## Building
 ### Linux
 To build on Linux, you will need to run the following commands to run this program:
-1. `sudo apt-get install make`
-1. `sudo apt-get install libcurl4-openssl-dev`
-1. `sudo apt-get install libomp-dev`
-1. `sudo apt-get install libconfig-dev`
-1. `make recipesAtHome`
+1. `sudo apt-get install make libcurl4-openssl-dev libomp-dev libconfig-dev`
+1. `make`
 1. `./recipesAtHome`
 
 Should there be any problems in this building process, please let us know by posting an issue on Github.
