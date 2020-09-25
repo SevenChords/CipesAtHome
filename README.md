@@ -35,8 +35,8 @@ To build on Linux, you will need to run the following commands to run this progr
 1. `sudo apt-get install libcurl4-openssl-dev`
 1. `sudo apt-get install libomp-dev`
 1. `sudo apt-get install libconfig-dev`
-1. `make startmake`
-1. `./start`
+1. `make recipesAtHome`
+1. `./recipesAtHome`
 
 Should there be any problems in this building process, please let us know by posting an issue on Github.
 
