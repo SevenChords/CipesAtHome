@@ -2413,15 +2413,7 @@ struct Result calculateOrder(int ID) {
 				}
 				
 				// Special filtering if we only had one recipe left to fulfill
-
-				if (curNode->legalMoves == NULL) {
-					printf("Fatal error! Ran out of heap memory.\n");
-					printf("Press enter to quit.");
-					char exitChar = getchar();
-					exit(1);
-				}
-
-				if (curNode->numOutputsCreated == NUM_RECIPES-1 && curNode->numLegalMoves > 0 && curNode->legalMoves[0]->description.action == Cook) {
+				if (curNode->numOutputsCreated == NUM_RECIPES-1 && curNode->numLegalMoves > 0 && curNode->legalMoves != NULL && curNode->legalMoves[0]->description.action == Cook) {
 					// If there are any legal moves that satisfy this final recipe,
 					// strip out everything besides the fastest legal move
 					// This saves on recursing down pointless states
