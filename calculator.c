@@ -398,8 +398,6 @@ void finalizeLegalMove(struct BranchPath *node, int tempFrames, MoveDescription 
 	
 	enum Type_Sort *legalInventory = copyInventory(tempInventory);
 	struct Cook *cookNew = malloc(sizeof(struct Cook));
-	
-	checkNullMalloc((void*)cookNew);
 
 	if (cookNew == NULL) {
 		printf("Fatal error! Ran out of heap memory.\n");
