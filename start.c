@@ -38,7 +38,6 @@ int main() {
 	int workerCount = getConfigInt("select") || getConfigInt("randomise") ? getConfigInt("workerCount") : 1;
 	local_ver = getConfigStr("Version");
 	init_level_cfg();
-	srand(time(0)); // Seed the RNG for the select config option
 	curl_global_init(CURL_GLOBAL_DEFAULT);	// Initialize libcurl
 	int update = checkForUpdates(local_ver);
 	
@@ -72,6 +71,9 @@ int main() {
 	#pragma omp parallel
 	{
 		int ID = omp_get_thread_num();
+		
+		// Seed each thread's PRNG for the select and randomise config options
+		srand(((int)time(NULL)) ^ ID);
 		
 		while (1) {
 			struct Result result = calculateOrder(ID);
