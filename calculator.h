@@ -46,6 +46,23 @@ struct CH5 {
 	int lateSort;			// 0 - sort after Coconut, 1 - sort after Keel Mango
 };
 
+struct CH5_Eval {
+	int frames_DB;
+	int frames_CO;
+	int frames_KM;
+	int frames_CS;
+	int DB_place_index;
+	int CO_place_index;
+	int KM_place_index;
+	int CS_place_index;
+	int TR_use_index;
+	int frames_HD;
+	int frames_MC;
+	int frames_TR;
+	int sort_frames;
+	enum Action sort;
+};
+
 // Overall data pertaining to what we did at a particular point in the roadmap
 struct MoveDescription {
 	enum Action action;		// Cook, sort, handle CH5,...
@@ -84,7 +101,7 @@ int removeRecipesForReallocation(struct BranchPath *node, enum Type_Sort *rearra
 struct BranchPath* createLegalMove(struct BranchPath* node, struct Inventory inventory, struct MoveDescription description, int* outputsFulfilled, int numOutputsFulfilled);
 void filterLegalMovesExceedFrameLimit(struct BranchPath* node, int frames);
 void filterOut2Ingredients(struct BranchPath* node);
-void finalizeChapter5Eval(struct BranchPath* node, struct Inventory inventory, enum Action sort, struct CH5* ch5Data, int temp_frame_sum, int* outputsFulfilled, int numOutputsFulfilled);
+void finalizeChapter5Eval(struct BranchPath* node, struct Inventory inventory, struct CH5* ch5Data, int temp_frame_sum, int* outputsFulfilled, int numOutputsFulfilled);
 void finalizeLegalMove(struct BranchPath* node, int tempFrames, struct MoveDescription useDescription, struct Inventory tempInventory, int* tempOutputsFulfilled, int numOutputsFulfilled, enum HandleOutput tossType, enum Type_Sort toss, int tossIndex);
 void freeLegalMove(struct BranchPath* node, int index);
 int getInsertionIndex(struct BranchPath* node, int frames);
@@ -105,14 +122,14 @@ void tryTossInventoryItem(struct BranchPath* curNode, struct Inventory tempInven
 
 // Chapter 5 functions
 void fulfillChapter5(struct BranchPath* curNode);
-void handleChapter5Eval(struct BranchPath* node, struct Inventory inventory, int* outputsFulfilled, int numOutputsFulfilled, int frames_DB, int frames_CO, int DB_place_index, int CO_place_index, int temp_frames_HD, int temp_frames_MC);
-void handleChapter5EarlySortEndItems(struct BranchPath* node, struct Inventory inventory, int* outputsFulfilled, int numOutputsFulfilled, int sort_frames, enum Action sort, int frames_DB, int frames_CO, int DB_place_index, int CO_place_index, int temp_frames_HD, int temp_frames_MC);
-void handleChapter5Sorts(struct BranchPath* node, struct Inventory inventory, int* outputsFulfilled, int numOutputsFulfilled, int frames_DB, int frames_CO, int frames_KM, int DB_place_index, int CO_place_index, int KM_place_index, int temp_frames_HD, int temp_frames_MC);
-void handleChapter5LateSortEndItems(struct BranchPath* node, struct Inventory inventory, int* outputsFulfilled, int numOutputsFulfilled, int sort_frames, enum Action sort, int frames_DB, int frames_CO, int frames_KM, int DB_place_index, int CO_place_index, int KM_place_index, int temp_frames_HD, int temp_frames_MC);
-void handleDBCOAllocation0Nulls(struct BranchPath* curNode, struct Inventory tempInventory, int* tempOutputsFulfilled, int numOutputsFulfilled, int temp_frames_HD, int temp_frames_MC);
-void handleDBCOAllocation1Null(struct BranchPath* curNode, struct Inventory tempInventory, int* tempOutputsFulfilled, int numOutputsFulfilled, int temp_frames_HD, int temp_frames_MC);
-void handleDBCOAllocation2Nulls(struct BranchPath* curNode, struct Inventory tempInventory, int* tempOutputsFulfilled, int numOutputsFulfilled, int temp_frames_HD, int temp_frames_MC);
-struct CH5* createChapter5Struct(int DB_place_index, int CO_place_index, int KM_place_index, int CS_place_index, int TR_use_index, enum Action sort, int lateSort);
+void handleChapter5Eval(struct BranchPath* node, struct Inventory inventory, int* outputsFulfilled, int numOutputsFulfilled, struct CH5_Eval eval);
+void handleChapter5EarlySortEndItems(struct BranchPath* node, struct Inventory inventory, int* outputsFulfilled, int numOutputsFulfilled, struct CH5_Eval eval);
+void handleChapter5Sorts(struct BranchPath* node, struct Inventory inventory, int* outputsFulfilled, int numOutputsFulfilled, struct CH5_Eval eval);
+void handleChapter5LateSortEndItems(struct BranchPath* node, struct Inventory inventory, int* outputsFulfilled, int numOutputsFulfilled, struct CH5_Eval eval);
+void handleDBCOAllocation0Nulls(struct BranchPath* curNode, struct Inventory tempInventory, int* tempOutputsFulfilled, int numOutputsFulfilled, struct CH5_Eval eval);
+void handleDBCOAllocation1Null(struct BranchPath* curNode, struct Inventory tempInventory, int* tempOutputsFulfilled, int numOutputsFulfilled, struct CH5_Eval eval);
+void handleDBCOAllocation2Nulls(struct BranchPath* curNode, struct Inventory tempInventory, int* tempOutputsFulfilled, int numOutputsFulfilled, struct CH5_Eval eval);
+struct CH5* createChapter5Struct(struct CH5_Eval eval, int lateSort);
 
 // Initialization functions
 void initializeInvFrames();
