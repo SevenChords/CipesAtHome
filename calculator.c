@@ -475,8 +475,13 @@ void fulfillChapter5(struct BranchPath *curNode) {
 	
 	struct Inventory newInventory = curNode->inventory;
 
-	// If the Mousse Cake is in the first 10 slots, change it to NULL
 	int mousse_cake_index = indexOfItemInInventory(newInventory, Mousse_Cake);
+
+	// Calculate frames it takes the navigate to the Mousse Cake and the Hot Dog for the trade
+	int temp_frames_HD = 2 * invFrames[newInventory.length - 1][indexOfItemInInventory(newInventory, Hot_Dog)];
+	int temp_frames_MC = invFrames[newInventory.length - 1][mousse_cake_index];
+
+	// If the Mousse Cake is in the first 10 slots, change it to NULL
 	if (mousse_cake_index < 10) {
 		newInventory = removeItem(newInventory, mousse_cake_index);
 	}
@@ -484,13 +489,13 @@ void fulfillChapter5(struct BranchPath *curNode) {
 	// Handle allocation of the first 2 CH5 items (Dried Bouquet and Coconut)
 	switch (newInventory.nulls) {
 		case 0 :
-			handleDBCOAllocation0Nulls(curNode, newInventory, tempOutputsFulfilled, numOutputsFulfilled);
+			handleDBCOAllocation0Nulls(curNode, newInventory, tempOutputsFulfilled, numOutputsFulfilled, temp_frames_HD, temp_frames_MC);
 			break;
 		case 1 :
-			handleDBCOAllocation1Null(curNode, newInventory, tempOutputsFulfilled, numOutputsFulfilled);
+			handleDBCOAllocation1Null(curNode, newInventory, tempOutputsFulfilled, numOutputsFulfilled, temp_frames_HD, temp_frames_MC);
 			break;
 		default :
-			handleDBCOAllocation2Nulls(curNode, newInventory, tempOutputsFulfilled, numOutputsFulfilled);
+			handleDBCOAllocation2Nulls(curNode, newInventory, tempOutputsFulfilled, numOutputsFulfilled, temp_frames_HD, temp_frames_MC);
 	}
 
 	free(tempOutputsFulfilled);
@@ -673,7 +678,7 @@ int getSortFrames(enum Action action) {
  * Coconut and the Keel Mango. Place the Keel Mango and Courage Shell
  * in various inventory locations. Determine if the move is legal.
  -------------------------------------------------------------------*/
-void handleChapter5EarlySortEndItems(struct BranchPath *node, struct Inventory inventory, int *outputsFulfilled, int numOutputsFulfilled, int sort_frames, enum Action sort, int frames_DB, int frames_CO, int DB_place_index, int CO_place_index) {
+void handleChapter5EarlySortEndItems(struct BranchPath *node, struct Inventory inventory, int *outputsFulfilled, int numOutputsFulfilled, int sort_frames, enum Action sort, int frames_DB, int frames_CO, int DB_place_index, int CO_place_index, int temp_frames_HD, int temp_frames_MC) {
 	for (int KM_place_index = 0; KM_place_index < 10; KM_place_index++) {
 		// Don't allow current move to remove Thunder Rage or previously
 		// obtained items
@@ -710,7 +715,7 @@ void handleChapter5EarlySortEndItems(struct BranchPath *node, struct Inventory i
 			int temp_frames_TR = invFrames[kmcs_temp_inventory.length - 1][TR_use_index];
 
 			// Calculate the frames of all actions done
-			int temp_frame_sum = frames_DB + frames_CO + temp_frames_KM + temp_frames_CS + temp_frames_TR + sort_frames;
+			int temp_frame_sum = frames_DB + frames_CO + temp_frames_KM + temp_frames_CS + temp_frames_TR + temp_frames_HD + temp_frames_MC + sort_frames;
 			
 			// Determine if the remaining inventory is sufficient to fulfill all remaining recipes
 			if (stateOK(kmcs_temp_inventory, outputsFulfilled, recipeList)) {
@@ -738,9 +743,9 @@ void handleChapter5EarlySortEndItems(struct BranchPath *node, struct Inventory i
  * placing the Keel Mango by tossing various inventory items and
  * evaluate legal moves.
  -------------------------------------------------------------------*/
-void handleChapter5Eval(struct BranchPath *node, struct Inventory inventory, int *outputsFulfilled, int numOutputsFulfilled, int frames_DB, int frames_CO, int DB_place_index, int CO_place_index) {
+void handleChapter5Eval(struct BranchPath *node, struct Inventory inventory, int *outputsFulfilled, int numOutputsFulfilled, int frames_DB, int frames_CO, int DB_place_index, int CO_place_index, int temp_frames_HD, int temp_frames_MC) {
 	// Evaluate sorting before the Keel Mango
-	handleChapter5Sorts(node, inventory, outputsFulfilled, numOutputsFulfilled, frames_DB, frames_CO, -1, DB_place_index, CO_place_index, -1);
+	handleChapter5Sorts(node, inventory, outputsFulfilled, numOutputsFulfilled, frames_DB, frames_CO, -1, DB_place_index, CO_place_index, -1, temp_frames_HD, temp_frames_MC);
 	
 	// Place the Keel Mango in a null spot if one is available.
 	if (inventory.nulls >= 1) {
@@ -748,7 +753,7 @@ void handleChapter5Eval(struct BranchPath *node, struct Inventory inventory, int
 		struct Inventory km_temp_inventory = addItem(inventory, Keel_Mango);
 
 		// Perform all sorts
-		handleChapter5Sorts(node, km_temp_inventory, outputsFulfilled, numOutputsFulfilled, frames_DB, frames_CO, 0, DB_place_index, CO_place_index, 0);
+		handleChapter5Sorts(node, km_temp_inventory, outputsFulfilled, numOutputsFulfilled, frames_DB, frames_CO, 0, DB_place_index, CO_place_index, 0, temp_frames_HD, temp_frames_MC);
 
 	}
 	else {
@@ -765,7 +770,7 @@ void handleChapter5Eval(struct BranchPath *node, struct Inventory inventory, int
 			int temp_frames_KM = TOSS_FRAMES + invFrames[inventory.length - 1][KM_place_index];
 
 			// Perform all sorts
-			handleChapter5Sorts(node, km_temp_inventory, outputsFulfilled, numOutputsFulfilled, frames_DB, frames_CO, temp_frames_KM, DB_place_index, CO_place_index, KM_place_index);
+			handleChapter5Sorts(node, km_temp_inventory, outputsFulfilled, numOutputsFulfilled, frames_DB, frames_CO, temp_frames_KM, DB_place_index, CO_place_index, KM_place_index, temp_frames_HD, temp_frames_MC);
 		}
 	}
 }
@@ -789,7 +794,7 @@ void handleChapter5Eval(struct BranchPath *node, struct Inventory inventory, int
  * Keel Mango. Place the Courage Shell in various inventory locations.
  * Determine if a move is legal.
  -------------------------------------------------------------------*/
-void handleChapter5LateSortEndItems(struct BranchPath *node, struct Inventory inventory, int *outputsFulfilled, int numOutputsFulfilled, int sort_frames, enum Action sort, int frames_DB, int frames_CO, int frames_KM, int DB_place_index, int CO_place_index, int KM_place_index) {
+void handleChapter5LateSortEndItems(struct BranchPath *node, struct Inventory inventory, int *outputsFulfilled, int numOutputsFulfilled, int sort_frames, enum Action sort, int frames_DB, int frames_CO, int frames_KM, int DB_place_index, int CO_place_index, int KM_place_index, int temp_frames_HD, int temp_frames_MC) {
 	// Place the Courage Shell
 	for (int CS_place_index = 0; CS_place_index < 10; CS_place_index++) {
 		// Don't allow current move to remove Thunder Rage
@@ -812,7 +817,7 @@ void handleChapter5LateSortEndItems(struct BranchPath *node, struct Inventory in
 		int temp_frames_TR = invFrames[cs_temp_inventory.length - 1][TR_use_index];
 
 		// Calculate the frames of all actions done
-		int temp_frame_sum = frames_DB + frames_CO + frames_KM + temp_frames_CS + temp_frames_TR + sort_frames;
+		int temp_frame_sum = frames_DB + frames_CO + frames_KM + temp_frames_CS + temp_frames_TR + temp_frames_HD + temp_frames_MC + sort_frames;
 		
 		if (stateOK(cs_temp_inventory, outputsFulfilled, recipeList)) {
 			struct CH5 *ch5Data = createChapter5Struct(DB_place_index, CO_place_index, KM_place_index, CS_place_index, TR_use_index, sort, 1);
@@ -840,7 +845,7 @@ void handleChapter5LateSortEndItems(struct BranchPath *node, struct Inventory in
  * Only continue if a sort places the Coconut in slots 11-20.
  * Then, call an EndItems function to finalize the CH5 evaluation.
  -------------------------------------------------------------------*/
-void handleChapter5Sorts(struct BranchPath *node, struct Inventory inventory, int *outputsFulfilled, int numOutputsFulfilled, int frames_DB, int frames_CO, int frames_KM, int DB_place_index, int CO_place_index, int KM_place_index) {
+void handleChapter5Sorts(struct BranchPath *node, struct Inventory inventory, int *outputsFulfilled, int numOutputsFulfilled, int frames_DB, int frames_CO, int frames_KM, int DB_place_index, int CO_place_index, int KM_place_index, int temp_frames_HD, int temp_frames_MC) {
 	for (enum Action action = Sort_Alpha_Asc; action <= Sort_Type_Des; action++) {
 		struct Inventory sorted_inventory = getSortedInventory(inventory, action);
 		
@@ -854,11 +859,11 @@ void handleChapter5Sorts(struct BranchPath *node, struct Inventory inventory, in
 		int sortFrames = getSortFrames(action);
 		
 		if (frames_KM == -1) {
-			handleChapter5EarlySortEndItems(node, sorted_inventory, outputsFulfilled, numOutputsFulfilled, sortFrames, action, frames_DB, frames_CO, DB_place_index, CO_place_index);
+			handleChapter5EarlySortEndItems(node, sorted_inventory, outputsFulfilled, numOutputsFulfilled, sortFrames, action, frames_DB, frames_CO, DB_place_index, CO_place_index, temp_frames_HD, temp_frames_MC);
 			continue;
 		}
 		
-		handleChapter5LateSortEndItems(node, sorted_inventory, outputsFulfilled, numOutputsFulfilled, sortFrames, action, frames_DB, frames_CO, frames_KM, DB_place_index, CO_place_index, KM_place_index);
+		handleChapter5LateSortEndItems(node, sorted_inventory, outputsFulfilled, numOutputsFulfilled, sortFrames, action, frames_DB, frames_CO, frames_KM, DB_place_index, CO_place_index, KM_place_index, temp_frames_HD, temp_frames_MC);
 	}
 }
 
@@ -873,7 +878,7 @@ void handleChapter5Sorts(struct BranchPath *node, struct Inventory inventory, in
  * Preliminary function to allocate Dried Bouquet and Coconut before
  * evaluating the rest of Chapter 5. There are no nulls in the inventory.
  -------------------------------------------------------------------*/
-void handleDBCOAllocation0Nulls(struct BranchPath *curNode, struct Inventory tempInventory, int *tempOutputsFulfilled, int numOutputsFulfilled) {
+void handleDBCOAllocation0Nulls(struct BranchPath *curNode, struct Inventory tempInventory, int *tempOutputsFulfilled, int numOutputsFulfilled, int temp_frames_HD, int temp_frames_MC) {
 	// No nulls to utilize for Chapter 5 intermission
 	// Both the DB and CO can only replace items in the first 10 slots
 	// The remaining items always slide down to fill the vacancy
@@ -904,7 +909,7 @@ void handleDBCOAllocation0Nulls(struct BranchPath *curNode, struct Inventory tem
 			int temp_frames_CO = TOSS_FRAMES + invFrames[tempInventory.length - 1][temp_index_CO];
 
 			// Handle the allocation of the Coconut sort, Keel Mango, and Courage Shell
-			handleChapter5Eval(curNode, dbco_temp_inventory, tempOutputsFulfilled, numOutputsFulfilled, temp_frames_DB, temp_frames_CO, temp_index_DB, temp_index_CO);
+			handleChapter5Eval(curNode, dbco_temp_inventory, tempOutputsFulfilled, numOutputsFulfilled, temp_frames_DB, temp_frames_CO, temp_index_DB, temp_index_CO, temp_frames_HD, temp_frames_MC);
 		}
 	}
 }
@@ -920,7 +925,7 @@ void handleDBCOAllocation0Nulls(struct BranchPath *curNode, struct Inventory tem
  * Preliminary function to allocate Dried Bouquet and Coconut before
  * evaluating the rest of Chapter 5. There is 1 null in the inventory.
  -------------------------------------------------------------------*/
-void handleDBCOAllocation1Null(struct BranchPath *curNode, struct Inventory tempInventory, int *tempOutputsFulfilled, int numOutputsFulfilled) {
+void handleDBCOAllocation1Null(struct BranchPath *curNode, struct Inventory tempInventory, int *tempOutputsFulfilled, int numOutputsFulfilled, int temp_frames_HD, int temp_frames_MC) {
 	// The Dried Bouquet gets auto-placed in the 1st slot,
 	// and everything else gets shifted down one to fill the first NULL
 	tempInventory = addItem(tempInventory, Dried_Bouquet);
@@ -938,7 +943,7 @@ void handleDBCOAllocation1Null(struct BranchPath *curNode, struct Inventory temp
 		int temp_frames_CO = TOSS_FRAMES + invFrames[tempInventory.length - 1][temp_index_CO];
 		
 		// Handle the allocation of the Coconut sort, Keel Mango, and Courage Shell
-		handleChapter5Eval(curNode, co_temp_inventory, tempOutputsFulfilled, numOutputsFulfilled, 0, temp_frames_CO, 0, temp_index_CO);
+		handleChapter5Eval(curNode, co_temp_inventory, tempOutputsFulfilled, numOutputsFulfilled, 0, temp_frames_CO, 0, temp_index_CO, temp_frames_HD, temp_frames_MC);
 	}
 }
 
@@ -953,7 +958,7 @@ void handleDBCOAllocation1Null(struct BranchPath *curNode, struct Inventory temp
  * Preliminary function to allocate Dried Bouquet and Coconut before
  * evaluating the rest of Chapter 5. There are >=2 nulls in the inventory.
  -------------------------------------------------------------------*/
-void handleDBCOAllocation2Nulls(struct BranchPath *curNode, struct Inventory tempInventory, int *tempOutputsFulfilled, int numOutputsFulfilled) {
+void handleDBCOAllocation2Nulls(struct BranchPath *curNode, struct Inventory tempInventory, int *tempOutputsFulfilled, int numOutputsFulfilled, int temp_frames_HD, int temp_frames_MC) {
 	// The Dried Bouquet gets auto-placed due to having nulls
 	tempInventory = addItem(tempInventory, Dried_Bouquet);
 	
@@ -961,7 +966,7 @@ void handleDBCOAllocation2Nulls(struct BranchPath *curNode, struct Inventory tem
 	tempInventory = addItem(tempInventory, Coconut);
 	
 	// Handle the allocation of the Coconut, Sort, Keel Mango, and Courage Shell
-	handleChapter5Eval(curNode, tempInventory, tempOutputsFulfilled, numOutputsFulfilled, 0, 0, 0, 0);
+	handleChapter5Eval(curNode, tempInventory, tempOutputsFulfilled, numOutputsFulfilled, 0, 0, 0, 0, temp_frames_HD, temp_frames_MC);
 }
 
 /*-------------------------------------------------------------------
