@@ -38,7 +38,7 @@ To build on Linux, you will need to run the following commands to run this progr
 Should there be any problems in this building process, please let us know by posting an issue on Github.
 
 ### Windows
-To build on Windows, use the Visual Studio CipesAtHome.sln solution file. You will need to install libcurl, libOMP, and libconfig. This can be done by making use of vcpkg.
+To build on Windows, use the Visual Studio CipesAtHome.sln solution file. You will need to install libcurl and libconfig. This can be done by making use of vcpkg.
 
 ### Mac
 TODO
