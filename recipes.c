@@ -594,16 +594,13 @@ void copyDependentRecipes(int *newDependentRecipes, int *dependentRecipes) {
 int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCreated, int *dependentRecipes, struct Recipe *recipeList) {
 	// Determine if the recipe items can still be fulfilled
 	for (int i = 0; i < combo.numItems; i++) {
+		enum Type_Sort ingredient = i == 0 ? combo.item1 : combo.item2;
 		// Check if we already have the item or know we can make it
-		if ((i == 0 && makeableItems[combo.item1] == 1) || (i == 1 && makeableItems[combo.item2] == 1)) {
+		if (makeableItems[ingredient]) {
 			continue;
 		}
 		
-		int recipeIndex;
-		if (i == 0)
-			recipeIndex = getIndexOfRecipe(combo.item1);
-		else
-			recipeIndex = getIndexOfRecipe(combo.item2);
+		int recipeIndex = getIndexOfRecipe(ingredient);
 
 		if (recipeIndex == -1) {
 			// The item cannot ever be created
@@ -611,7 +608,7 @@ int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCr
 		}
 		
 		// Check if it hasn't been made and doesn't depend on any item
-		if (outputsCreated[recipeIndex] == 1 || dependentRecipes[recipeIndex] == 1) {
+		if (outputsCreated[recipeIndex] || dependentRecipes[recipeIndex]) {
 			// The item cannot be produced due to the current history
 			return 0;
 		}
@@ -619,23 +616,17 @@ int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCr
 		dependentRecipes[recipeIndex] = 1;
 		
 		// Recurse on all recipes that can make this item
-		int canBeProduced = 0;
-		for (int j = 0; j < recipeList[recipeIndex].countCombos; j++) {
+		for (int j = 0; j < recipeList[recipeIndex].countCombos; ++j) {
 			struct ItemCombination newRecipe = recipeList[recipeIndex].combos[j];
 			if (checkRecipe(newRecipe, makeableItems, outputsCreated, dependentRecipes, recipeList)) {
-				if (i == 0) {
-					makeableItems[combo.item1] = 1;
-				}
-				else {
-					makeableItems[combo.item2] = 1;
-				}
-				canBeProduced = 1;
+				// Don't explore this item in the future.
+				makeableItems[ingredient] = 1;
 				break;
 			}
 		}
 		
 		dependentRecipes[recipeIndex] = 0;
-		if (!canBeProduced) {
+		if (!makeableItems[ingredient]) {
 			// The item cannot be produced with the current inventory
 			return 0;
 		}
@@ -646,27 +637,23 @@ int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCr
 
 /*-------------------------------------------------------------------
  * Function : placeInventoryInMakeableItems
- * Inputs	: int			 *makeableItems
- *			  enum Type_Sort *inventory
+ * Inputs	: int			   *makeableItems
+ *			  struct Inventory inventory
  *
  * This function iterates over the entire inventory and marks those items
  * as makeable in the makeableItems array.
  -------------------------------------------------------------------*/
-void placeInventoryInMakeableItems(int *makeableItems, enum Type_Sort *inventory) {
-	for (int i = 0; i < 20; i++) {
-		if (inventory[i] == -1) {
-			continue;
-		}
-		
-		makeableItems[inventory[i]] = 1;
+ void placeInventoryInMakeableItems(int *makeableItems, struct Inventory inventory) {
+	for (size_t i = inventory.nulls; i < inventory.length; ++i) {
+		makeableItems[inventory.inventory[i]] = 1;
 	}
 }
 
 /*-------------------------------------------------------------------
  * Function : stateOK
- * Inputs	: enum Type_Sort *inventory
- *			  int			 *outputsCreated
- *			  struct Recipe  *recipeList
+ * Inputs	: struct Inventory inventory
+ *			  int			   *outputsCreated
+ *			  struct Recipe	   *recipeList
  * Outputs	: 1 if we can still make all remaining recipes with the
  *			  current inventory. Else, return 0
  * 
@@ -674,11 +661,11 @@ void placeInventoryInMakeableItems(int *makeableItems, enum Type_Sort *inventory
  * been already created, and calls checkRecipe to see if each remaining
  * recipe can still be fulfilled at some point in the roadmap.
  -------------------------------------------------------------------*/
-int stateOK(enum Type_Sort *inventory, int *outputsCreated, struct Recipe *recipeList) {
+int stateOK(struct Inventory inventory, int *outputsCreated, struct Recipe *recipeList) {
 	// With the given inventory, can the remaining recipes be fulfilled?
 		
 	// If Chapter 5 has not been done, verify that Thunder Rage is in the inventory
-	if (outputsCreated[getIndexOfRecipe(Dried_Bouquet)] == 0 && indexOfItemInInventory(inventory, Thunder_Rage) == -1) {
+	if (!outputsCreated[getIndexOfRecipe(Dried_Bouquet)] && indexOfItemInInventory(inventory, Thunder_Rage) == -1) {
 		return 0;
 	}
 	

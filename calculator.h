@@ -56,7 +56,7 @@ struct MoveDescription {
 
 struct BranchPath {
 	int moves;							// Represents how many nodes we've traversed down a particular branch (0 for root, 57 for leaf node)
-	enum Type_Sort *inventory;
+	struct Inventory inventory;
 	struct MoveDescription description;
 	struct BranchPath *prev;
 	struct BranchPath *next;
@@ -81,11 +81,11 @@ int removeRecipesForReallocation(struct BranchPath *node, enum Type_Sort *rearra
 
 // Legal move functions
 
-struct BranchPath* createLegalMove(struct BranchPath* node, enum Type_Sort* inventory, struct MoveDescription description, int* outputsFulfilled, int numOutputsFulfilled);
+struct BranchPath* createLegalMove(struct BranchPath* node, struct Inventory inventory, struct MoveDescription description, int* outputsFulfilled, int numOutputsFulfilled);
 void filterLegalMovesExceedFrameLimit(struct BranchPath* node, int frames);
 void filterOut2Ingredients(struct BranchPath* node);
-void finalizeChapter5Eval(struct BranchPath* node, enum Type_Sort* inventory, enum Action sort, struct CH5* ch5Data, int temp_frame_sum, int* outputsFulfilled, int numOutputsFulfilled);
-void finalizeLegalMove(struct BranchPath* node, int tempFrames, struct MoveDescription useDescription, enum Type_Sort* tempInventory, int* tempOutputsFulfilled, int numOutputsFulfilled, enum HandleOutput tossType, enum Type_Sort toss, int tossIndex);
+void finalizeChapter5Eval(struct BranchPath* node, struct Inventory inventory, enum Action sort, struct CH5* ch5Data, int temp_frame_sum, int* outputsFulfilled, int numOutputsFulfilled);
+void finalizeLegalMove(struct BranchPath* node, int tempFrames, struct MoveDescription useDescription, struct Inventory tempInventory, int* tempOutputsFulfilled, int numOutputsFulfilled, enum HandleOutput tossType, enum Type_Sort toss, int tossIndex);
 void freeLegalMove(struct BranchPath* node, int index);
 int getInsertionIndex(struct BranchPath* node, int frames);
 void insertIntoLegalMoves(int insertIndex, struct BranchPath* newLegalMove, struct BranchPath* curNode);
@@ -95,23 +95,23 @@ void shiftUpLegalMoves(struct BranchPath* node, int startIndex);
 
 // Cooking functions
 void copyCook(struct Cook* cookNew, struct Cook* cookOld);
-void createCookDescription2Items(struct BranchPath* node, struct Recipe recipe, struct ItemCombination combo, enum Type_Sort* tempInventory, int* ingredientLoc, int* ingredientOffset, int* tempFrames, int viableItems, struct MoveDescription* useDescription);
-void createCookDescription1Item(struct BranchPath* node, struct Recipe recipe, struct ItemCombination combo, enum Type_Sort* tempInventory, int* ingredientLoc, int* ingredientOffset, int* tempFrames, int viableItems, struct MoveDescription* useDescription);
-struct MoveDescription createCookDescription(struct BranchPath* node, struct Recipe recipe, struct ItemCombination combo, enum Type_Sort* tempInventory, int* tempFrames, int viableItems);
+void createCookDescription2Items(struct BranchPath* node, struct Recipe recipe, struct ItemCombination combo, struct Inventory* tempInventory, int* ingredientLoc, int* tempFrames, int viableItems, struct MoveDescription* useDescription);
+void createCookDescription1Item(struct BranchPath* node, struct Recipe recipe, struct ItemCombination combo, struct Inventory* tempInventory, int* ingredientLoc, int* tempFrames, int viableItems, struct MoveDescription* useDescription);
+struct MoveDescription createCookDescription(struct BranchPath* node, struct Recipe recipe, struct ItemCombination combo, struct Inventory *tempInventory, int* tempFrames, int viableItems);
 void fulfillRecipes(struct BranchPath* curNode);
 void generateCook(struct MoveDescription* description, struct ItemCombination combo, struct Recipe recipe, int* ingredientLoc, int swap);
-void handleRecipeOutput(struct BranchPath* curNode, enum Type_Sort* tempInventory, int tempFrames, struct MoveDescription useDescription, int* tempOutputsFulfilled, int numOutputsFulfilled, enum Type_Sort output, int viableItems);
-void tryTossInventoryItem(struct BranchPath* curNode, enum Type_Sort* tempInventory, struct MoveDescription useDescription, int* tempOutputsFulfilled, int numOutputsFulfilled, enum Type_Sort output, int tempFrames, int viableItems);
+void handleRecipeOutput(struct BranchPath* curNode, struct Inventory tempInventory, int tempFrames, struct MoveDescription useDescription, int* tempOutputsFulfilled, int numOutputsFulfilled, enum Type_Sort output, int viableItems);
+void tryTossInventoryItem(struct BranchPath* curNode, struct Inventory tempInventory, struct MoveDescription useDescription, int* tempOutputsFulfilled, int numOutputsFulfilled, enum Type_Sort output, int tempFrames, int viableItems);
 
 // Chapter 5 functions
 void fulfillChapter5(struct BranchPath* curNode);
-void handleChapter5Eval(struct BranchPath* node, enum Type_Sort* inventory, int* outputsFulfilled, int numOutputsFulfilled, int frames_DB, int frames_CO, int DB_place_index, int CO_place_index);
-void handleChapter5EarlySortEndItems(struct BranchPath* node, enum Type_Sort* inventory, int* outputsFulfilled, int numOutputsFulfilled, int sort_frames, enum Action sort, int frames_DB, int frames_CO, int DB_place_index, int CO_place_index);
-void handleChapter5Sorts(struct BranchPath* node, enum Type_Sort* inventory, int* outputsFulfilled, int numOutputsFulfilled, int frames_DB, int frames_CO, int frames_KM, int DB_place_index, int CO_place_index, int KM_place_index);
-void handleChapter5LateSortEndItems(struct BranchPath* node, enum Type_Sort* inventory, int* outputsFulfilled, int numOutputsFulfilled, int sort_frames, enum Action sort, int frames_DB, int frames_CO, int frames_KM, int DB_place_index, int CO_place_index, int KM_place_index);
-void handleDBCOAllocation0Nulls(struct BranchPath* curNode, enum Type_Sort* tempInventory, int* tempOutputsFulfilled, int numOutputsFulfilled, int viableItems);
-void handleDBCOAllocation1Null(struct BranchPath* curNode, enum Type_Sort* tempInventory, int* tempOutputsFulfilled, int numOutputsFulfilled, int viableItems);
-void handleDBCOAllocation2Nulls(struct BranchPath* curNode, enum Type_Sort* tempInventory, int* tempOutputsFulfilled, int numOutputsFulfilled, int viableItems);
+void handleChapter5Eval(struct BranchPath* node, struct Inventory inventory, int* outputsFulfilled, int numOutputsFulfilled, int frames_DB, int frames_CO, int DB_place_index, int CO_place_index);
+void handleChapter5EarlySortEndItems(struct BranchPath* node, struct Inventory inventory, int* outputsFulfilled, int numOutputsFulfilled, int sort_frames, enum Action sort, int frames_DB, int frames_CO, int DB_place_index, int CO_place_index);
+void handleChapter5Sorts(struct BranchPath* node, struct Inventory inventory, int* outputsFulfilled, int numOutputsFulfilled, int frames_DB, int frames_CO, int frames_KM, int DB_place_index, int CO_place_index, int KM_place_index);
+void handleChapter5LateSortEndItems(struct BranchPath* node, struct Inventory inventory, int* outputsFulfilled, int numOutputsFulfilled, int sort_frames, enum Action sort, int frames_DB, int frames_CO, int frames_KM, int DB_place_index, int CO_place_index, int KM_place_index);
+void handleDBCOAllocation0Nulls(struct BranchPath* curNode, struct Inventory tempInventory, int* tempOutputsFulfilled, int numOutputsFulfilled);
+void handleDBCOAllocation1Null(struct BranchPath* curNode, struct Inventory tempInventory, int* tempOutputsFulfilled, int numOutputsFulfilled);
+void handleDBCOAllocation2Nulls(struct BranchPath* curNode, struct Inventory tempInventory, int* tempOutputsFulfilled, int numOutputsFulfilled);
 struct CH5* createChapter5Struct(int DB_place_index, int CO_place_index, int KM_place_index, int CS_place_index, int TR_use_index, enum Action sort, int lateSort);
 
 // Initialization functions
@@ -128,8 +128,7 @@ void printOutputsCreated(struct BranchPath* curNode, FILE* fp);
 void printResults(char* filename, struct BranchPath* path);
 void printSortData(FILE* fp, enum Action curNodeAction);
 
-
-// Handle and select methodology functions
+// Select and random methodology functions
 void handleSelectAndRandom(struct BranchPath* curNode, int select, int randomise);
 void shuffleLegalMoves(struct BranchPath* node);
 void softMin(struct BranchPath *node);
@@ -137,7 +136,7 @@ void softMin(struct BranchPath *node);
 // Sorting functions
 int alpha_sort(const void* elem1, const void* elem2);
 int alpha_sort_reverse(const void* elem1, const void* elem2);
-enum Type_Sort* getSortedInventory(enum Type_Sort* inventory, enum Action sort);
+struct Inventory getSortedInventory(struct Inventory inventory, enum Action sort);
 int getSortFrames(enum Action action);
 void handleSorts(struct BranchPath* curNode);
 int type_sort(const void* elem1, const void* elem2);
@@ -146,8 +145,8 @@ int type_sort_reverse(const void* elem1, const void* elem2);
 // Frame calculation and optimization functions
 void applyJumpStorageFramePenalty(struct BranchPath *node);
 void generateFramesTaken(struct MoveDescription* description, struct BranchPath* node, int framesTaken);
-int selectSecondItemFirst(struct BranchPath* node, struct ItemCombination combo, int* ingredientLoc, int* ingredientOffset, int viableItems);
-void swapItems(int* ingredientLoc, int* ingredientOffset);
+int selectSecondItemFirst(struct BranchPath* node, struct ItemCombination combo, int* ingredientLoc, size_t nulls, int viableItems);
+void swapItems(int* ingredientLoc);
 
 // General node functions
 int *copyOutputsFulfilled(int *oldOutputsFulfilled);
