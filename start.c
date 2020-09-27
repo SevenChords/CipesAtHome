@@ -56,6 +56,15 @@ int main() {
 		return -1;
 	}
 
+	// Verify that username field is not malformed,
+	// as this would cause errors when a roadmap is submitted to the servers
+	if (getConfigStr("Username") == NULL) {
+		printf("Username field is malformed. Please verify that your username is within quotation marks next to \"Username = \"\n");
+		printf("Press ENTER to exit the program.\n");
+		char exitChar = getchar();
+		exit(1);
+	}
+
 	// Verify that the results folder exists
 	// If not, create the directory
 	mkdir("./results", 0777);
