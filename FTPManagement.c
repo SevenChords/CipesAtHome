@@ -112,6 +112,14 @@ void handle_post(char* url, FILE *fp, int localRecord, char *nickname) {
 	long fsize = ftell(fp);
 	fseek(fp, 0, SEEK_SET);
 	wt.data = malloc(fsize+ strlen(nickname) + 49); // Offer enough padding for postfields
+
+	if (wt.data == NULL) {
+		printf("Fatal error! Ran out of heap memory.\n");
+		printf("Press enter to quit.");
+		char exitChar = getchar();
+		exit(1);
+	}
+
 	size_t bytes_written;
 	bytes_written = sprintf(wt.data, "{\"frames\":\"%d\",\"userName\":\"%s\",\"routeContent\":\"", localRecord, nickname);
 	fread(wt.data + bytes_written, 1, fsize, fp);
