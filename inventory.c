@@ -13,14 +13,6 @@ typedef enum Alpha_Sort Alpha_Sort;
 typedef enum Type_Sort Type_Sort;
 typedef struct ItemName ItemName;
 
-/*====================NOTES====================
-- Items are interpreted based on the Alpha_Sort enumerator value. A function can later be written to conver this to a string.
-  - This negates the need to allocate memory to handle strings, which will reduce issues in the future.
-  - Using the alpha key as the main identifier also negates the need to have a function to obtain the alpha key along with the type key.
-- Each item in the inventory is represented with a struct which contains both its alphabetical and type sort keys, again using
-  the alphabetical key as the main item identifier.
-====================     ====================*/
-
 Alpha_Sort items[] = {
 	Mushroom_a,
 	Super_Shroom_a,
@@ -244,11 +236,11 @@ char *itemNames[NUM_ITEMS] = {
 /*-------------------------------------------------------------------
  * Function 	: getAlphaKey
  * Inputs	: struct Type_Sort item
- * Outputs	: enum Alpha_Sort alpha_key
+ * Outputs	: Alpha_Sort alpha_key
  *
  * Use items array to get alpha key for a given item when we need to sort.
  -------------------------------------------------------------------*/
-enum Alpha_Sort getAlphaKey(enum Type_Sort item) {
+Alpha_Sort getAlphaKey(enum Type_Sort item) {
 	return items[item];
 }
 
@@ -264,10 +256,9 @@ enum Alpha_Sort getAlphaKey(enum Type_Sort item) {
  -------------------------------------------------------------------*/
 int compareInventories(struct Inventory inv1, struct Inventory inv2) {
 	return inv1.nulls == inv2.nulls && inv1.length == inv2.length
-           && memcmp((void*)(inv1.inventory + inv1.nulls),
-                     (void*)(inv2.inventory + inv2.nulls),
-                     (inv1.length - inv1.nulls)
-                     * sizeof(enum Type_Sort)) == 0;
+		&& memcmp((void*)(inv1.inventory + inv1.nulls),
+				  (void*)(inv2.inventory + inv2.nulls),
+				  (inv1.length - inv1.nulls) * sizeof(enum Type_Sort)) == 0;
 }
 
 /*-------------------------------------------------------------------
@@ -283,15 +274,15 @@ int compareInventories(struct Inventory inv1, struct Inventory inv2) {
  -------------------------------------------------------------------*/
 int itemComboInInventory(struct ItemCombination combo, struct Inventory inventory) {
 	int indexItem1 = indexOfItemInInventory(inventory, combo.item1);
-    if (indexItem1 == -1) {
-        return 0;
-    }
+	if (indexItem1 == -1) {
+		return 0;
+	}
 	else if (combo.numItems == 1) {
 		return 1;
 	}
 
-    int indexItem2 = indexOfItemInInventory(inventory, combo.item2);
-    return indexItem2 != -1;
+	int indexItem2 = indexOfItemInInventory(inventory, combo.item2);
+	return indexItem2 != -1;
 }
 
 /*-------------------------------------------------------------------
@@ -323,28 +314,28 @@ int itemInDependentIndices(int index, int *dependentIndices, int numDependentInd
  * item. If not found, return -1.
  -------------------------------------------------------------------*/
 int indexOfItemInInventory(struct Inventory inventory, enum Type_Sort item) {
-    int i;
+	int i;
 	for (i = inventory.nulls; i < VOLATILE_INVENTORY_SIZE; ++i) {
 		if (inventory.inventory[i] == item)
 			return i;
 	}
-    int visibleLength = inventory.length - inventory.nulls;
-    for (; i < visibleLength; ++i) {
-        if (inventory.inventory[i] == item)
-            return i;
-    }
+	int visibleLength = inventory.length - inventory.nulls;
+	for (; i < visibleLength; ++i) {
+		if (inventory.inventory[i] == item)
+			return i;
+	}
 	return -1;
 }
 
 /*-------------------------------------------------------------------
  * Function 	: getItemName
- * Inputs	: enum Alpha_Sort 	a_key
+ * Inputs	: enum Type_Sort t_key
  * Outputs	: char			*itemName
  *
  * Access the itemNames array to associate an item's a_key with its
  * string counterpart. Also handles the case of a null item.
  -------------------------------------------------------------------*/
-char *getItemName(enum Type_Sort t_key) {
+char *getItemName(Type_Sort t_key) {
 	return itemNames[t_key];
 }
 
@@ -365,6 +356,14 @@ int **getInventoryFrames() {
 
 	for (int i = 0; i < INVENTORY_MAX_SIZE; i++) {
 		int *frames = malloc(sizeof(int) * (i+1));
+
+		if (frames == NULL) {
+			printf("Fatal error! Ran out of heap memory.\n");
+			printf("Press enter to quit.");
+			char exitChar = getchar();
+			exit(1);
+		}
+
 		for (int j = 0; j < i + 1; j++) {
 			if (j < i+1-j)
 				frames[j] = frameList[j];
@@ -413,21 +412,21 @@ struct Inventory getStartingInventory() {
 }
 
 struct Inventory replaceItem(struct Inventory inventory, int index, Type_Sort item) {
-    memmove(inventory.inventory + 1, inventory.inventory, index * sizeof(Type_Sort));
-    inventory.inventory[inventory.nulls] = item;
+	memmove(inventory.inventory + 1, inventory.inventory, index * sizeof(Type_Sort));
+	inventory.inventory[inventory.nulls] = item;
 
 	return inventory;
 }
 
 struct Inventory addItem(struct Inventory inventory, Type_Sort item) {
-    inventory.inventory[--inventory.nulls] = item;
+	inventory.inventory[--inventory.nulls] = item;
 
-    return inventory;
+	return inventory;
 }
 
 struct Inventory removeItem(struct Inventory inventory, int index) {
-    memmove(inventory.inventory + 1, inventory.inventory, index * sizeof(Type_Sort));
+	memmove(inventory.inventory + 1, inventory.inventory, index * sizeof(Type_Sort));
 	++inventory.nulls;
-    
-    return inventory;
+
+	return inventory;
 }

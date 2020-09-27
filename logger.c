@@ -7,8 +7,7 @@
 int level_cfg;
 
 int init_level_cfg() {
-	config_t *config = getConfig();
-	config_lookup_int(config, "logLevel", &level_cfg);
+	level_cfg = getConfigInt("logLevel");
 	return 0;
 }
 

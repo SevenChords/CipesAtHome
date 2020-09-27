@@ -1,21 +1,19 @@
-inventorymake: inventory.c
-	gcc -o inventory inventory.c -g -I.
+CC=gcc
+CFLAGS=-lcurl -lconfig -fopenmp -Wall -O2
+TARGET=recipesAtHome
+DEPS=start.h inventory.h recipes.h config.h FTPManagement.h cJSON.h calculator.h logger.h
+OBJ=start.o inventory.o recipes.o config.o FTPManagement.o cJSON.o calculator.o logger.o
 
-ftpmake: FTPManagement.c
-	gcc FTPManagement.c cJSON.c -lcurl -o FTPManagement -g
+default: $(TARGET)
 
-logmake: logger.c
-	gcc -o logger logger.c -g
+%.o: %.c $(DEPS)
+	$(CC) -c -o $@ $< $(CFLAGS)
 
-configmake: config.c
-	gcc -o config config.c -lconfig -g
+$(TARGET): $(OBJ)
+	$(CC) -o $@ $^ $(CFLAGS)
 
-recipemake: recipes.c
-	gcc -o recipes recipes.c inventory.c -g -Wall
+.PHONY: clean
 
-calculatormake: calculator.c
-	gcc -o calculator calculator.c inventory.c recipes.c FTPManagement.c cJSON.c -lcurl -g -Wall
-
-startmake: start.c
-	gcc -o start start.c inventory.c recipes.c config.c FTPManagement.c cJSON.c calculator.c logger.c -lcurl -lconfig -fopenmp -Wall -g -pg
-
+clean:
+	$(RM) ./*.o
+	$(RM) ./$(TARGET)
