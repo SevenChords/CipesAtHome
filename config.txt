@@ -8,14 +8,14 @@
 # Biased towards picking moves near the start #
 # of the list that are typically faster:      #
 #                                             #
-  select = 1  #(Default: 1)          
+  select = 1  #(Default: 1)                   #
 #                                             #
 ###############################################
 # Randomise completely shuffles legal moves   #
 # for first 60 moves. Randomise is ignored if #
 # Select is set to 'True'                     #
 #                                             #
-  randomise = 0  #(default: 0)                 
+  randomise = 0  #(default: 0)                #
 #                                             #
 ###############################################
 
@@ -40,6 +40,18 @@
 ###############################################
 
 ###############################################
+#             Branch Log Interval             #
+###############################################
+# Change how often to print a new branch      #
+# By default, this is set to print every 5    #
+# branches. Adjust to your preference.        #
+# It is highly recommended to raise this      #
+# interval as you increase the # of threads   #
+###############################################
+  branchLogFreq = 5 #(default: 5)             #
+###############################################
+
+###############################################
 #               Multiprocessing               #
 ###############################################
 # The worker count defines how many instances #
@@ -56,7 +68,7 @@
 # your CPU (depending on how many you need    #
 # for your other activities)                  #
 ###############################################
-  workerCount = 4  #(default: 4)               
+  workerCount = 4  #(default: 4)              #
 ###############################################
 
 ###############################################
@@ -64,9 +76,9 @@
 ###############################################
 # Your username under which your records are  #
 # Uploaded to the remote server               #
-  Username = "DefaultUser"                     
+  Username = "DefaultUser"                    #
 ###############################################
 
 ###############################################
-  Version = "1.0"                            
+  Version = "1.0"                              
 ###############################################

@@ -2145,6 +2145,7 @@ struct Inventory getSortedInventory(struct Inventory inventory, enum Action sort
 struct Result calculateOrder(int ID) {
 	int randomise = getConfigInt("randomise");
 	int select = getConfigInt("select");
+	int branchInterval = getConfigInt("branchLogInterval");
 	int total_dives = 0;
 	struct BranchPath *curNode = NULL; // Deepest node at any particular point
 	struct BranchPath *root;
@@ -2161,11 +2162,14 @@ struct Result calculateOrder(int ID) {
 		root = curNode; // Necessary when printing results starting from root
 		
 		total_dives++;
-		char temp1[30];
-		char temp2[30];
-		sprintf(temp1, "Call %d", ID);
-		sprintf(temp2, "Searching New Branch %d", total_dives);
-		recipeLog(3, "Calculator", "Info", temp1, temp2);
+
+		if (total_dives % branchInterval == 0) {
+			char temp1[30];
+			char temp2[30];
+			sprintf(temp1, "Call %d", ID);
+			sprintf(temp2, "Searching New Branch %d", total_dives);
+			recipeLog(3, "Calculator", "Info", temp1, temp2);
+		}
 		
 		// Handle the case where the user may choose to disable both randomise and select,
 		// in which case they would always iterate down the same path, even if we reset every n iterations
