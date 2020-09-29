@@ -227,7 +227,7 @@ void createCookDescription2Items(struct BranchPath *node, struct Recipe recipe, 
 	int lastVisibleSlot = tempInventory->length - 1;
 	if (tempInventory->nulls) {
 		// Determine if it's faster to select the second item first
-		if (selectSecondItemFirst(ingredientLoc, tempInventory->nulls)) {
+		if (selectSecondItemFirst(ingredientLoc, tempInventory->nulls, viableItems)) {
 			swapItems(ingredientLoc);
 			swap = 1;
 		}
