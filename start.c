@@ -50,8 +50,8 @@ int main() {
 		return -1;
 	}
 	else if (update == 1) {
-		printf("Please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!");
-		printf("Press ENTER to quit.");
+		printf("Please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!\n");
+		printf("Press ENTER to quit.\n");
 		char exitChar = getchar();
 		return -1;
 	}
