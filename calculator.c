@@ -2405,7 +2405,7 @@ struct Result calculateOrder(int ID) {
 		}
 
 		// Period check for Github update (only perform on thread 0)
-		if (total_dives % 10 == 0 && omp_get_thread_num() == 0) {
+		if (total_dives % 10000 == 0 && omp_get_thread_num() == 0) {
 			periodicGithubCheck();
 		}
 		
