@@ -40,8 +40,15 @@ Should there be any problems in this building process, please let us know by pos
 ### Windows
 To build on Windows, use the Visual Studio CipesAtHome.sln solution file. You will need to install libcurl and libconfig. This can be done by making use of vcpkg.
 
-### Mac
-TODO
+### macOS
+To build on macOS (w/ Homebrew installed), you will need to run the following commands from the project root, in order to run this program:
+1. `brew install llvm libomp libconfig`
+1. `make`
+1. `./recipesAtHome`
+*Notes:* The `clang` included w/ macOS will not work (it's compiled w/o OpenMP).
+MacPorts should work by replacing the prefix in the makefile (e.g. to `PREFIX:=/opt`), etc.
+
+Should there be any problems in this building process, please let us know by posting an issue on Github.
 
 ## Config Settings
 Below are a set of config parameters which can be changed by the user. These will affect how the algorithm handles legal moves, as well as check for the current program version on Github.
