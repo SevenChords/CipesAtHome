@@ -179,7 +179,6 @@ int testRecord(int localRecord) {
 	handle_post("https://hundorecipes.azurewebsites.net/api/uploadAndVerify", fp, localRecord, nickname);
 	
 	char temp[59];
-	sprintf(temp, "New fastest roadmap of %d uploaded to the server!", localRecord);
 	
 	recipeLog(1, "Submit", "File", "Upload", temp);
 	
