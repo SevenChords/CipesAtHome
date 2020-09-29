@@ -219,36 +219,101 @@ void createCookDescription2Items(struct BranchPath *node, struct Recipe recipe, 
 	//Baseline frames based on how many times we need to access the menu
 	*tempFrames = CHOOSE_2ND_INGREDIENT_FRAMES;
 	
-	// Determine which order of ingredients to take
-	// The first picked item always vanishes from the list of ingredients when picking the 2nd ingredient
-	// There are some configurations where it is 2 frames faster to pick the ingredients in the reverse order
 	int swap = 0;
-	if (selectSecondItemFirst(node, combo, ingredientLoc, tempInventory->nulls, viableItems)) {
-		// It's faster to select the 2nd item, so make it the priority and switch the order
-		swapItems(ingredientLoc);
-		swap = 1;
-	}
-	
-	// Calculate the number of frames needed to grab the first item
-	*tempFrames += invFrames[viableItems - 1][ingredientLoc[0] - tempInventory->nulls];
-	
-	// Determine the frames needed for the 2nd ingredient
-	// First ingredient is always removed from the menu, so there is always 1 less viable item
-	if (ingredientLoc[1] > ingredientLoc[0]) {
-		// In this case, the 2nd ingredient has "moved up" one slot since the 1st ingredient vanishes
-		*tempFrames += invFrames[viableItems - 2][ingredientLoc[1] - tempInventory->nulls - 1];
+
+	// Due to weird side-effects from Inventory Overload, choosing the item in index inventory.length - 1 will
+	// always cause the item in index inventory.length - 1 - inventory.nulls to disappear. In this case, we need
+	// to be super careful about trying to swap the ingredient order, as certain orders may be impossible.
+	int lastVisibleSlot = tempInventory->length - 1;
+	if (tempInventory->nulls) {
+		// Determine if it's faster to select the second item first
+		if (selectSecondItemFirst(ingredientLoc, tempInventory->nulls)) {
+			swapItems(ingredientLoc);
+			swap = 1;
+		}
+
+		// This will cause the item in index length - 1 - nulls to disappear
+		// Verify that the second ingredient is NOT in this index
+		if (ingredientLoc[0] == lastVisibleSlot && ingredientLoc[1] == lastVisibleSlot - tempInventory->nulls) {
+			// This item will disappear. We will need to swap the order of the items
+			swapItems(ingredientLoc);
+			swap = swap ? 0 : 1;
+		}
+
+		// Calculate the number of frames to grab the first item
+		*tempFrames += invFrames[viableItems - 1][ingredientLoc[0] - tempInventory->nulls];
+
+		// Based on the index of the first item, calculate the frames to grab the second item
+
+		// If the first ingredient is in slots 1-10, the item is removed.
+		// We only care about this in order to adjust the index of the second item,
+		// which decreases by 1 in this scenario.
+		if (ingredientLoc[0] < 10 && ingredientLoc[1] > ingredientLoc[0]) {
+			*tempFrames += invFrames[viableItems - 2][ingredientLoc[1] - tempInventory->nulls - 1];
+		}
+		// The anomaly occurs
+		else if (ingredientLoc[0] == lastVisibleSlot) {
+			// We do not need to adjust the index of the item, as the index is before the removed item
+			if (ingredientLoc[1] < lastVisibleSlot - tempInventory->nulls) {
+				*tempFrames += invFrames[viableItems - 2][ingredientLoc[1] - tempInventory->nulls];
+			}
+			// Adjust the index because this index occurs after the index of the removed item
+			else {
+				*tempFrames += invFrames[viableItems - 2][ingredientLoc[1] - tempInventory->nulls - 1];
+			}
+		}
+		else {
+			// The first item will not disappear, OR it will not affect the index of the second item
+			if (ingredientLoc[0] >= 10) {
+				*tempFrames += invFrames[viableItems - 1][ingredientLoc[1] - tempInventory->nulls];
+			}
+			else {
+				*tempFrames += invFrames[viableItems - 2][ingredientLoc[1] - tempInventory->nulls];
+			}
+		}
 	}
 	else {
-		// In this case, the 2nd ingredient was found earlier on than the 1st ingredient, so no change to index
-		*tempFrames += invFrames[viableItems - 2][ingredientLoc[1] - tempInventory->nulls];
+		// Determine which order of ingredients to take
+		// The first picked item always vanishes from the list of ingredients when picking the 2nd ingredient
+		// There are some configurations where it is 2 frames faster to pick the ingredients in the reverse order
+		if (selectSecondItemFirst(ingredientLoc, tempInventory->nulls, viableItems)) {
+			// It's faster to select the 2nd item, so make it the priority and switch the order
+			swapItems(ingredientLoc);
+			swap = 1;
+		}
+
+		// Calculate the number of frames needed to grab the first item
+		*tempFrames += invFrames[viableItems - 1][ingredientLoc[0] - tempInventory->nulls];
+
+		// Determine the frames needed for the 2nd ingredient
+		// First ingredient is always removed from the menu, so there is always 1 less viable item
+		if (ingredientLoc[1] > ingredientLoc[0]) {
+			// In this case, the 2nd ingredient has "moved up" one slot since the 1st ingredient vanishes
+			*tempFrames += invFrames[viableItems - 2][ingredientLoc[1] - tempInventory->nulls - 1];
+		}
+		else {
+			// In this case, the 2nd ingredient was found earlier on than the 1st ingredient, so no change to index
+			*tempFrames += invFrames[viableItems - 2][ingredientLoc[1] - tempInventory->nulls];
+		}
 	}
 	
 	// Set each inventory index to null if the item was in the first 10 slots
-	if (ingredientLoc[0] < 10) {
-		*tempInventory = removeItem(*tempInventory, ingredientLoc[0]);
+	// To reduce complexity, remove the items in ascending order of index
+	if (ingredientLoc[0] < ingredientLoc[1]) {
+		if (ingredientLoc[0] < 10) {
+			*tempInventory = removeItem(*tempInventory, ingredientLoc[0]);
+		}
+		if (ingredientLoc[1] < 10) {
+			*tempInventory = removeItem(*tempInventory, ingredientLoc[1]);
+		}
 	}
-	if (ingredientLoc[1] < 10) {
-		*tempInventory = removeItem(*tempInventory, ingredientLoc[1]);
+	else {
+		if (ingredientLoc[1] < 10) {
+			*tempInventory = removeItem(*tempInventory, ingredientLoc[1]);
+		}
+		if (ingredientLoc[0] < 10) {
+			*tempInventory = removeItem(*tempInventory, ingredientLoc[0]);
+		}
 	}
 	
 	// Describe what items were used
@@ -1853,7 +1918,7 @@ int removeRecipesForReallocation(struct BranchPath* node, enum Type_Sort *rearra
  * to select the second item before the first item originally listed in
  * the recipe combo.
  -------------------------------------------------------------------*/
-int selectSecondItemFirst(struct BranchPath *node, struct ItemCombination combo, int *ingredientLoc, size_t nulls, int viableItems) {
+int selectSecondItemFirst(int *ingredientLoc, size_t nulls, int viableItems) {
 	return (ingredientLoc[0] - (int)nulls) >= 2
 		   && ingredientLoc[0] > ingredientLoc[1]
 		   && (ingredientLoc[0] - (int)nulls) <= viableItems/2
