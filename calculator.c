@@ -6,7 +6,6 @@
 #include "start.h"
 #include <libconfig.h>
 #include "logger.h"
-#include <assert.h>
 #include <time.h>
 #include <string.h>
 
@@ -409,7 +408,6 @@ void finalizeChapter5Eval(struct BranchPath *node, struct Inventory inventory, s
 	
 	// Apend the legal move
 	insertIntoLegalMoves(insertIndex, legalMove, node);
-	assert(node->legalMoves[node->numLegalMoves-1] != NULL);
 }
 
 /*-------------------------------------------------------------------
@@ -1157,7 +1155,6 @@ void handleSorts(struct BranchPath *curNode) {
 				
 				// Insert this new move into the current node's legalMove array
 				insertIntoLegalMoves(curNode->numLegalMoves, newLegalMove, curNode);
-				assert(curNode->legalMoves[curNode->numLegalMoves-1] != NULL);
 			}
 		}
 	}
@@ -1418,8 +1415,6 @@ void popAllButFirstLegalMove(struct BranchPath *node) {
 		freeLegalMove(node, i);
 		i--;
 	}
-	
-	assert(node->numLegalMoves <= 1);
 	
 	return;
 }
@@ -2238,7 +2233,7 @@ struct Result calculateOrder(int ID) {
 		
 		// Handle the case where the user may choose to disable both randomise and select,
 		// in which case they would always iterate down the same path, even if we reset every n iterations
-		// Set to 1,000,000 iterations before resetting at the root
+		// Set to 100,000 iterations before resetting at the root
 		int configBool = (iterationCount < 100000 || (select == 0 && randomise == 0));
 	
 		// Start iteration loop
@@ -2336,7 +2331,6 @@ struct Result calculateOrder(int ID) {
 					
 					// Handle the case where the root node runs out of legal moves
 					if (curNode->prev == NULL) {
-						assert(curNode->moves == 0);
 						freeNode(curNode);
 						return (struct Result) {-1, -1};
 					}
@@ -2369,7 +2363,6 @@ struct Result calculateOrder(int ID) {
 					
 					// Handle the case where the root node runs out of legal moves
 					if (curNode->prev == NULL) {
-						assert(curNode->moves == 0);
 						freeNode(curNode);
 						return (struct Result) {-1, -1};
 					}
