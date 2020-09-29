@@ -481,8 +481,8 @@ void fulfillChapter5(struct BranchPath *curNode) {
 	struct CH5_Eval eval;
 
 	// Calculate frames it takes the navigate to the Mousse Cake and the Hot Dog for the trade
-	eval.frames_HD = 2 * invFrames[newInventory.length - 1][indexOfItemInInventory(newInventory, Hot_Dog)];
-	eval.frames_MC = invFrames[newInventory.length - 1][mousse_cake_index];
+	eval.frames_HD = 2 * invFrames[newInventory.length - 2 * newInventory.nulls - 1][indexOfItemInInventory(newInventory, Hot_Dog) - newInventory.nulls];
+	eval.frames_MC = invFrames[newInventory.length - 2 * newInventory.nulls - 1][mousse_cake_index - newInventory.nulls];
 
 	// If the Mousse Cake is in the first 10 slots, change it to NULL
 	if (mousse_cake_index < 10) {
@@ -693,7 +693,7 @@ void handleChapter5EarlySortEndItems(struct BranchPath *node, struct Inventory i
 		// Replace the chosen item with the Keel Mango
 		struct Inventory km_temp_inventory = replaceItem(inventory, eval.KM_place_index, Keel_Mango);
 		// Calculate the frames for this action
-		eval.frames_KM = TOSS_FRAMES + invFrames[inventory.length - 1][eval.KM_place_index];
+		eval.frames_KM = TOSS_FRAMES + invFrames[inventory.length][eval.KM_place_index + 1];
 
 		for (eval.CS_place_index = 1; eval.CS_place_index < 10; eval.CS_place_index++) {
 			// Don't allow current move to remove Thunder Rage or previously
@@ -707,7 +707,7 @@ void handleChapter5EarlySortEndItems(struct BranchPath *node, struct Inventory i
 			// Replace the chosen item with the Courage Shell
 			struct Inventory kmcs_temp_inventory = replaceItem(km_temp_inventory, eval.CS_place_index, Courage_Shell);
 			// Calculate the frames for this action
-			eval.frames_CS = TOSS_FRAMES + invFrames[kmcs_temp_inventory.length - 1][eval.CS_place_index];
+			eval.frames_CS = TOSS_FRAMES + invFrames[kmcs_temp_inventory.length][eval.CS_place_index + 1];
 
 			// The next event is using the Thunder Rage item before resuming the 2nd session of recipe fulfillment
 			eval.TR_use_index = indexOfItemInInventory(kmcs_temp_inventory, Thunder_Rage);
@@ -775,7 +775,7 @@ void handleChapter5Eval(struct BranchPath *node, struct Inventory inventory, int
 			// Making a copy of the temp inventory for what it looks like after the allocation of the KM
 			struct Inventory km_temp_inventory = replaceItem(inventory, eval.KM_place_index, Keel_Mango);
 			// Calculate the frames for this action
-			eval.frames_KM = TOSS_FRAMES + invFrames[inventory.length - 1][eval.KM_place_index];
+			eval.frames_KM = TOSS_FRAMES + invFrames[inventory.length][eval.KM_place_index + 1];
 
 			// Perform all sorts
 			handleChapter5Sorts(node, km_temp_inventory, outputsFulfilled, numOutputsFulfilled, eval);
@@ -813,7 +813,7 @@ void handleChapter5LateSortEndItems(struct BranchPath *node, struct Inventory in
 		// Replace the chosen item with the Courage Shell
 		struct Inventory cs_temp_inventory = replaceItem(inventory, eval.CS_place_index, Courage_Shell);
 		// Calculate the frames for this action
-		eval.frames_CS = TOSS_FRAMES + invFrames[cs_temp_inventory.length - 1][eval.CS_place_index];
+		eval.frames_CS = TOSS_FRAMES + invFrames[cs_temp_inventory.length][eval.CS_place_index + 1];
 		
 		// The next event is using the Thunder Rage
 		eval.TR_use_index = indexOfItemInInventory(cs_temp_inventory, Thunder_Rage);
@@ -901,7 +901,7 @@ void handleDBCOAllocation0Nulls(struct BranchPath *curNode, struct Inventory tem
 		// Replace the chosen item with the Dried Bouquet
 		struct Inventory db_temp_inventory = replaceItem(tempInventory, eval.DB_place_index, Dried_Bouquet);
 		// Calculate the frames for this action
-		eval.frames_DB = TOSS_FRAMES + invFrames[tempInventory.length - 1][eval.DB_place_index];
+		eval.frames_DB = TOSS_FRAMES + invFrames[tempInventory.length][eval.DB_place_index + 1];
 
 		for (eval.CO_place_index = 1; eval.CO_place_index < 10; eval.CO_place_index++) {
 			// Don't allow current move to remove needed items
@@ -914,7 +914,7 @@ void handleDBCOAllocation0Nulls(struct BranchPath *curNode, struct Inventory tem
 			struct Inventory dbco_temp_inventory = replaceItem(db_temp_inventory, eval.CO_place_index, Coconut);
 			
 			// Calculate the frames of this action
-			eval.frames_CO = TOSS_FRAMES + invFrames[tempInventory.length - 1][eval.CO_place_index];
+			eval.frames_CO = TOSS_FRAMES + invFrames[tempInventory.length][eval.CO_place_index + 1];
 
 			// Handle the allocation of the Coconut sort, Keel Mango, and Courage Shell
 			handleChapter5Eval(curNode, dbco_temp_inventory, tempOutputsFulfilled, numOutputsFulfilled, eval);
@@ -950,7 +950,7 @@ void handleDBCOAllocation1Null(struct BranchPath *curNode, struct Inventory temp
 		// Replace the item with the Coconut
 		struct Inventory co_temp_inventory = replaceItem(tempInventory, eval.CO_place_index, Coconut);
 		// Calculate the number of frames needed to pick this slot for replacement
-		eval.frames_CO = TOSS_FRAMES + invFrames[tempInventory.length - 1][eval.CO_place_index];
+		eval.frames_CO = TOSS_FRAMES + invFrames[tempInventory.length][eval.CO_place_index + 1];
 		
 		// Handle the allocation of the Coconut sort, Keel Mango, and Courage Shell
 		handleChapter5Eval(curNode, co_temp_inventory, tempOutputsFulfilled, numOutputsFulfilled, eval);
