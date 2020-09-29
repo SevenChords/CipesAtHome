@@ -111,7 +111,7 @@ void handle_post(char* url, FILE *fp, int localRecord, char *nickname) {
 	fseek(fp, 0, SEEK_END);
 	long fsize = ftell(fp);
 	fseek(fp, 0, SEEK_SET);
-	wt.data = malloc(fsize+ strlen(nickname) + 49); // Offer enough padding for postfields
+	wt.data = malloc(fsize+ strlen(nickname) + 50); // Offer enough padding for postfields
 
 	if (wt.data == NULL) {
 		printf("Fatal error! Ran out of heap memory.\n");
