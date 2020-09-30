@@ -45,10 +45,9 @@ To build on macOS (w/ Homebrew installed), you will need to run the following co
 1. `brew install llvm libomp libconfig`
 1. `make`
 1. `./recipesAtHome`
-*Notes:* The `clang` included w/ macOS will not work (it's compiled w/o OpenMP).
-MacPorts should work by replacing the prefix in the makefile (e.g. to `PREFIX:=/opt`), etc.
+To run the pre-built unix executable on mac simple extract the zip file, adjust config.txt and double click start.sh.
 
-Should there be any problems in this building process, please let us know by posting an issue on Github.
+Should there be any problems in the building process, please let us know by posting an issue on Github.
 
 ## Config Settings
 Below are a set of config parameters which can be changed by the user. These will affect how the algorithm handles legal moves, as well as check for the current program version on Github.
