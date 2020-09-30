@@ -18,6 +18,8 @@
 #define REVERSE_TYPE_SORT_FRAMES 41		// Penalty to perform type descending sort
 #define JUMP_STORAGE_NO_TOSS_FRAMES 5		// Penalty for not tossing the last item (because we need to get Jump Storage)
 #define BUFFER_SEARCH_FRAMES 150		// Threshold to try optimizing a roadmap to attempt to beat the current record
+#define DEFAULT_ITERATION_LIMIT 100000 // Cutoff for iterations explored before resetting
+#define ITERATION_LIMIT_INCREASE 10000000 // Amount to increase the iteration limit by when finding a new record
 #define INVENTORY_SIZE 20
 
 typedef enum Alpha_Sort Alpha_Sort;
@@ -2218,6 +2220,7 @@ struct Result calculateOrder(int ID) {
 	while (1) {
 		int stepIndex = 0;
 		int iterationCount = 0;
+		int iterationLimit = DEFAULT_ITERATION_LIMIT;
 
 		// Create root of tree path
 		curNode = initializeRoot();
@@ -2237,7 +2240,7 @@ struct Result calculateOrder(int ID) {
 		// in which case they would always iterate down the same path, even if we reset every n iterations
 		// Set to 100,000 iterations before resetting at the root
 		// Start iteration loop
-		while (iterationCount < 100000 || (!select && !randomise) || freeRunning) {
+		while (iterationCount < iterationLimit || (!select && !randomise) || freeRunning) {
 			// In the rare occassion that the root node runs out of legal moves due to "select",
 			// exit out of the while loop to restart
 			if (curNode == NULL) {
@@ -2269,7 +2272,7 @@ struct Result calculateOrder(int ID) {
 							result_cache = (struct Result) {optimizeResult.last->description.totalFramesTaken, ID};
 							
 							// Reset the iteration count so we continue to explore near this record
-							iterationCount = 0;
+							iterationLimit = iterationCount + ITERATION_LIMIT_INCREASE;
 						}
 					}
 					
@@ -2426,11 +2429,12 @@ struct Result calculateOrder(int ID) {
 				
 				// Logging for progress display
 				iterationCount++;
-				if (freeRunning && (iterationCount % (branchInterval * 100000) == 0)) {
+				if (iterationCount % (branchInterval * DEFAULT_ITERATION_LIMIT) == 0
+					&& (freeRunning || iterationLimit != DEFAULT_ITERATION_LIMIT)) {
 					char temp3[30];
 					char temp4[100];
 					sprintf(temp3, "Call %d", ID);
-					sprintf(temp4, "%d steps currently taken, %d frames acculumated so far; %dM iterations", stepIndex, curNode->description.totalFramesTaken, iterationCount / 1000000);
+					sprintf(temp4, "%d steps currently taken, %d frames acculumated so far; %dk iterations", stepIndex, curNode->description.totalFramesTaken, iterationCount / 1000);
 					recipeLog(3, "Calculator", "Info", temp3, temp4);
 				}
 				else if (iterationCount % 10000 == 0) {
