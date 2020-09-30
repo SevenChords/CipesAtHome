@@ -51,3 +51,9 @@ Below are a set of config parameters which can be changed by the user. These wil
 - **logLevel**: This parameter specifies the degree of detail to which the program will output log information both to stdout and to the log file. The higher the number, the more detail will be output. If logLevel is 0, no data will be output. Specific thresholds are listed in config.txt.
 - **workerCount**: The number of threads to run simultaneously for the program. Generally, this can be as high as (# CPU Cores) - 2, though increasing the workerCount means that less CPU time can be dedicated to other programs running on your computer. If you are running any intensive program besides this program, then you should close the program, change the workerCount, and restart the program while using the other intensive program.
 - **Username**: This name will be submitted to the server to specify who found the roadmap. If you would like to be known for finding the fastest roadmap, change this name to a username of your choice. This is limited by 19 characters. A Discord bot in the TTYD speedrunning server will alert us with this Username when a new fastest roadmap is found.
+
+## Docker Setup
+Due to the project structure and Docker volume defaults, you must create the mounted config file *before* running the container.
+1. Create a config file anywhere: `/my/volume/location/config.txt`
+1. Copy in the [config file contents](https://github.com/SevenChords/CipesAtHome/blob/master/config.txt)
+1. `docker run -v /my/volume/location/config.txt:/app/config.txt sevenchords/cipesathome`
