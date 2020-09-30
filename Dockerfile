@@ -5,6 +5,8 @@ RUN apk update \
     && apk add --no-cache \
     libgomp
 
+WORKDIR /app
+
 # The first stage will install build dependencies on top of the
 # runtime dependencies, and then compile
 FROM base AS builder
@@ -16,8 +18,6 @@ RUN apk update \
     musl-dev \
     curl-dev \
     libconfig-dev
-
-WORKDIR /app
 
 COPY . .
 
