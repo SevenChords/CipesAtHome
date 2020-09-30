@@ -683,7 +683,7 @@ int stateOK(struct Inventory inventory, const int * const outputsCreated, struct
 
 	// List of items to not try to make
 	// Once we're done exploring the current recipe, unset it in the array
-	static int dependentRecipes[NUM_RECIPES] = {0};
+	int dependentRecipes[NUM_RECIPES] = {0};
 
 	int outputsLeft[NUM_RECIPES];
 
