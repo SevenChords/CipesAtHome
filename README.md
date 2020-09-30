@@ -56,4 +56,5 @@ Below are a set of config parameters which can be changed by the user. These wil
 Due to the project structure and Docker volume defaults, you must create the mounted config file *before* running the container.
 1. Create a config file anywhere: `/my/volume/location/config.txt`
 1. Copy in the [config file contents](https://github.com/SevenChords/CipesAtHome/blob/master/config.txt)
-1. `docker run -v /my/volume/location/config.txt:/app/config.txt sevenchords/cipesathome`
+1. Mount the config volume and results volume: `docker run -v /my/volume/location/config.txt:/app/config.txt -v /my/volume/location/results:/app/results sevenchords/cipesathome`
+1. If you're having issues with the config file, check its filesystem permissions and make sure it ends with a newline
