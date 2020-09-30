@@ -45,6 +45,7 @@ To build on macOS (w/ Homebrew installed), you will need to run the following co
 1. `brew install llvm libomp libconfig`
 1. `make`
 1. `./recipesAtHome`
+
 To run the pre-built unix executable on mac simple extract the zip file, adjust config.txt and double click start.sh.
 
 Should there be any problems in the building process, please let us know by posting an issue on Github.
