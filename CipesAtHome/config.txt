@@ -82,3 +82,16 @@
 ###############################################
   Version = "1.11"                              
 ###############################################
+
+###############################################
+#                  Debugging                  #
+###############################################
+# This mode lets you manually select which    #
+# move is performed out of those available.   #
+# At any point, you can switch to letting the #
+# program run freely. It is highly            #
+# recommended to use a workerCount of 1 when  #
+# using this mode.                            #
+###############################################
+  debug = 0 #(default: 0)
+###############################################

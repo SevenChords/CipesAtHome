@@ -2205,6 +2205,8 @@ struct Inventory getSortedInventory(struct Inventory inventory, enum Action sort
 struct Result calculateOrder(int ID) {
 	int randomise = getConfigInt("randomise");
 	int select = getConfigInt("select");
+	int debug = getConfigInt("debug");
+	int freeRunning = 0;
 	int branchInterval = getConfigInt("branchLogInterval");
 	int total_dives = 0;
 	struct BranchPath *curNode = NULL; // Deepest node at any particular point
@@ -2234,10 +2236,8 @@ struct Result calculateOrder(int ID) {
 		// Handle the case where the user may choose to disable both randomise and select,
 		// in which case they would always iterate down the same path, even if we reset every n iterations
 		// Set to 100,000 iterations before resetting at the root
-		int configBool = (iterationCount < 100000 || (select == 0 && randomise == 0));
-	
 		// Start iteration loop
-		while (configBool) {
+		while (iterationCount < 100000 || (!select && !randomise) || freeRunning) {
 			// In the rare occassion that the root node runs out of legal moves due to "select",
 			// exit out of the while loop to restart
 			if (curNode == NULL) {
@@ -2321,7 +2321,7 @@ struct Result calculateOrder(int ID) {
 					// This saves on recursing down pointless states
 					popAllButFirstLegalMove(curNode);
 				}
-				else {
+				else if (!debug || freeRunning) {
 					handleSelectAndRandom(curNode, select, randomise);
 				}
 				
@@ -2340,6 +2340,49 @@ struct Result calculateOrder(int ID) {
 					curNode->next = NULL;
 					stepIndex--;
 					continue;
+				}
+
+				// Allow the user to choose their path when in debugging mode
+				else if (debug && !freeRunning) {
+					FILE *fp = stdout;
+					for (int move = 0; move < curNode->numLegalMoves; ++move) {
+						fprintf(fp, "%d - ", move);
+						struct BranchPath* curMove = curNode->legalMoves[move];
+						MoveDescription desc = curMove->description;
+						enum Action curMoveAction = desc.action;
+						switch (curMoveAction) {
+						case Cook:
+							printCookData(curMove, desc, fp);
+							break;
+						case Ch5:
+							printCh5Data(curMove, desc, fp);
+							break;
+						case Begin:
+							fputs("Begin", fp);
+							break;
+						default:
+							// Some type of sorting
+							printSortData(fp, curMoveAction);
+						}
+						fprintf(fp, "\n");
+					}
+
+					fprintf(fp, "%d - Run freely\n", curNode->numLegalMoves);
+
+					printf("Which move would you like to perform? ");
+					int moveToExplore;
+					scanf("%d", &moveToExplore);
+					fprintf(fp, "\n");
+
+					if (moveToExplore == curNode->numLegalMoves) {
+						freeRunning = 1;
+					}
+					else {
+						// Take the legal move at nextMoveIndex and move it to the front of the array
+						struct BranchPath *nextMove = curNode->legalMoves[0];
+						curNode->legalMoves[0] = curNode->legalMoves[moveToExplore];
+						curNode->legalMoves[moveToExplore] = nextMove;
+					}
 				}
 					
 				// Once the list is generated choose the top-most path and iterate downward
@@ -2383,8 +2426,14 @@ struct Result calculateOrder(int ID) {
 				
 				// Logging for progress display
 				iterationCount++;
-				configBool = (iterationCount < 100000 || (select == 0 && randomise == 0));
-				if (iterationCount % 10000 == 0) {
+				if (freeRunning && (iterationCount % (branchInterval * 100000) == 0)) {
+					char temp3[30];
+					char temp4[100];
+					sprintf(temp3, "Call %d", ID);
+					sprintf(temp4, "%d steps currently taken, %d frames acculumated so far; %dM iterations", stepIndex, curNode->description.totalFramesTaken, iterationCount / 1000000);
+					recipeLog(3, "Calculator", "Info", temp3, temp4);
+				}
+				else if (iterationCount % 10000 == 0) {
 					char temp3[30];
 					char temp4[100];
 					sprintf(temp3, "Call %d", ID);
