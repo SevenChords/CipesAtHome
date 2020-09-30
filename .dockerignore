@@ -2,3 +2,5 @@
 !Makefile
 !*.c
 !*.h
+!config.txt
+!entrypoint.sh

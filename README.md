@@ -53,8 +53,14 @@ Below are a set of config parameters which can be changed by the user. These wil
 - **Username**: This name will be submitted to the server to specify who found the roadmap. If you would like to be known for finding the fastest roadmap, change this name to a username of your choice. This is limited by 19 characters. A Discord bot in the TTYD speedrunning server will alert us with this Username when a new fastest roadmap is found.
 
 ## Docker Setup
-Due to the project structure and Docker volume defaults, you must create the mounted config file *before* running the container.
-1. Create a config file anywhere: `/my/volume/location/config.txt`
-1. Copy in the [config file contents](https://github.com/SevenChords/CipesAtHome/blob/master/config.txt)
-1. Mount the config volume and results volume: `docker run -v /my/volume/location/config.txt:/app/config.txt -v /my/volume/location/results:/app/results sevenchords/cipesathome`
-1. If you're having issues with the config file, check its filesystem permissions and make sure it ends with a newline
+If your system is set up with Docker, you can quickly run CipesAtHome with a Docker image:
+1. Mount the `/config` directory, set any environment variables, and run the container:
+   - `docker run -e USERNAME=MyName -v /my/volume/location/cipesathome:/config sevenchords/cipesathome`
+1. On first run, a config.txt will automatically be created. Feel free to modify it, as it will be used on the next startup.
+   - If you're having issues with the config file, check its filesystem permissions and make sure it ends with a newline
+
+### Docker Environment Variables
+Available variables:
+`SELECT`, `RANDOMISE`, `LOG_LEVEL`, `BRANCH_LOG_INTERVAL`, `WORKER_COUNT`, `USERNAME`
+
+Environment variables are used to set `config.txt` values on first run. If config.txt already exists in the volume, the environment variables will do nothing.

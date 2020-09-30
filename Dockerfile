@@ -30,8 +30,15 @@ FROM base
 RUN apk update \
     && apk add --no-cache \
     libcurl \
-    libconfig
+    libconfig \
+    sed
 
-COPY --from=builder /app/recipesAtHome /app/
+COPY --from=builder /app/recipesAtHome /app/config.txt /app/
 
-CMD [ "/app/recipesAtHome" ]
+# backwards compatibility (from https://success.docker.com/article/use-a-script-to-initialize-stateful-container-data)
+COPY entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN ln -s /usr/local/bin/docker-entrypoint.sh / 
+
+VOLUME [ "/config" ]
+
+ENTRYPOINT [ "docker-entrypoint.sh" ]
