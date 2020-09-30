@@ -683,16 +683,27 @@ int stateOK(struct Inventory inventory, const int * const outputsCreated, struct
 
 	// List of items to not try to make
 	// Once we're done exploring the current recipe, unset it in the array
-        static int dependentRecipes[NUM_RECIPES] = {0};
+	static int dependentRecipes[NUM_RECIPES] = {0};
 
-        int outputsLeft[NUM_RECIPES];
+	int outputsLeft[NUM_RECIPES];
 
 	int startRecipe = 0;
 	int endRecipe = 0;
 
 	// Build a list of only those recipes we have not yet made
+	// This loop is unrolled, treat the comments as if they apply to all
+	// iterations. With a loop this short, saving the add and cmp instructions
+	// saves a huge amount of time.
+	// Set the current end+1th member of the list to the current index
+	// This one won't get read yet
 	outputsLeft[endRecipe] = 0;
+	// If outputsCreated at the current index is 0, this will advance the end
+	// of the list to the next index, preventing the previously set value
+	// from being overwritten and allowing it to be read at the end
+	// If it's 1, then this will be a no-op and the index at end+1 will be
+	// overwritten again
 	endRecipe += 1 ^ outputsCreated[0];
+	// Loop continues
 	outputsLeft[endRecipe] = 1;
 	endRecipe += 1 ^ outputsCreated[1];
 	outputsLeft[endRecipe] = 2;
