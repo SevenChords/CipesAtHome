@@ -43,7 +43,7 @@ int main() {
 	
 	if (update == -1) {
 		printf("Could not check version on Github. Please check your internet connection.\n");
-		printf("Otherwise, we can't submit compelted roadmaps to the server!\n");
+		printf("Otherwise, we can't submit completed roadmaps to the server!\n");
 		printf("Alternatively you may have been rate-limited. Please wait a while and try again.\n");
 		printf("Press ENTER to quit.\n");
 		char exitChar = getchar();
