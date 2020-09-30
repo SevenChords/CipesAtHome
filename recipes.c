@@ -13,7 +13,7 @@
  *			  enum Type_Sort		 item1
  *			  enum Type_Sort		 item2
  * Outputs	: struct ItemCombination combo
- * 
+ *
  * Small helper function which takes two items and creates a combo struct.
  -------------------------------------------------------------------*/
 struct ItemCombination parseCombo(int itemCount, enum Type_Sort item1, enum Type_Sort item2) {
@@ -24,7 +24,7 @@ struct ItemCombination parseCombo(int itemCount, enum Type_Sort item1, enum Type
 
 /*-------------------------------------------------------------------
  * Function : getRecipeList
- * Inputs	: 
+ * Inputs	:
  * Outputs	: struct Recipe *recipeList
  *
  * Hard-coded array which tracks all recipes, the number of combinations
@@ -591,7 +591,7 @@ void copyDependentRecipes(int *newDependentRecipes, int *dependentRecipes) {
  * be creatable.
  -------------------------------------------------------------------*/
 // Returns 1 if true, 0 if false
-int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCreated, int *dependentRecipes, struct Recipe *recipeList) {
+int checkRecipe(struct ItemCombination combo, int *makeableItems, const int * const outputsCreated, int *dependentRecipes, struct Recipe *recipeList) {
 	// Determine if the recipe items can still be fulfilled
 	for (int i = 0; i < combo.numItems; i++) {
 		enum Type_Sort ingredient = i == 0 ? combo.item1 : combo.item2;
@@ -599,22 +599,22 @@ int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCr
 		if (makeableItems[ingredient]) {
 			continue;
 		}
-		
+
 		int recipeIndex = getIndexOfRecipe(ingredient);
 
 		if (recipeIndex == -1) {
 			// The item cannot ever be created
 			return 0;
 		}
-		
+
 		// Check if it hasn't been made and doesn't depend on any item
 		if (outputsCreated[recipeIndex] || dependentRecipes[recipeIndex]) {
 			// The item cannot be produced due to the current history
 			return 0;
 		}
-		
+
 		dependentRecipes[recipeIndex] = 1;
-		
+
 		// Recurse on all recipes that can make this item
 		for (int j = 0; j < recipeList[recipeIndex].countCombos; ++j) {
 			struct ItemCombination newRecipe = recipeList[recipeIndex].combos[j];
@@ -624,14 +624,14 @@ int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCr
 				break;
 			}
 		}
-		
+
 		dependentRecipes[recipeIndex] = 0;
 		if (!makeableItems[ingredient]) {
 			// The item cannot be produced with the current inventory
 			return 0;
 		}
 	}
-	
+
 	return 1;
 }
 
@@ -656,61 +656,193 @@ int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCr
  *			  struct Recipe	   *recipeList
  * Outputs	: 1 if we can still make all remaining recipes with the
  *			  current inventory. Else, return 0
- * 
+ *
  * This function iterates over all recipes, skips over any that have
  * been already created, and calls checkRecipe to see if each remaining
  * recipe can still be fulfilled at some point in the roadmap.
  -------------------------------------------------------------------*/
-int stateOK(struct Inventory inventory, int *outputsCreated, struct Recipe *recipeList) {
+int stateOK(struct Inventory inventory, const int * const outputsCreated, struct Recipe *recipeList) {
 	// With the given inventory, can the remaining recipes be fulfilled?
-		
+
 	// If Chapter 5 has not been done, verify that Thunder Rage is in the inventory
 	if (!outputsCreated[getIndexOfRecipe(Dried_Bouquet)] && indexOfItemInInventory(inventory, Thunder_Rage) == -1) {
 		return 0;
 	}
-	
+
 	int makeableItems[NUM_ITEMS] = {0};
 
 	placeInventoryInMakeableItems(makeableItems, inventory);
-	
+
 	// If Chapter 5 has not been done, add the items it gives
 	if (outputsCreated[getIndexOfRecipe(Dried_Bouquet)] == 0) {
 		makeableItems[Keel_Mango] = 1;
 		makeableItems[Coconut] = 1;
-		makeableItems[Dried_Bouquet] = 1;
+	 	makeableItems[Dried_Bouquet] = 1;
 		makeableItems[Courage_Shell] = 1;
 	}
-	
+
 	// List of items to not try to make
 	// Once we're done exploring the current recipe, unset it in the array
 	int dependentRecipes[NUM_RECIPES] = {0};
-	
+
+	int outputsLeft[NUM_RECIPES];
+
+	int startRecipe = 0;
+	int endRecipe = 0;
+
+	// Build a list of only those recipes we have not yet made
+	// This loop is unrolled, treat the comments as if they apply to all
+	// iterations. With a loop this short, saving the add and cmp instructions
+	// saves a huge amount of time.
+	// Set the current end+1th member of the list to the current index
+	// This one won't get read yet
+	outputsLeft[endRecipe] = 0;
+	// If outputsCreated at the current index is 0, this will advance the end
+	// of the list to the next index, preventing the previously set value
+	// from being overwritten and allowing it to be read at the end
+	// If it's 1, then this will be a no-op and the index at end+1 will be
+	// overwritten again
+	endRecipe += 1 ^ outputsCreated[0];
+	// Loop continues
+	outputsLeft[endRecipe] = 1;
+	endRecipe += 1 ^ outputsCreated[1];
+	outputsLeft[endRecipe] = 2;
+	endRecipe += 1 ^ outputsCreated[2];
+	outputsLeft[endRecipe] = 3;
+	endRecipe += 1 ^ outputsCreated[3];
+	outputsLeft[endRecipe] = 4;
+	endRecipe += 1 ^ outputsCreated[4];
+	outputsLeft[endRecipe] = 5;
+	endRecipe += 1 ^ outputsCreated[5];
+	outputsLeft[endRecipe] = 6;
+	endRecipe += 1 ^ outputsCreated[6];
+	outputsLeft[endRecipe] = 7;
+	endRecipe += 1 ^ outputsCreated[7];
+	outputsLeft[endRecipe] = 8;
+	endRecipe += 1 ^ outputsCreated[8];
+	outputsLeft[endRecipe] = 9;
+	endRecipe += 1 ^ outputsCreated[9];
+	outputsLeft[endRecipe] = 10;
+	endRecipe += 1 ^ outputsCreated[10];
+	outputsLeft[endRecipe] = 11;
+	endRecipe += 1 ^ outputsCreated[11];
+	outputsLeft[endRecipe] = 12;
+	endRecipe += 1 ^ outputsCreated[12];
+	outputsLeft[endRecipe] = 13;
+	endRecipe += 1 ^ outputsCreated[13];
+	outputsLeft[endRecipe] = 14;
+	endRecipe += 1 ^ outputsCreated[14];
+	outputsLeft[endRecipe] = 15;
+	endRecipe += 1 ^ outputsCreated[15];
+	outputsLeft[endRecipe] = 16;
+	endRecipe += 1 ^ outputsCreated[16];
+	outputsLeft[endRecipe] = 17;
+	endRecipe += 1 ^ outputsCreated[17];
+	outputsLeft[endRecipe] = 18;
+	endRecipe += 1 ^ outputsCreated[18];
+	outputsLeft[endRecipe] = 19;
+	endRecipe += 1 ^ outputsCreated[19];
+	outputsLeft[endRecipe] = 20;
+	endRecipe += 1 ^ outputsCreated[20];
+	outputsLeft[endRecipe] = 21;
+	endRecipe += 1 ^ outputsCreated[21];
+	outputsLeft[endRecipe] = 22;
+	endRecipe += 1 ^ outputsCreated[22];
+	outputsLeft[endRecipe] = 23;
+	endRecipe += 1 ^ outputsCreated[23];
+	outputsLeft[endRecipe] = 24;
+	endRecipe += 1 ^ outputsCreated[24];
+	outputsLeft[endRecipe] = 25;
+	endRecipe += 1 ^ outputsCreated[25];
+	outputsLeft[endRecipe] = 26;
+	endRecipe += 1 ^ outputsCreated[26];
+	outputsLeft[endRecipe] = 27;
+	endRecipe += 1 ^ outputsCreated[27];
+	outputsLeft[endRecipe] = 28;
+	endRecipe += 1 ^ outputsCreated[28];
+	outputsLeft[endRecipe] = 29;
+	endRecipe += 1 ^ outputsCreated[29];
+	outputsLeft[endRecipe] = 30;
+	endRecipe += 1 ^ outputsCreated[30];
+	outputsLeft[endRecipe] = 31;
+	endRecipe += 1 ^ outputsCreated[31];
+	outputsLeft[endRecipe] = 32;
+	endRecipe += 1 ^ outputsCreated[32];
+	outputsLeft[endRecipe] = 33;
+	endRecipe += 1 ^ outputsCreated[33];
+	outputsLeft[endRecipe] = 34;
+	endRecipe += 1 ^ outputsCreated[34];
+	outputsLeft[endRecipe] = 35;
+	endRecipe += 1 ^ outputsCreated[35];
+	outputsLeft[endRecipe] = 36;
+	endRecipe += 1 ^ outputsCreated[36];
+	outputsLeft[endRecipe] = 37;
+	endRecipe += 1 ^ outputsCreated[37];
+	outputsLeft[endRecipe] = 38;
+	endRecipe += 1 ^ outputsCreated[38];
+	outputsLeft[endRecipe] = 39;
+	endRecipe += 1 ^ outputsCreated[39];
+	outputsLeft[endRecipe] = 40;
+	endRecipe += 1 ^ outputsCreated[40];
+	outputsLeft[endRecipe] = 41;
+	endRecipe += 1 ^ outputsCreated[41];
+	outputsLeft[endRecipe] = 42;
+	endRecipe += 1 ^ outputsCreated[42];
+	outputsLeft[endRecipe] = 43;
+	endRecipe += 1 ^ outputsCreated[43];
+	outputsLeft[endRecipe] = 44;
+	endRecipe += 1 ^ outputsCreated[44];
+	outputsLeft[endRecipe] = 45;
+	endRecipe += 1 ^ outputsCreated[45];
+	outputsLeft[endRecipe] = 46;
+	endRecipe += 1 ^ outputsCreated[46];
+	outputsLeft[endRecipe] = 47;
+	endRecipe += 1 ^ outputsCreated[47];
+	outputsLeft[endRecipe] = 48;
+	endRecipe += 1 ^ outputsCreated[48];
+	outputsLeft[endRecipe] = 49;
+	endRecipe += 1 ^ outputsCreated[49];
+	outputsLeft[endRecipe] = 50;
+	endRecipe += 1 ^ outputsCreated[50];
+	outputsLeft[endRecipe] = 51;
+	endRecipe += 1 ^ outputsCreated[51];
+	outputsLeft[endRecipe] = 52;
+	endRecipe += 1 ^ outputsCreated[52];
+	outputsLeft[endRecipe] = 53;
+	endRecipe += 1 ^ outputsCreated[53];
+	outputsLeft[endRecipe] = 54;
+	endRecipe += 1 ^ outputsCreated[54];
+	outputsLeft[endRecipe] = 55;
+	endRecipe += 1 ^ outputsCreated[55];
+	outputsLeft[endRecipe] = 56;
+	endRecipe += 1 ^ outputsCreated[56];
+	outputsLeft[endRecipe] = 57;
+	endRecipe += 1 ^ outputsCreated[57];
+
 	// Iterate through all output items that haven't been created
-	for (int i = 0; i < NUM_RECIPES; i++) {
-		if (outputsCreated[i] == 1)
-			continue;
-			
+	for (int currentRecipe = startRecipe; currentRecipe < endRecipe; currentRecipe++) {
+
 		// Clear the dependentIndices array, specify that recipe #i is dependent
-		dependentRecipes[i] = 1;
+		dependentRecipes[outputsLeft[currentRecipe]] = 1;
 		// Check if any recipe to make the item can be fulfilled
 		int makeable = 0;
-		for (int j = 0; j < recipeList[i].countCombos; j++) {
-			if (checkRecipe(recipeList[i].combos[j], makeableItems, outputsCreated, dependentRecipes, recipeList) == 1) {
+		for (int j = 0; j < recipeList[outputsLeft[currentRecipe]].countCombos; j++) {
+			if (checkRecipe(recipeList[outputsLeft[currentRecipe]].combos[j], makeableItems, outputsCreated, dependentRecipes, recipeList) == 1) {
 				// Stop looking for recipes to make the item
-				makeableItems[recipeList[i].output] = 1;
+				makeableItems[recipeList[outputsLeft[currentRecipe]].output] = 1;
 				makeable = 1;
 				break;
 			}
 		}
-		
+
 		// The item cannot be fulfilled
 		if (makeable == 0) {
 			return 0;
 		}
-		
-		dependentRecipes[i] = 0;
+
+		dependentRecipes[outputsLeft[currentRecipe]] = 0;
 	}
-	
+
 	// All remaining outputs can still be fulfilled
 	return 1;
 }
