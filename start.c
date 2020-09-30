@@ -41,6 +41,18 @@ int main() {
 	curl_global_init(CURL_GLOBAL_DEFAULT);	// Initialize libcurl
 	int update = checkForUpdates(local_ver);
 	
+	// Greeting message to user
+	printf("Welcome to Recipes@Home!\n");
+	printf("Leave this program running as long as you want to search for new recipe orders.\n");
+	int blob_record = getFastestRecordOnBlob();
+	if (blob_record == 0) {
+		printf("There was an error contacting the server to retrieve the fastest time.\n");
+		printf("Please check your internet connection, but we'll continue for now.\n");
+	}
+	else {
+		printf("The current fastest record is %d frames. Happy cooking!\n", blob_record);
+	}
+	
 	if (update == -1) {
 		printf("Could not check version on Github. Please check your internet connection.\n");
 		printf("Otherwise, we can't submit completed roadmaps to the server!\n");
