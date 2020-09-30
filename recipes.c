@@ -13,7 +13,7 @@
  *			  enum Type_Sort		 item1
  *			  enum Type_Sort		 item2
  * Outputs	: struct ItemCombination combo
- * 
+ *
  * Small helper function which takes two items and creates a combo struct.
  -------------------------------------------------------------------*/
 struct ItemCombination parseCombo(int itemCount, enum Type_Sort item1, enum Type_Sort item2) {
@@ -24,7 +24,7 @@ struct ItemCombination parseCombo(int itemCount, enum Type_Sort item1, enum Type
 
 /*-------------------------------------------------------------------
  * Function : getRecipeList
- * Inputs	: 
+ * Inputs	:
  * Outputs	: struct Recipe *recipeList
  *
  * Hard-coded array which tracks all recipes, the number of combinations
@@ -591,7 +591,7 @@ void copyDependentRecipes(int *newDependentRecipes, int *dependentRecipes) {
  * be creatable.
  -------------------------------------------------------------------*/
 // Returns 1 if true, 0 if false
-int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCreated, int *dependentRecipes, struct Recipe *recipeList) {
+int checkRecipe(struct ItemCombination combo, int *makeableItems, const int * const outputsCreated, int *dependentRecipes, struct Recipe *recipeList) {
 	// Determine if the recipe items can still be fulfilled
 	for (int i = 0; i < combo.numItems; i++) {
 		enum Type_Sort ingredient = i == 0 ? combo.item1 : combo.item2;
@@ -599,22 +599,22 @@ int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCr
 		if (makeableItems[ingredient]) {
 			continue;
 		}
-		
+
 		int recipeIndex = getIndexOfRecipe(ingredient);
 
 		if (recipeIndex == -1) {
 			// The item cannot ever be created
 			return 0;
 		}
-		
+
 		// Check if it hasn't been made and doesn't depend on any item
 		if (outputsCreated[recipeIndex] || dependentRecipes[recipeIndex]) {
 			// The item cannot be produced due to the current history
 			return 0;
 		}
-		
+
 		dependentRecipes[recipeIndex] = 1;
-		
+
 		// Recurse on all recipes that can make this item
 		for (int j = 0; j < recipeList[recipeIndex].countCombos; ++j) {
 			struct ItemCombination newRecipe = recipeList[recipeIndex].combos[j];
@@ -624,14 +624,14 @@ int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCr
 				break;
 			}
 		}
-		
+
 		dependentRecipes[recipeIndex] = 0;
 		if (!makeableItems[ingredient]) {
 			// The item cannot be produced with the current inventory
 			return 0;
 		}
 	}
-	
+
 	return 1;
 }
 
@@ -656,61 +656,70 @@ int checkRecipe(struct ItemCombination combo, int *makeableItems, int *outputsCr
  *			  struct Recipe	   *recipeList
  * Outputs	: 1 if we can still make all remaining recipes with the
  *			  current inventory. Else, return 0
- * 
+ *
  * This function iterates over all recipes, skips over any that have
  * been already created, and calls checkRecipe to see if each remaining
  * recipe can still be fulfilled at some point in the roadmap.
  -------------------------------------------------------------------*/
-int stateOK(struct Inventory inventory, int *outputsCreated, struct Recipe *recipeList) {
+int stateOK(struct Inventory inventory, const int * const outputsCreated, struct Recipe *recipeList) {
 	// With the given inventory, can the remaining recipes be fulfilled?
-		
+
 	// If Chapter 5 has not been done, verify that Thunder Rage is in the inventory
 	if (!outputsCreated[getIndexOfRecipe(Dried_Bouquet)] && indexOfItemInInventory(inventory, Thunder_Rage) == -1) {
 		return 0;
 	}
-	
+
 	int makeableItems[NUM_ITEMS] = {0};
 
 	placeInventoryInMakeableItems(makeableItems, inventory);
-	
+
 	// If Chapter 5 has not been done, add the items it gives
 	if (outputsCreated[getIndexOfRecipe(Dried_Bouquet)] == 0) {
 		makeableItems[Keel_Mango] = 1;
 		makeableItems[Coconut] = 1;
-		makeableItems[Dried_Bouquet] = 1;
+	 	makeableItems[Dried_Bouquet] = 1;
 		makeableItems[Courage_Shell] = 1;
 	}
-	
+
 	// List of items to not try to make
 	// Once we're done exploring the current recipe, unset it in the array
-	int dependentRecipes[NUM_RECIPES] = {0};
+        static int dependentRecipes[NUM_RECIPES] = {0};
+ 
+        int outputsLeft[NUM_RECIPES];
 	
-	// Iterate through all output items that haven't been created
+	int startRecipe = 0;
+	int endRecipe = 0;
+
+	// Build a list of only those recipes we have not yet made
 	for (int i = 0; i < NUM_RECIPES; i++) {
-		if (outputsCreated[i] == 1)
-			continue;
-			
+		outputsLeft[endRecipe] = i;
+		endRecipe += 1 ^ outputsCreated[i];
+	}
+
+	// Iterate through all output items that haven't been created
+	for (int currentRecipe = startRecipe; currentRecipe < endRecipe; currentRecipe++) {
+
 		// Clear the dependentIndices array, specify that recipe #i is dependent
-		dependentRecipes[i] = 1;
+		dependentRecipes[outputsLeft[currentRecipe]] = 1;
 		// Check if any recipe to make the item can be fulfilled
 		int makeable = 0;
-		for (int j = 0; j < recipeList[i].countCombos; j++) {
-			if (checkRecipe(recipeList[i].combos[j], makeableItems, outputsCreated, dependentRecipes, recipeList) == 1) {
+		for (int j = 0; j < recipeList[outputsLeft[currentRecipe]].countCombos; j++) {
+			if (checkRecipe(recipeList[outputsLeft[currentRecipe]].combos[j], makeableItems, outputsCreated, dependentRecipes, recipeList) == 1) {
 				// Stop looking for recipes to make the item
-				makeableItems[recipeList[i].output] = 1;
+				makeableItems[recipeList[outputsLeft[currentRecipe]].output] = 1;
 				makeable = 1;
 				break;
 			}
 		}
-		
+
 		// The item cannot be fulfilled
 		if (makeable == 0) {
 			return 0;
 		}
-		
-		dependentRecipes[i] = 0;
+
+		dependentRecipes[outputsLeft[currentRecipe]] = 0;
 	}
-	
+
 	// All remaining outputs can still be fulfilled
 	return 1;
 }

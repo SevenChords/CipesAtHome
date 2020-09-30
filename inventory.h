@@ -244,7 +244,7 @@ struct Recipe {
 // Recipe functions
 int getIndexOfRecipe(enum Type_Sort item);
 struct Recipe* getRecipeList();
-int stateOK(struct Inventory inventory, int* outputsCreated, struct Recipe* recipeList);
+int stateOK(struct Inventory inventory, const int* const outputsCreated, struct Recipe* recipeList);
 
 struct ItemCombination parseCombo(int itemCount, enum Type_Sort item1, enum Type_Sort item2);
 
