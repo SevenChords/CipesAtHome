@@ -1387,7 +1387,7 @@ struct OptimizeResult optimizeRoadmap(struct BranchPath *root) {
  -------------------------------------------------------------------*/
 void periodicGithubCheck() {
 	// Double check the latest release on Github
-	#pragma omp critical
+	#pragma omp critical(check)
 	{
 		int update = checkForUpdates(getLocalVersion());
 		if (update == -1) {
@@ -2255,7 +2255,7 @@ struct Result calculateOrder(int ID) {
 					// A finished roadmap has been generated
 					// Rearrange the roadmap to save frames
 					struct OptimizeResult optimizeResult = optimizeRoadmap(root);
-					#pragma omp critical
+					#pragma omp critical(optimize)
 					{
 						if (optimizeResult.last->description.totalFramesTaken < getLocalRecord()) {
 							setLocalRecord(optimizeResult.last->description.totalFramesTaken);
@@ -2400,15 +2400,15 @@ struct Result calculateOrder(int ID) {
 		
 		// Check the cache to see if a result was generated
 		if (result_cache.frames > -1) {
-			// Modify PB.txt
-			FILE* fp = fopen("results/PB.txt", "w");
 
-			char new_record[5];
-			_itoa(result_cache.frames, new_record, 10);
-			new_record[4] = '\0';
-			fputs(new_record, fp);
-			fclose(fp);
-
+			// Enter critical section to prevent slower threads from overwriting the PB file
+			#pragma omp critical(pb)
+			{
+				// Modify PB.txt
+				FILE* fp = fopen("results/PB.txt", "w");
+				fprintf(fp, "%d", result_cache.frames);
+				fclose(fp);
+			}
 
 			// Return the cached result
 			return result_cache;

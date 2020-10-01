@@ -87,10 +87,10 @@ int main() {
 
 	// The PB file may not have been created yet, so ignore the case where it is missing
 	if (fp != NULL) {
-		char buf[4];
-		fgets(buf, 4, fp);
-
-		current_frame_record = atoi(buf);
+		int PB_record;
+		if (fscanf(fp, "%d", &PB_record) == 1) {
+			current_frame_record = PB_record;
+		}
 		fclose(fp);
 	}
 
