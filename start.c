@@ -31,7 +31,10 @@ const char *getLocalVersion() {
 
 int main() {
 	int cycle_count = 1;
-	current_frame_record = 9999;
+	current_frame_record = getFastestRecordOnBlob();
+	if (current_frame_record == 0) {
+		current_frame_record = 9999;
+	}
 	initConfig();
 
 	// If select and randomise are both 0, the same roadmap will be calculated on every thread, so set threads = 1
@@ -86,14 +89,7 @@ int main() {
 		
 		while (1) {
 			struct Result result = calculateOrder(ID);
-			
-			#pragma omp critical
-			{
-				current_frame_record = result.frames;
-			}
-			
 			testRecord(result.frames);
-			cycle_count++;
 		}
 	}
 	
