@@ -99,7 +99,6 @@ int removeRecipesForReallocation(struct BranchPath *node, enum Type_Sort *rearra
 // Legal move functions
 
 struct BranchPath* createLegalMove(struct BranchPath* node, struct Inventory inventory, struct MoveDescription description, int* outputsFulfilled, int numOutputsFulfilled);
-void filterLegalMovesExceedFrameLimit(struct BranchPath* node, int frames);
 void filterOut2Ingredients(struct BranchPath* node);
 void finalizeChapter5Eval(struct BranchPath* node, struct Inventory inventory, struct CH5* ch5Data, int temp_frame_sum, int* outputsFulfilled, int numOutputsFulfilled);
 void finalizeLegalMove(struct BranchPath* node, int tempFrames, struct MoveDescription useDescription, struct Inventory tempInventory, int* tempOutputsFulfilled, int numOutputsFulfilled, enum HandleOutput tossType, enum Type_Sort toss, int tossIndex);
