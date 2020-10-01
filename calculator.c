@@ -2400,6 +2400,16 @@ struct Result calculateOrder(int ID) {
 		
 		// Check the cache to see if a result was generated
 		if (result_cache.frames > -1) {
+			// Modify PB.txt
+			FILE* fp = fopen("results/PB.txt", "w");
+
+			char new_record[5];
+			_itoa(result_cache.frames, new_record, 10);
+			new_record[4] = '\0';
+			fputs(new_record, fp);
+			fclose(fp);
+
+
 			// Return the cached result
 			return result_cache;
 		}

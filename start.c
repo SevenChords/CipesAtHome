@@ -81,6 +81,19 @@ int main() {
 	// If not, create the directory
 	mkdir("./results", 0777);
 
+	// To avoid generating roadmaps that are slower than the user's record best,
+	// use PB.txt to identify the user's current best
+	FILE* fp = fopen("results/PB.txt", "r");
+
+	// The PB file may not have been created yet, so ignore the case where it is missing
+	if (fp != NULL) {
+		char buf[4];
+		fgets(buf, 4, fp);
+
+		current_frame_record = atoi(buf);
+		fclose(fp);
+	}
+
 	// Initialize global variables in calculator.c
 	// This does not need to be done in parallel, as these globals will
 	// persist through all parallel calls to calculator.c
