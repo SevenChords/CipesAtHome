@@ -1387,19 +1387,16 @@ struct OptimizeResult optimizeRoadmap(struct BranchPath *root) {
  -------------------------------------------------------------------*/
 void periodicGithubCheck() {
 	// Double check the latest release on Github
-	#pragma omp critical(check)
-	{
-		int update = checkForUpdates(getLocalVersion());
-		if (update == -1) {
-			printf("Could not check version on Github. Please check your internet connection.\n");
-			printf("Otherwise, completed roadmaps may be inaccurate!\n");
-		}
-		else if (update == 1) {
-			printf("Please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!\n");
-			printf("Press ENTER to exit the program.\n");
-			char exitChar = getchar();
-			exit(1);
-		}
+	int update = checkForUpdates(getLocalVersion());
+	if (update == -1) {
+		printf("Could not check version on Github. Please check your internet connection.\n");
+		printf("Otherwise, completed roadmaps may be inaccurate!\n");
+	}
+	else if (update == 1) {
+		printf("Please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!\n");
+		printf("Press ENTER to exit the program.\n");
+		char exitChar = getchar();
+		exit(1);
 	}
 }
 
@@ -2401,11 +2398,29 @@ struct Result calculateOrder(int ID) {
 		// Check the cache to see if a result was generated
 		if (result_cache.frames > -1) {
 
-			// Enter critical section to prevent slower threads from overwriting the PB file
+			// Enter critical section to prevent corrupted file
 			#pragma omp critical(pb)
 			{
+				// Prevent slower threads from overwriting a faster record in PB.txt
+				// by first checking the current record
+				FILE* fp;
+				if ((fp = fopen("results/PB.txt", "r")) == NULL) {
+					// The file has not been created
+					fp = fopen("results/PB.txt", "w");
+				}
+				else {
+					// Verify that this new roadmap is faster than PB
+					FILE* fp = fopen("results/PB.txt", "r+");
+					int pb_record;
+					fscanf(fp, "%d", &pb_record);
+					if (result_cache.frames > pb_record) {
+						// This is a slower thread and a faster record was already found
+						fclose(fp);
+						return (struct Result) { -1, -1 };
+					}
+				}
+				
 				// Modify PB.txt
-				FILE* fp = fopen("results/PB.txt", "w");
 				fprintf(fp, "%d", result_cache.frames);
 				fclose(fp);
 			}
