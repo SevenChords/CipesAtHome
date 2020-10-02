@@ -107,6 +107,9 @@ int getFastestRecordOnBlob() {
  -------------------------------------------------------------------*/
 void handle_post(char* url, FILE *fp, int localRecord, char *nickname) {
 	struct memory wt;
+	struct memory rt;
+	rt.data = NULL;
+	rt.size = 0;
 	
 	fseek(fp, 0, SEEK_END);
 	long fsize = ftell(fp);
@@ -137,12 +140,18 @@ void handle_post(char* url, FILE *fp, int localRecord, char *nickname) {
 		curl_easy_setopt(curl, CURLOPT_URL, url);
 		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json_str);
 		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &rt);
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
 		curl_easy_perform(curl);
 		
 		curl_easy_cleanup(curl);
 	}
 	curl_global_cleanup();
 	free(wt.data);
+
+	// Log the body of the return of the POST request
+	recipeLog(1, "Server", "Upload", "Response", rt.data);
+	free(rt.data);
 }
 
 
@@ -177,10 +186,6 @@ int testRecord(int localRecord) {
 	strncpy(nickname, username, 19);
 	nickname[19] = '\0';
 	handle_post("https://hundorecipes.azurewebsites.net/api/uploadAndVerify", fp, localRecord, nickname);
-	
-	char temp[59];
-	
-	recipeLog(1, "Submit", "File", "Upload", temp);
 	
 	return 0;
 }
