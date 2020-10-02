@@ -38,7 +38,9 @@ int main() {
 	initConfig();
 
 	// If select and randomise are both 0, the same roadmap will be calculated on every thread, so set threads = 1
-	int workerCount = getConfigInt("select") || getConfigInt("randomise") ? getConfigInt("workerCount") : 1;
+	// The debug setting can only be meaningfully used with one thread as well.
+	int workerCount = (getConfigInt("select") || getConfigInt("randomise"))
+					  && !getConfigInt("debug") ? getConfigInt("workerCount") : 1;
 	local_ver = getConfigStr("Version");
 	init_level_cfg();
 	curl_global_init(CURL_GLOBAL_DEFAULT);	// Initialize libcurl

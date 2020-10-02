@@ -1608,6 +1608,26 @@ void printOutputsCreated(struct BranchPath *curNode, FILE *fp) {
 	}
 }
 
+void printNodeDescription(struct BranchPath * curNode, FILE * fp)
+{
+	MoveDescription desc = curNode->description;
+	enum Action curNodeAction = desc.action;
+	switch (curNodeAction) {
+	case Cook:
+		printCookData(curNode, desc, fp);
+		break;
+	case Ch5:
+		printCh5Data(curNode, desc, fp);
+		break;
+	case Begin:
+		fputs("Begin", fp);
+		break;
+	default:
+		// Some type of sorting
+		printSortData(fp, curNodeAction);
+	}
+}
+
 /*-------------------------------------------------------------------
  * Function 	: printResults
  * Inputs	: char			*filename
@@ -1631,22 +1651,7 @@ void printResults(char *filename, struct BranchPath *path) {
 	// Print data information
 	struct BranchPath *curNode = path;
 	do {
-		MoveDescription desc = curNode->description;
-		enum Action curNodeAction = desc.action;
-		switch (curNodeAction) {
-			case Cook :
-				printCookData(curNode, desc, fp);
-				break;
-			case Ch5 :
-				printCh5Data(curNode, desc, fp);
-				break;
-			case Begin :
-				fputs("Begin", fp);
-				break;
-			default :
-				// Some type of sorting
-				printSortData(fp, curNodeAction);
-		}
+		printNodeDescription(curNode, fp);
 		
 		// Print out frames taken
 		fprintf(fp, "\t%d", curNode->description.framesTaken);
@@ -2350,23 +2355,7 @@ struct Result calculateOrder(int ID) {
 					FILE *fp = stdout;
 					for (int move = 0; move < curNode->numLegalMoves; ++move) {
 						fprintf(fp, "%d - ", move);
-						struct BranchPath* curMove = curNode->legalMoves[move];
-						MoveDescription desc = curMove->description;
-						enum Action curMoveAction = desc.action;
-						switch (curMoveAction) {
-						case Cook:
-							printCookData(curMove, desc, fp);
-							break;
-						case Ch5:
-							printCh5Data(curMove, desc, fp);
-							break;
-						case Begin:
-							fputs("Begin", fp);
-							break;
-						default:
-							// Some type of sorting
-							printSortData(fp, curMoveAction);
-						}
+						printNodeDescription(curNode->legalMoves[move], fp);
 						fprintf(fp, "\n");
 					}
 
