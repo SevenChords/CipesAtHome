@@ -112,12 +112,15 @@ int main() {
 		while (1) {
 			struct Result result = calculateOrder(ID);
 			
-			#pragma omp critical
-			{
-				current_frame_record = result.frames;
+			// result might store -1 frames in event that slower thread tries to return a record
+			if (result.frames > -1) {
+				#pragma omp critical
+				{
+					current_frame_record = result.frames;
+				}
+
+				testRecord(result.frames);
 			}
-			
-			testRecord(result.frames);
 			cycle_count++;
 		}
 	}
