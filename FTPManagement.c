@@ -158,8 +158,7 @@ void handle_post(char* url, FILE *fp, int localRecord, char *nickname) {
 /*-------------------------------------------------------------------
  * Function 	: testRecord
  * Inputs	: int localRecord
- * Outputs	: 1  - local record is slower than server best
- *		  -1 - error locating the text file
+ * Outputs	: -1 - error locating the text file
  *		  0  - successful submission to the server
  *
  * Retrieve the server's current fastest roadmap length.
@@ -170,10 +169,6 @@ int testRecord(int localRecord) {
 	char *folder = "results/";
 	char *extension = ".txt";
 	sprintf(filename, "%s%d%s", folder, localRecord, extension);
-
-	if (localRecord > remoteRecord) {
-		return 1;
-	}
 
 	FILE *fp = fopen(filename, "rb");
 	if (fp == NULL) {

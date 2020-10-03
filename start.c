@@ -92,6 +92,9 @@ int main() {
 			current_frame_record = PB_record;
 		}
 		fclose(fp);
+
+		// Submit the user's fastest roadmap to the server for leaderboard purposes
+		testRecord(current_frame_record);
 	}
 
 	// Initialize global variables in calculator.c
