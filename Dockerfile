@@ -1,8 +1,7 @@
 # The new base image to contain common runtime dependencies
 FROM alpine:edge AS base
 
-RUN apk update \
-    && apk add --no-cache \
+RUN apk add --no-cache \
     libgomp
 
 WORKDIR /app
@@ -11,8 +10,7 @@ WORKDIR /app
 # runtime dependencies, and then compile
 FROM base AS builder
 
-RUN apk update \
-    && apk add --no-cache \
+RUN apk add --no-cache \
     gcc \
     make \
     musl-dev \
@@ -27,8 +25,7 @@ RUN make
 # the compiled executables
 FROM base
 
-RUN apk update \
-    && apk add --no-cache \
+RUN apk add --no-cache \
     libcurl \
     libconfig \
     sed
