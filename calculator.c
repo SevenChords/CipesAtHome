@@ -2416,13 +2416,16 @@ struct Result calculateOrder(int ID) {
 					if (result_cache.frames > pb_record) {
 						// This is a slower thread and a faster record was already found
 						fclose(fp);
-						return (struct Result) { -1, -1 };
+						fp = NULL;
+						result_cache = (struct Result) { -1, -1 };
 					}
 				}
 				
 				// Modify PB.txt
-				fprintf(fp, "%d", result_cache.frames);
-				fclose(fp);
+				if (fp != NULL) {
+					fprintf(fp, "%d", result_cache.frames);
+					fclose(fp);
+				}
 			}
 
 			// Return the cached result
