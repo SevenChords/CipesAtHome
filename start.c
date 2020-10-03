@@ -35,7 +35,9 @@ int main() {
 	initConfig();
 
 	// If select and randomise are both 0, the same roadmap will be calculated on every thread, so set threads = 1
-	int workerCount = getConfigInt("select") || getConfigInt("randomise") ? getConfigInt("workerCount") : 1;
+	// The debug setting can only be meaningfully used with one thread as well.
+	int workerCount = (getConfigInt("select") || getConfigInt("randomise"))
+					  && !getConfigInt("debug") ? getConfigInt("workerCount") : 1;
 	local_ver = getConfigStr("Version");
 	init_level_cfg();
 	curl_global_init(CURL_GLOBAL_DEFAULT);	// Initialize libcurl
@@ -115,16 +117,10 @@ int main() {
 		while (1) {
 			struct Result result = calculateOrder(ID);
 			
-			// result might store -1 frames in event that slower thread tries to return a record
+			// result might store -1 frames for errors that might be recoverable
 			if (result.frames > -1) {
-				#pragma omp critical
-				{
-					current_frame_record = result.frames;
-				}
-
 				testRecord(result.frames);
 			}
-			cycle_count++;
 		}
 	}
 	

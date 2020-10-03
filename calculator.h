@@ -141,6 +141,7 @@ void printCookData(struct BranchPath* curNode, struct MoveDescription desc, FILE
 void printFileHeader(FILE* fp);
 void printInventoryData(struct BranchPath* curNode, FILE* fp);
 void printOutputsCreated(struct BranchPath* curNode, FILE* fp);
+void printNodeDescription(struct BranchPath * curNode, FILE * fp);
 void printResults(char* filename, struct BranchPath* path);
 void printSortData(FILE* fp, enum Action curNodeAction);
 
@@ -172,6 +173,7 @@ struct BranchPath* initializeRoot();
 
 // Other
 void periodicGithubCheck();
+void logIterations(int ID, int stepIndex, struct BranchPath * curNode, int iterationCount, int level);
 struct Result calculateOrder(int ID);
 
 #endif

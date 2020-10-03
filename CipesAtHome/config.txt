@@ -82,3 +82,14 @@
 ###############################################
   Version = "1.11"                              
 ###############################################
+
+###############################################
+#                  Debugging                  #
+###############################################
+# This mode lets you manually select which    #
+# move is performed out of those available.   #
+# At any point, you can switch to letting the #
+# program run freely.                         #
+###############################################
+  debug = 0 #(default: 0)
+###############################################
