@@ -31,10 +31,7 @@ const char *getLocalVersion() {
 
 int main() {
 	int cycle_count = 1;
-	current_frame_record = getFastestRecordOnBlob();
-	if (current_frame_record == 0) {
-		current_frame_record = 9999;
-	}
+	current_frame_record = 9999;
 	initConfig();
 
 	// If select and randomise are both 0, the same roadmap will be calculated on every thread, so set threads = 1
@@ -46,9 +43,21 @@ int main() {
 	curl_global_init(CURL_GLOBAL_DEFAULT);	// Initialize libcurl
 	int update = checkForUpdates(local_ver);
 	
+	// Greeting message to user
+	printf("Welcome to Recipes@Home!\n");
+	printf("Leave this program running as long as you want to search for new recipe orders.\n");
+	int blob_record = getFastestRecordOnBlob();
+	if (blob_record == 0) {
+		printf("There was an error contacting the server to retrieve the fastest time.\n");
+		printf("Please check your internet connection, but we'll continue for now.\n");
+	}
+	else {
+		printf("The current fastest record is %d frames. Happy cooking!\n", blob_record);
+	}
+	
 	if (update == -1) {
 		printf("Could not check version on Github. Please check your internet connection.\n");
-		printf("Otherwise, we can't submit compelted roadmaps to the server!\n");
+		printf("Otherwise, we can't submit completed roadmaps to the server!\n");
 		printf("Alternatively you may have been rate-limited. Please wait a while and try again.\n");
 		printf("Press ENTER to quit.\n");
 		char exitChar = getchar();
@@ -74,6 +83,22 @@ int main() {
 	// If not, create the directory
 	mkdir("./results", 0777);
 
+	// To avoid generating roadmaps that are slower than the user's record best,
+	// use PB.txt to identify the user's current best
+	FILE* fp = fopen("results/PB.txt", "r");
+
+	// The PB file may not have been created yet, so ignore the case where it is missing
+	if (fp != NULL) {
+		int PB_record;
+		if (fscanf(fp, "%d", &PB_record) == 1) {
+			current_frame_record = PB_record;
+		}
+		fclose(fp);
+
+		// Submit the user's fastest roadmap to the server for leaderboard purposes
+		testRecord(current_frame_record);
+	}
+
 	// Initialize global variables in calculator.c
 	// This does not need to be done in parallel, as these globals will
 	// persist through all parallel calls to calculator.c
@@ -91,7 +116,11 @@ int main() {
 		
 		while (1) {
 			struct Result result = calculateOrder(ID);
-			testRecord(result.frames);
+			
+			// result might store -1 frames for errors that might be recoverable
+			if (result.frames > -1) {
+				testRecord(result.frames);
+			}
 		}
 	}
 	

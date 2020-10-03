@@ -107,6 +107,9 @@ int getFastestRecordOnBlob() {
  -------------------------------------------------------------------*/
 void handle_post(char* url, FILE *fp, int localRecord, char *nickname) {
 	struct memory wt;
+	struct memory rt;
+	rt.data = NULL;
+	rt.size = 0;
 	
 	fseek(fp, 0, SEEK_END);
 	long fsize = ftell(fp);
@@ -137,20 +140,25 @@ void handle_post(char* url, FILE *fp, int localRecord, char *nickname) {
 		curl_easy_setopt(curl, CURLOPT_URL, url);
 		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json_str);
 		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &rt);
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
 		curl_easy_perform(curl);
 		
 		curl_easy_cleanup(curl);
 	}
 	curl_global_cleanup();
 	free(wt.data);
+
+	// Log the body of the return of the POST request
+	recipeLog(1, "Server", "Upload", "Response", rt.data);
+	free(rt.data);
 }
 
 
 /*-------------------------------------------------------------------
  * Function 	: testRecord
  * Inputs	: int localRecord
- * Outputs	: 1  - local record is slower than server best
- *		  -1 - error locating the text file
+ * Outputs	: -1 - error locating the text file
  *		  0  - successful submission to the server
  *
  * Retrieve the server's current fastest roadmap length.
@@ -161,10 +169,6 @@ int testRecord(int localRecord) {
 	char *folder = "results/";
 	char *extension = ".txt";
 	sprintf(filename, "%s%d%s", folder, localRecord, extension);
-
-	if (localRecord > remoteRecord) {
-		return 1;
-	}
 
 	FILE *fp = fopen(filename, "rb");
 	if (fp == NULL) {
@@ -177,10 +181,6 @@ int testRecord(int localRecord) {
 	strncpy(nickname, username, 19);
 	nickname[19] = '\0';
 	handle_post("https://hundorecipes.azurewebsites.net/api/uploadAndVerify", fp, localRecord, nickname);
-	
-	char temp[59];
-	
-	recipeLog(1, "Submit", "File", "Upload", temp);
 	
 	return 0;
 }
