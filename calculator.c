@@ -2413,15 +2413,10 @@ struct Result calculateOrder(int ID) {
 					FILE* fp = fopen("results/PB.txt", "r+");
 					int pb_record;
 					fscanf(fp, "%d", &pb_record);
-					if (result_cache.frames > pb_record) {
-						// This is a slower thread and a faster record was already found
-						fclose(fp);
-						return (struct Result) { -1, -1 };
+					if (result_cache.frames <= pb_record) {
+						fprintf(fp, "%d", result_cache.frames);
 					}
 				}
-				
-				// Modify PB.txt
-				fprintf(fp, "%d", result_cache.frames);
 				fclose(fp);
 			}
 
