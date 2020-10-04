@@ -2451,21 +2451,21 @@ struct Result calculateOrder(int ID) {
 				// Prevent slower threads from overwriting a faster record in PB.txt
 				// by first checking the current record
 				FILE* fp;
-				if ((fp = fopen("results/PB.txt", "r")) == NULL) {
+				if ((fp = fopen("results/PB.txt", "r+")) == NULL) {
 					// The file has not been created
 					fp = fopen("results/PB.txt", "w");
 				}
 				else {
 					// Verify that this new roadmap is faster than PB
-					FILE* fp = fopen("results/PB.txt", "r+");
 					int pb_record;
 					fscanf(fp, "%d", &pb_record);
+					fclose(fp);
+					fp = NULL;
 					if (result_cache.frames > pb_record) {
 						// This is a slower thread and a faster record was already found
-						fclose(fp);
-						fp = NULL;
 						result_cache = (struct Result) { -1, -1 };
 					}
+					fp = fopen("results/PB.txt", "w");
 				}
 				
 				// Modify PB.txt
