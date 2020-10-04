@@ -2200,7 +2200,7 @@ void logIterations(int ID, int stepIndex, struct BranchPath * curNode, int itera
 	char callString[30];
 	char iterationString[100];
 	sprintf(callString, "Call %d", ID);
-	sprintf(iterationString, "%d steps currently taken, %d frames acculumated so far; %dk iterations",
+	sprintf(iterationString, "%d steps currently taken, %d frames accumulated so far; %dk iterations",
 		stepIndex, curNode->description.totalFramesTaken, iterationCount / 1000);
 	recipeLog(level, "Calculator", "Info", callString, iterationString);
 }
