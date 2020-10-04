@@ -1,0 +1,25 @@
+﻿  calculator.c
+C:\Users\Sean\Documents\GitHub\CipesAtHome\calculator.c(228,1): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\Sean\Documents\GitHub\CipesAtHome\calculator.c(618,1): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\Sean\Documents\GitHub\CipesAtHome\calculator.c(1511,14): warning C4477: 'fprintf' : format string '%d' requires an argument of type 'int', but variadic argument 2 has type 'size_t'
+C:\Users\Sean\Documents\GitHub\CipesAtHome\calculator.c(1511,14): message : consider using '%zd' in the format string
+C:\Users\Sean\Documents\GitHub\CipesAtHome\calculator.c(1515,15): warning C4477: 'fprintf' : format string '%d' requires an argument of type 'int', but variadic argument 2 has type 'size_t'
+C:\Users\Sean\Documents\GitHub\CipesAtHome\calculator.c(1515,15): message : consider using '%zd' in the format string
+C:\Users\Sean\Documents\GitHub\CipesAtHome\calculator.c(2483,53): warning C4013: 'omp_get_thread_num' undefined; assuming extern returning int
+  cJSON.c
+  config.c
+  FTPManagement.c
+  inventory.c
+C:\Users\Sean\Documents\GitHub\CipesAtHome\inventory.c(318,26): warning C4267: '=': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\Sean\Documents\GitHub\CipesAtHome\inventory.c(322,1): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+  log.c
+  logger.c
+  recipes.c
+  start.c
+C:\Users\Sean\Documents\GitHub\CipesAtHome\start.c(84,7): warning C4013: 'mkdir' undefined; assuming extern returning int
+     Creating library C:\Users\Sean\Documents\GitHub\CipesAtHome\CipesAtHome\x64\Release\RecipesAtHome.lib and object C:\Users\Sean\Documents\GitHub\CipesAtHome\CipesAtHome\x64\Release\RecipesAtHome.exp
+  Generating code
+  Previous IPDB not found, fall back to full compilation.
+  All 227 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  CipesAtHome.vcxproj -> C:\Users\Sean\Documents\GitHub\CipesAtHome\CipesAtHome\x64\Release\RecipesAtHome.exe

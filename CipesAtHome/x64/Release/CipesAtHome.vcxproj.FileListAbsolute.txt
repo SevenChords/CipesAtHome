@@ -1,0 +1,6 @@
+C:\Users\Sean\Documents\GitHub\CipesAtHome\CipesAtHome\x64\Release\CipesAtHome.vcxproj.CopyComplete
+C:\Users\Sean\Documents\GitHub\CipesAtHome\CipesAtHome\x64\Release\config.txt
+C:\Users\Sean\Documents\GitHub\CipesAtHome\CipesAtHome\x64\Release\RecipesAtHome.exe
+C:\Users\Sean\Documents\GitHub\CipesAtHome\CipesAtHome\x64\Release\libconfig.dll
+C:\Users\Sean\Documents\GitHub\CipesAtHome\CipesAtHome\x64\Release\libcurl.dll
+C:\Users\Sean\Documents\GitHub\CipesAtHome\CipesAtHome\x64\Release\zlib1.dll

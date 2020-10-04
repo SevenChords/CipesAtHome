@@ -2465,7 +2465,9 @@ struct Result calculateOrder(int ID) {
 						// This is a slower thread and a faster record was already found
 						result_cache = (struct Result) { -1, -1 };
 					}
-					fp = fopen("results/PB.txt", "w");
+					else {
+						fp = fopen("results/PB.txt", "w");
+					}
 				}
 				
 				// Modify PB.txt
