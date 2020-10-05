@@ -2283,7 +2283,7 @@ struct Result calculateOrder(int ID) {
 							if (debug) {
 								testRecord(result_cache.frames);
 							}
-								result_cache = (struct Result){ optimizeResult.last->description.totalFramesTaken, ID };
+							result_cache = (struct Result){ optimizeResult.last->description.totalFramesTaken, ID };
 							
 							// Reset the iteration count so we continue to explore near this record
 							iterationLimit = iterationCount + ITERATION_LIMIT_INCREASE;
