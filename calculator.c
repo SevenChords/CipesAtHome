@@ -2280,7 +2280,10 @@ struct Result calculateOrder(int ID) {
 							sprintf(tmp, "New local fastest roadmap found! %d frames, saved %d after rearranging", optimizeResult.last->description.totalFramesTaken, curNode->description.totalFramesTaken - optimizeResult.last->description.totalFramesTaken);
 							recipeLog(1, "Calculator", "Info", "Roadmap", tmp);
 							free(filename);
-							result_cache = (struct Result) {optimizeResult.last->description.totalFramesTaken, ID};
+							if (debug) {
+								testRecord(result_cache.frames);
+							}
+								result_cache = (struct Result){ optimizeResult.last->description.totalFramesTaken, ID };
 							
 							// Reset the iteration count so we continue to explore near this record
 							iterationLimit = iterationCount + ITERATION_LIMIT_INCREASE;
@@ -2376,6 +2379,7 @@ struct Result calculateOrder(int ID) {
 
 					if (moveToExplore == curNode->numLegalMoves) {
 						freeRunning = 1;
+						handleSelectAndRandom(curNode, select, randomise);
 					}
 					else {
 						// Take the legal move at nextMoveIndex and move it to the front of the array
