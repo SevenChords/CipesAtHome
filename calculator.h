@@ -133,6 +133,7 @@ struct CH5* createChapter5Struct(struct CH5_Eval eval, int lateSort);
 // Initialization functions
 void initializeInvFrames();
 void initializeRecipeList();
+void initializeConfigOptions();
 
 // File output functions
 void printCh5Data(struct BranchPath* curNode, struct MoveDescription desc, FILE* fp);

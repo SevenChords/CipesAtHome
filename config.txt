@@ -8,7 +8,7 @@
 # Biased towards picking moves near the start #
 # of the list that are typically faster:      #
 #                                             #
-  select = 1  #(Default: 1)                   #
+  select = 1  #(default: 1)                   #
 #                                             #
 ###############################################
 # Randomise completely shuffles legal moves   #
@@ -16,6 +16,32 @@
 # Select is set to 'True'                     #
 #                                             #
   randomise = 0  #(default: 0)                #
+#                                             #
+###############################################
+
+###############################################
+#          Options for Optimizations          #
+###############################################
+# If you don't know what you're doing, you    #
+# should likely just leave these as default.  #
+###############################################
+# Threshold to try optimizing a roadmap to    #
+# attempt to beat the current record.         #
+#                                             #
+  bufferSearchFrames = 150  #(default: 150)   #
+#                                             #
+###############################################
+# Cutoff for iterations explored before       #
+# resetting the current branch.               #
+#                                             #
+  iterationLimit = 100000  #(default: 100000) #
+#                                             #
+###############################################
+# Amount to increase the iteration limit by   #
+# when finding a new record.                  #
+#                                             #
+#                       (default: 100000000)  #
+  iterationLimitIncrease = 100000000          #
 #                                             #
 ###############################################
 
@@ -43,7 +69,7 @@
 #             Branch Log Interval             #
 ###############################################
 # Change how often to print a new branch      #
-# By default, this is set to print every 5    #
+# By default, this is set to print every 10   #
 # branches. Adjust to your preference.        #
 # It is highly recommended to raise this      #
 # interval as you increase the # of threads   #

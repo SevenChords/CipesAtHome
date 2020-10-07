@@ -17,9 +17,6 @@
 #define TYPE_SORT_FRAMES 39			// Penalty to perform type ascending sort
 #define REVERSE_TYPE_SORT_FRAMES 41		// Penalty to perform type descending sort
 #define JUMP_STORAGE_NO_TOSS_FRAMES 5		// Penalty for not tossing the last item (because we need to get Jump Storage)
-#define BUFFER_SEARCH_FRAMES 150		// Threshold to try optimizing a roadmap to attempt to beat the current record
-#define DEFAULT_ITERATION_LIMIT 100000 // Cutoff for iterations explored before resetting
-#define ITERATION_LIMIT_INCREASE 100000000 // Amount to increase the iteration limit by when finding a new record
 #define INVENTORY_SIZE 20
 
 typedef enum Alpha_Sort Alpha_Sort;
@@ -28,6 +25,14 @@ typedef struct MoveDescription MoveDescription;
 
 int **invFrames;
 struct Recipe *recipeList;
+
+// Config options
+int select, randomise;
+int debug;
+int branchInterval;
+int bufferSearchFrames;
+int defaultIterationLimit;
+int iterationLimitIncrease;
 
 /*-------------------------------------------------------------------
  * Function 	: initializeInvFrames
@@ -49,6 +54,22 @@ void initializeInvFrames() {
  -------------------------------------------------------------------*/
 void initializeRecipeList() {
 	recipeList = getRecipeList();
+}
+
+/*-------------------------------------------------------------------
+ * Function 	: initializeConfigOptions
+ *
+ * Initializes the config options that are used and keeps them cached
+ * in global variables for quick lookup.
+ -------------------------------------------------------------------*/
+void initializeConfigOptions() {
+	select = getConfigInt("select");
+	randomise = getConfigInt("randomise");
+	debug = getConfigInt("debug");
+	branchInterval = getConfigInt("branchLogInterval");
+	bufferSearchFrames = getConfigInt("bufferSearchFrames");
+	defaultIterationLimit = getConfigInt("iterationLimit");
+	iterationLimitIncrease = getConfigInt("iterationLimitIncrease");
 }
 
 /*-------------------------------------------------------------------
@@ -430,7 +451,7 @@ void finalizeChapter5Eval(struct BranchPath *node, struct Inventory inventory, s
  -------------------------------------------------------------------*/
 void finalizeLegalMove(struct BranchPath *node, int tempFrames, MoveDescription useDescription, struct Inventory tempInventory, int *tempOutputsFulfilled, int numOutputsFulfilled, enum HandleOutput tossType, enum Type_Sort toss, int tossIndex) {
 	// Determine if the legal move exceeds the frame limit. If so, return out
-	if (useDescription.totalFramesTaken > getLocalRecord() + BUFFER_SEARCH_FRAMES) {
+	if (useDescription.totalFramesTaken > getLocalRecord() + bufferSearchFrames) {
 		return;
 	}
 	
@@ -2217,12 +2238,8 @@ void logIterations(int ID, int stepIndex, struct BranchPath * curNode, int itera
  * is passed back to start.c to try submitting to the server.
  -------------------------------------------------------------------*/
 struct Result calculateOrder(int ID) {
-	int randomise = getConfigInt("randomise");
-	int select = getConfigInt("select");
-	int debug = getConfigInt("debug");
 	// The user may disable all randomization but not be debugging.
 	int freeRunning = !debug && !randomise && !select;
-	int branchInterval = getConfigInt("branchLogInterval");
 	int total_dives = 0;
 	struct BranchPath *curNode = NULL; // Deepest node at any particular point
 	struct BranchPath *root;
@@ -2233,7 +2250,7 @@ struct Result calculateOrder(int ID) {
 	while (1) {
 		int stepIndex = 0;
 		int iterationCount = 0;
-		int iterationLimit = DEFAULT_ITERATION_LIMIT;
+		int iterationLimit = defaultIterationLimit;
 
 		// Create root of tree path
 		curNode = initializeRoot();
@@ -2265,7 +2282,7 @@ struct Result calculateOrder(int ID) {
 				// Apply a frame penalty if the final move did not toss an item.
 				applyJumpStorageFramePenalty(curNode);
 				
-				if (curNode->description.totalFramesTaken < getLocalRecord() + BUFFER_SEARCH_FRAMES) {
+				if (curNode->description.totalFramesTaken < getLocalRecord() + bufferSearchFrames) {
 					// A finished roadmap has been generated
 					// Rearrange the roadmap to save frames
 					struct OptimizeResult optimizeResult = optimizeRoadmap(root);
@@ -2286,7 +2303,7 @@ struct Result calculateOrder(int ID) {
 							result_cache = (struct Result){ optimizeResult.last->description.totalFramesTaken, ID };
 							
 							// Reset the iteration count so we continue to explore near this record
-							iterationLimit = iterationCount + ITERATION_LIMIT_INCREASE;
+							iterationLimit = iterationCount + iterationLimitIncrease;
 						}
 					}
 					
@@ -2432,8 +2449,8 @@ struct Result calculateOrder(int ID) {
 				
 				// Logging for progress display
 				iterationCount++;
-				if (iterationCount % (branchInterval * DEFAULT_ITERATION_LIMIT) == 0
-					&& (freeRunning || iterationLimit != DEFAULT_ITERATION_LIMIT)) {
+				if (iterationCount % (branchInterval * defaultIterationLimit) == 0
+					&& (freeRunning || iterationLimit != defaultIterationLimit)) {
 					logIterations(ID, stepIndex, curNode, iterationCount, 3);
 				}
 				else if (iterationCount % 10000 == 0) {

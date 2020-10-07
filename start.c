@@ -104,6 +104,7 @@ int main() {
 	// persist through all parallel calls to calculator.c
 	initializeInvFrames();
 	initializeRecipeList();
+	initializeConfigOptions();
 	
 	// Create workerCount threads
 	omp_set_num_threads(workerCount);
