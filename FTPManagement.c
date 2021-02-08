@@ -172,6 +172,10 @@ void handle_post(char* url, FILE *fp, int localRecord, char *nickname) {
  * Retrieve the server's current fastest roadmap length.
  -------------------------------------------------------------------*/
 int testRecord(int localRecord) {
+	if (localRecord < 0) {
+		printf("Record submitted is invalid (less then 0). Likely due to corruption of the PB.txt file or unexpected error. Not submitting\n");
+		return -2;
+	}
 	int remoteRecord = getFastestRecordOnBlob();
 	char filename[32];
 	char *folder = "results/";

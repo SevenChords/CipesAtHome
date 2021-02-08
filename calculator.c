@@ -4,10 +4,13 @@
 #include "FTPManagement.h"
 #include "recipes.h"
 #include "start.h"
+#include "shutdown.h"
 #include <libconfig.h>
 #include "logger.h"
 #include <time.h>
 #include <string.h>
+#include <stdbool.h>
+#include "absl/base/port.h"
 
 #define NUM_RECIPES 58 			// Including Chapter 5 representation
 #define CHOOSE_2ND_INGREDIENT_FRAMES 56 	// Penalty for choosing a 2nd item
@@ -22,12 +25,22 @@
 #define ITERATION_LIMIT_INCREASE 100000000 // Amount to increase the iteration limit by when finding a new record
 #define INVENTORY_SIZE 20
 
+#define CHECK_SHUTDOWN_INTERVAL 200
+
 typedef enum Alpha_Sort Alpha_Sort;
 typedef enum Type_Sort Type_Sort;
 typedef struct MoveDescription MoveDescription;
 
 int **invFrames;
 struct Recipe *recipeList;
+
+ABSL_ATTRIBUTE_ALWAYS_INLINE inline bool checkShutdownOnIndex(int i) {
+	return i % CHECK_SHUTDOWN_INTERVAL == 0 && askedToShutdown();
+}
+
+ABSL_ATTRIBUTE_ALWAYS_INLINE inline bool checkShutdownOnIndexLong(long i) {
+	return i % CHECK_SHUTDOWN_INTERVAL == 0 && askedToShutdown();
+}
 
 /*-------------------------------------------------------------------
  * Function 	: initializeInvFrames
@@ -1111,7 +1124,14 @@ void handleSelectAndRandom(struct BranchPath *curNode, int select, int randomise
 	if (select && curNode->moves < 55 && curNode->numLegalMoves > 0) {
 		int nextMoveIndex = 0;
 		while (nextMoveIndex < curNode->numLegalMoves - 1 && rand() % 100 < 50) {
+			if (checkShutdownOnIndex(nextMoveIndex)) {
+				break;
+			}
 			nextMoveIndex++;
+		}
+		
+		if (askedToShutdown()) {
+			return;
 		}
 
 		// Take the legal move at nextMoveIndex and move it to the front of the array
@@ -1124,6 +1144,9 @@ void handleSelectAndRandom(struct BranchPath *curNode, int select, int randomise
 	// When not doing the select methodology, and opting for randomize
 	// just shuffle the entire list of legal moves and pick the new first item
 	else if (randomise) {
+		if (askedToShutdown()) {
+			return;
+		}
 		shuffleLegalMoves(curNode);
 	}
 }
@@ -2028,6 +2051,9 @@ void softMin(struct BranchPath *node) {
 void shuffleLegalMoves(struct BranchPath *node) {
 	// Swap 2 legal moves a variable number of times
 	for (int i = 0; i < node->numLegalMoves; i++) {
+		if (checkShutdownOnIndex(i)) {
+			break;
+		}
 		int index1 = rand() % node->numLegalMoves;
 		int index2 = rand() % node->numLegalMoves;
 		struct BranchPath *temp = node->legalMoves[index1];
@@ -2231,6 +2257,9 @@ struct Result calculateOrder(int ID) {
 	
 	//Start main loop
 	while (1) {
+		if (askedToShutdown()) {
+			break;
+		}
 		int stepIndex = 0;
 		int iterationCount = 0;
 		int iterationLimit = DEFAULT_ITERATION_LIMIT;
@@ -2248,10 +2277,13 @@ struct Result calculateOrder(int ID) {
 			sprintf(temp2, "Searching New Branch %d", total_dives);
 			recipeLog(3, "Calculator", "Info", temp1, temp2);
 		}
-		
+
 		// If the user is not exploring only one branch, reset when it is time
 		// Start iteration loop
 		while (iterationCount < iterationLimit || freeRunning) {
+			if (checkShutdownOnIndex(iterationCount)) {
+				break;
+			}
 			// In the rare occassion that the root node runs out of legal moves due to "select",
 			// exit out of the while loop to restart
 			if (curNode == NULL) {
@@ -2303,7 +2335,6 @@ struct Result calculateOrder(int ID) {
 			// End condition not met. Check if this current level has something in the event queue
 			else if (curNode->legalMoves == NULL) {
 				// This node has not yet been assigned an array of legal moves.
-				
 				// Generate the list of all possible recipes
 				fulfillRecipes(curNode);
 				
@@ -2454,7 +2485,7 @@ struct Result calculateOrder(int ID) {
 			{
 				// Prevent slower threads from overwriting a faster record in PB.txt
 				// by first checking the current record
-				FILE* fp;
+				FILE* fp = NULL;
 				if ((fp = fopen("results/PB.txt", "r+")) == NULL) {
 					// The file has not been created
 					fp = fopen("results/PB.txt", "w");
@@ -2470,13 +2501,26 @@ struct Result calculateOrder(int ID) {
 						result_cache = (struct Result) { -1, -1 };
 					}
 					else {
-						fp = fopen("results/PB.txt", "w");
+						if (ABSL_PREDICT_TRUE(result_cache.frames > -1)) {
+							fp = fopen("results/PB.txt", "w");
+						}
 					}
 				}
 				
 				// Modify PB.txt
 				if (fp != NULL) {
-					fprintf(fp, "%d", result_cache.frames);
+					if (ABSL_PREDICT_FALSE(result_cache.frames < 0)) {
+						// Somehow got invalid number of frames.
+						// Fetch the current known max from the global.
+						int localRecord = getLocalRecord();
+						if (ABSL_PREDICT_FALSE(localRecord < 0)) {
+							recipeLog(1, "Calculator", "Roadmap", "Error", "Current cached local record is corrupt (less then 0 frames). Not writing invalid PB file but your PB may be lost.");
+						} else {
+							fprintf(fp, "%d", localRecord);
+						}
+					} else {
+						fprintf(fp, "%d", result_cache.frames);
+					}
 					fclose(fp);
 				}
 			}
@@ -2489,6 +2533,9 @@ struct Result calculateOrder(int ID) {
 		if (total_dives % 10000 == 0 && omp_get_thread_num() == 0) {
 			periodicGithubCheck();
 		}
+		
+		// Unexpected break out of loop. Return the nothing results.
+		return (struct Result) { -1, -1 };
 		
 		// For profiling
 		/*if (total_dives == 100) {

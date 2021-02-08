@@ -12,16 +12,42 @@
 #include "cJSON.h"
 #include <curl/curl.h>
 #include "logger.h"
+#include "shutdown.h"
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <signal.h>
+#include "absl/base/port.h"
+
+#ifdef _MSC_FULL_VER
+#define _IS_WINDOWS 1
+#else
+#define _IS_WINDOWS 0
+#endif
+
+#if _IS_WINDOWS
+#include <windows.h>
+#endif
+
+#define UNSET_FRAME_RECORD 9999
 
 int current_frame_record;
 const char *local_ver;
 
+// May get a value <0 if local record was corrupt.
 int getLocalRecord() {
+	int current_frame_record_orig = current_frame_record;
+	if (ABSL_PREDICT_FALSE(current_frame_record < 0)) {
+		printf("Current frame record is corrupt (less then 0 frames). Resetting (you may get false PBs for a while).\n");
+		current_frame_record = UNSET_FRAME_RECORD;
+		return current_frame_record_orig;
+	}
 	return current_frame_record;
 }
 void setLocalRecord(int frames) {
+	if (ABSL_PREDICT_FALSE(frames < 0)) {
+		printf("Got corrupt PB if %d frames. Ignoring\n", frames);
+		return;
+	}
 	current_frame_record = frames;
 }
 
@@ -29,9 +55,53 @@ const char *getLocalVersion() {
 	return local_ver;
 }
 
+int numTimesExitRequest = 0;
+#define NUM_TIMES_EXITED_BEFORE_HARD_QUIT 3
+
+void countAndSetShutdown(bool isSignal) {
+	if (++numTimesExitRequest >= NUM_TIMES_EXITED_BEFORE_HARD_QUIT) {
+		if (!_IS_WINDOWS || !isSignal) {
+			printf("\nExit reqested %d times; shutting down now.\n", NUM_TIMES_EXITED_BEFORE_HARD_QUIT);
+		}
+		exit(1);
+	} else {
+		requestShutdown();
+		if (!_IS_WINDOWS || !isSignal) {
+			printf("\nExit requested, finishing up work. Should shutdown soon (CTRL-C 3 times to force exit)\n");
+		}
+	}
+}
+
+void handleTermSignal(int signal) {
+	countAndSetShutdown(true);
+}
+
+#if _IS_WINDOWS
+BOOL WINAPI windowsCtrlCHandler(DWORD fdwCtrlType) {
+	switch(fdwCtrlType) {
+    case CTRL_C_EVENT: ABSL_FALLTHROUGH_INTENDED;
+    case CTRL_CLOSE_EVENT:
+      countAndSetShutdown(false);
+      return TRUE;
+    default:
+    	return FALSE
+  }
+#endif
+
+void setSignalHandlers() {
+	signal(SIGTERM, handleTermSignal);
+	signal(SIGINT, handleTermSignal);
+#if _IS_WINDOWS
+	if (!SetConsoleCtrlHandler(windowsCtrlCHandler, TRUE)) {
+		printf("Unable to set CTRL-C handler. CTRL-C may cause unclean shutdown.\n");
+	}
+#endif
+}
+	
 int main() {
+
 	int cycle_count = 1;
-	current_frame_record = 9999;
+	current_frame_record = UNSET_FRAME_RECORD;
 	initConfig();
 
 	// If select and randomise are both 0, the same roadmap will be calculated on every thread, so set threads = 1
@@ -91,8 +161,12 @@ int main() {
 	if (fp != NULL) {
 		int PB_record;
 		if (fscanf(fp, "%d", &PB_record) == 1) {
-			current_frame_record = PB_record;
-			testRecord(current_frame_record);
+			if (PB_record < 0) {
+				printf("PB.txt is corrupted (PB record less then 0 frames). Ignoring.\n");
+			} else {
+				current_frame_record = PB_record;
+				testRecord(current_frame_record);
+			}
 		}
 		fclose(fp);
 
@@ -105,6 +179,8 @@ int main() {
 	initializeInvFrames();
 	initializeRecipeList();
 	
+	setSignalHandlers();
+	
 	// Create workerCount threads
 	omp_set_num_threads(workerCount);
 	#pragma omp parallel
@@ -115,6 +191,9 @@ int main() {
 		srand(((int)time(NULL)) ^ ID);
 		
 		while (1) {
+			if (askedToShutdown()) {
+				break;
+			}
 			struct Result result = calculateOrder(ID);
 			
 			// result might store -1 frames for errors that might be recoverable
