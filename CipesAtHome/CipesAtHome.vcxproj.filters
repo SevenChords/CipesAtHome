@@ -56,6 +56,9 @@
     <ClInclude Include="..\logger.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\base.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\calculator.h">
       <Filter>Header Files</Filter>
     </ClInclude>

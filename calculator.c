@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include "base.h"
 #include "calculator.h"
 #include "FTPManagement.h"
 #include "recipes.h"
@@ -104,12 +105,7 @@ void applyJumpStorageFramePenalty(BranchPath *node) {
 int *copyOutputsFulfilled(int *oldOutputsFulfilled) {
 	int *newOutputsFulfilled = malloc(sizeof(int) * NUM_RECIPES);
 
-	if (newOutputsFulfilled == NULL) {
-		printf("Fatal error! Ran out of heap memory.\n");
-		printf("Press enter to quit.");
-		char exitChar = getchar();
-		exit(1);
-	}
+	checkMallocFailed(newOutputsFulfilled);
 
 	memcpy(newOutputsFulfilled, oldOutputsFulfilled, sizeof(int) * NUM_RECIPES);
 	return newOutputsFulfilled;
@@ -132,12 +128,7 @@ int *copyOutputsFulfilled(int *oldOutputsFulfilled) {
 CH5 *createChapter5Struct(CH5_Eval eval, int lateSort) {
 	CH5 *ch5 = malloc(sizeof(CH5));
 
-	if (ch5 == NULL) {
-		printf("Fatal error! Ran out of heap memory.\n");
-		printf("Press enter to quit.");
-		char exitChar = getchar();
-		exit(1);
-	}
+	checkMallocFailed(ch5);
 
 	ch5->indexDriedBouquet = eval.DB_place_index;
 	ch5->indexCoconut = eval.CO_place_index;
@@ -310,12 +301,7 @@ void createCookDescription2Items(BranchPath *node, Recipe recipe, ItemCombinatio
 BranchPath *createLegalMove(BranchPath *node, Inventory inventory, MoveDescription description, int *outputsFulfilled, int numOutputsFulfilled) {
 	BranchPath *newLegalMove = malloc(sizeof(BranchPath));
 
-	if (newLegalMove == NULL) {
-		printf("Fatal error! Ran out of heap memory.\n");
-		printf("Press enter to quit.");
-		char exitChar = getchar();
-		exit(1);
-	}
+	checkMallocFailed(newLegalMove);
 
 	newLegalMove->moves = node->moves + 1;
 	newLegalMove->inventory = inventory;
@@ -413,12 +399,7 @@ void finalizeLegalMove(BranchPath *node, int tempFrames, MoveDescription useDesc
 
 	struct Cook *cookNew = malloc(sizeof(struct Cook));
 
-	if (cookNew == NULL) {
-		printf("Fatal error! Ran out of heap memory.\n");
-		printf("Press enter to quit.");
-		char exitChar = getchar();
-		exit(1);
-	}
+	checkMallocFailed(cookNew);
 
 	*cookNew = *((struct Cook*)useDescription.data);
 	cookNew->handleOutput = tossType;
@@ -623,12 +604,7 @@ void fulfillRecipes(BranchPath *curNode) {
 void generateCook(MoveDescription *description, ItemCombination combo, Recipe recipe, int *ingredientLoc, int swap) {
 	struct Cook *cook = malloc(sizeof(struct Cook));
 
-	if (cook == NULL) {
-		printf("Fatal error! Ran out of heap memory.\n");
-		printf("Press enter to quit.");
-		char exitChar = getchar();
-		exit(1);
-	}
+	checkMallocFailed(cook);
 
 	description->action = Cook;
 	cook->numItems = combo.numItems;
@@ -1159,12 +1135,7 @@ void handleSorts(BranchPath *curNode) {
 BranchPath *initializeRoot() {
 	BranchPath *root = malloc(sizeof(BranchPath));
 
-	if (root == NULL) {
-		printf("Fatal error! Ran out of heap memory.\n");
-		printf("Press enter to quit.");
-		char exitChar = getchar();
-		exit(1);
-	}
+	checkMallocFailed(root);
 
 	root->moves = 0;
 	root->inventory = getStartingInventory();
@@ -1197,12 +1168,7 @@ void insertIntoLegalMoves(int insertIndex, BranchPath *newLegalMove, BranchPath 
 	// Reallocate the legalMove array to make room for a new legal move
 	BranchPath **temp = realloc(curNode->legalMoves, sizeof(BranchPath*) * ((size_t)curNode->numLegalMoves + 1));
 
-	if (temp == NULL) {
-		printf("Fatal error! Ran out of heap memory.\n");
-		printf("Press enter to quit.");
-		char exitChar = getchar();
-		exit(1);
-	}
+	checkMallocFailed(temp);
 
 	curNode->legalMoves = temp;
 
@@ -1252,24 +1218,14 @@ BranchPath *copyAllNodes(BranchPath *newNode, BranchPath *oldNode) {
 			case (Cook) :
 				newNode->description.data = malloc(sizeof(struct Cook));
 
-				if (newNode->description.data == NULL) {
-					printf("Fatal error! Ran out of heap memory.\n");
-					printf("Press enter to quit.");
-					char exitChar = getchar();
-					exit(1);
-				}
+				checkMallocFailed(newNode->description.data);
 
 				*((struct Cook*) newNode->description.data) = *((struct Cook*) oldNode->description.data);
 				break;
 			case (Ch5) :
 				newNode->description.data = malloc(sizeof(CH5));
 
-				if (newNode->description.data == NULL) {
-					printf("Fatal error! Ran out of heap memory.\n");
-					printf("Press enter to quit.");
-					char exitChar = getchar();
-					exit(1);
-				}
+				checkMallocFailed(newNode->description.data);
 
 				CH5 *newData = (CH5 *)newNode->description.data;
 				CH5 *oldData = (CH5 *)oldNode->description.data;
@@ -1293,12 +1249,7 @@ BranchPath *copyAllNodes(BranchPath *newNode, BranchPath *oldNode) {
 		if (newNode->numOutputsCreated < NUM_RECIPES) {
 			newNode->next = malloc(sizeof(BranchPath));
 
-			if (newNode->next == NULL) {
-				printf("Fatal error! Ran out of heap memory.\n");
-				printf("Press enter to quit.");
-				char exitChar = getchar();
-				exit(1);
-			}
+			checkMallocFailed(newNode->next);
 
 			newNode->next->prev = newNode;
 			newNode = newNode->next;
@@ -1328,12 +1279,7 @@ struct OptimizeResult optimizeRoadmap(BranchPath *root) {
 	BranchPath *curNode = root;
 	BranchPath *newRoot = malloc(sizeof(BranchPath));
 
-	if (newRoot == NULL) {
-		printf("Fatal error! Ran out of heap memory.\n");
-		printf("Press enter to quit.");
-		char exitChar = getchar();
-		exit(1);
-	}
+	checkMallocFailed(newRoot);
 
 	newRoot->prev = NULL;
 
@@ -1727,12 +1673,7 @@ void reallocateRecipes(BranchPath* newRoot, enum Type_Sort* rearranged_recipes, 
 				// Calculate the frames needed to produce this step
 				int temp_frames = TOSS_FRAMES;
 				struct Cook *temp_description = malloc(sizeof(struct Cook));
-				if (temp_description == NULL) {
-					printf("Fatal error! Ran out of heap memory.\n");
-					printf("Press enter to quit.");
-					char exitChar = getchar();
-					exit(1);
-				}
+				checkMallocFailed(temp_description);
 				temp_description->output = recipe.output;
 				temp_description->handleOutput = Toss;
 
@@ -1804,13 +1745,7 @@ void reallocateRecipes(BranchPath* newRoot, enum Type_Sort* rearranged_recipes, 
 		}
 
 		BranchPath *insertNode = malloc(sizeof(BranchPath));
-		if (insertNode == NULL) {
-			printf("Fatal error! Ran out of heap memory.\n");
-			printf("Press enter to quit.");
-			char exitChar = getchar();
-			exit(1);
-			return;  // Never reached; here to let compiler know the function does not continue after this.
-		}
+		checkMallocFailed(insertNode);
 
 		// Set pointers to and from surrounding structs
 		insertNode->prev = record_placement_node;
@@ -1879,12 +1814,7 @@ int removeRecipesForReallocation(BranchPath* node, enum Type_Sort *rearranged_re
 		}
 
 		// Now, get rid of this current node
-		if (node->next == NULL) {
-			printf("Fatal error! Ran out of heap memory.\n");
-			printf("Press enter to quit.");
-			char exitChar = getchar();
-			exit(1);
-		}
+		checkMallocFailed(node->next);
 		node->prev->next = node->next;
 		node->next->prev = node->prev;
 		newNode = node->prev;
@@ -2318,6 +2248,7 @@ Result calculateOrder(int ID) {
 				freeLegalMove(curNode, 0);
 				curNode->next = NULL;
 				stepIndex--;
+
 				continue;
 			}
 			// End condition not met. Check if this current level has something in the event queue
@@ -2410,12 +2341,7 @@ Result calculateOrder(int ID) {
 
 				// Once the list is generated choose the top-most path and iterate downward
 
-				if (curNode->legalMoves == NULL) {
-					printf("Fatal error! Ran out of heap memory.\n");
-					printf("Press enter to quit.");
-					char exitChar = getchar();
-					exit(1);
-				}
+				checkMallocFailed(curNode->legalMoves);
 
 				curNode->next = curNode->legalMoves[0];
 				curNode = curNode->next;

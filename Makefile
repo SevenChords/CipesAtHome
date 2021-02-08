@@ -6,7 +6,7 @@ USER_CFLAGS:=$(CFLAGS)
 CFLAGS=$(BASE_CFLAGS) $(USER_CFLAGS)
 FINAL_TARGET_CFLAGS?=-Wl,--gc-sections
 TARGET=recipesAtHome
-DEPS=start.h inventory.h recipes.h config.h FTPManagement.h cJSON.h calculator.h logger.h shutdown.h $(wildcard absl/base/*.h )
+DEPS=start.h inventory.h recipes.h config.h FTPManagement.h cJSON.h calculator.h logger.h shutdown.h base.h $(wildcard absl/base/*.h )
 OBJ=start.o inventory.o recipes.o config.o FTPManagement.o cJSON.o calculator.o logger.o shutdown.o
 
 UNAME:=$(shell uname)
