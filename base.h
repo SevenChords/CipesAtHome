@@ -17,7 +17,7 @@
 inline void checkMallocFailed(const void* const p) {
 	if (ABSL_PREDICT_FALSE(p == NULL)) {
 		printf("Fatal error! Ran out of heap memory.\n");
-		printf("Press enter to quit.");
+		printf("Press enter to quit.\n");
 		ABSL_ATTRIBUTE_UNUSED char exitChar = getchar();
 		exit(1);
 	}
