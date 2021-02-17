@@ -53,12 +53,6 @@ ABSL_ATTRIBUTE_ALWAYS_INLINE static inline bool checkShutdownOnIndexLong(long i)
 	return i % CHECK_SHUTDOWN_INTERVAL == 0 && askedToShutdown();
 }
 
-// TEMPORARY WORKAROUND for an unintentionally added implicit reference.
-// When the real min function comes in, replace this definition with that one.
-#ifndef min
-#define min(x, y) ((y) < (x) ? (y) : (x))
-#endif
-
 /*-------------------------------------------------------------------
  * Function 	: initializeInvFrames
  *
