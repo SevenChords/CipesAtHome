@@ -65,6 +65,7 @@ ABSL_MUST_USE_RESULT_INCLUSIVE char *handle_get(char* url) {
 		curl_easy_setopt(curl, CURLOPT_USERAGENT, "curl/7.68.0");
 		res = curl_easy_perform(curl);
 		if (res != CURLE_OK) {
+			curl_easy_cleanup(curl);
 			return NULL;
 		}
 		
