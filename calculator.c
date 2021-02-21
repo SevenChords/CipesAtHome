@@ -27,6 +27,11 @@
 #define INVENTORY_SIZE 20
 
 #define CHECK_SHUTDOWN_INTERVAL 30000
+static const int UNSET_INDEX_SIGNED = -99999;
+
+static const int INT_OUTPUT_ARRAY_SIZE_BYTES = sizeof(outputCreatedArray_t);
+static const outputCreatedArray_t EMPTY_RECIPES = {0};
+static const struct Cook EMPTY_COOK = {0};
 
 typedef enum Alpha_Sort Alpha_Sort;
 typedef enum Type_Sort Type_Sort;
@@ -41,8 +46,6 @@ typedef struct Result Result;
 
 int **invFrames;
 Recipe *recipeList;
-
-static const int UNSET_INDEX_SIGNED = -99999;
 
 ABSL_ATTRIBUTE_ALWAYS_INLINE static inline bool checkShutdownOnIndex(int i) {
 	return i % CHECK_SHUTDOWN_INTERVAL == 0 && askedToShutdown();
@@ -97,22 +100,12 @@ void applyJumpStorageFramePenalty(BranchPath *node) {
 
 /*-------------------------------------------------------------------
  * Function 	: copyOutputsFulfilled
- * Inputs	: int* oldOutputsFulfilled
+ * Inputs	: int *destOutputsFulfilled, int *srcOutputsFulfilled
  * Outputs	:
- * A simple memcpy to duplicate oldOutputsFulfilled to a new array
+ * A simple memcpy to duplicate srcOutputsFulfilled into destOutputsFulfilled
  -------------------------------------------------------------------*/
-ABSL_MUST_USE_RESULT int *copyOutputsFulfilled(int *oldOutputsFulfilled) {
-	int *newOutputsFulfilled = malloc(sizeof(int) * NUM_RECIPES);
-
-	if (newOutputsFulfilled == NULL) {
-		printf("Fatal error! Ran out of heap memory.\n");
-		printf("Press enter to quit.");
-		char exitChar = getchar();
-		exit(1);
-	}
-
-	memcpy(newOutputsFulfilled, oldOutputsFulfilled, sizeof(int) * NUM_RECIPES);
-	return newOutputsFulfilled;
+ABSL_ATTRIBUTE_ALWAYS_INLINE static inline void copyOutputsFulfilled(outputCreatedArray_t destOutputsFulfilled, const outputCreatedArray_t srcOutputsFulfilled) {
+	memcpy((void *)destOutputsFulfilled, (const void *)srcOutputsFulfilled, INT_OUTPUT_ARRAY_SIZE_BYTES);
 }
 
 /*-------------------------------------------------------------------
@@ -163,7 +156,7 @@ ABSL_MUST_USE_RESULT CH5 *createChapter5Struct(CH5_Eval eval, int lateSort) {
  * Compartmentalization of generating a MoveDescription struct
  * based on various parameters dependent on what recip we're cooking
  -------------------------------------------------------------------*/
-MoveDescription createCookDescription(BranchPath *node, Recipe recipe, ItemCombination combo, Inventory *tempInventory, int *tempFrames, int viableItems) {
+MoveDescription createCookDescription(const BranchPath *node, Recipe recipe, ItemCombination combo, Inventory *tempInventory, int *tempFrames, int viableItems) {
 	MoveDescription useDescription;
 	useDescription.action = Cook;
 
@@ -199,7 +192,7 @@ MoveDescription createCookDescription(BranchPath *node, Recipe recipe, ItemCombi
  * length 1. Generates Cook structure and points to this structure
  * in useDescription.
  -------------------------------------------------------------------*/
-void createCookDescription1Item(BranchPath *node, Recipe recipe, ItemCombination combo, Inventory *tempInventory, int *ingredientLoc, int *tempFrames, int viableItems, MoveDescription *useDescription) {
+void createCookDescription1Item(const BranchPath *node, Recipe recipe, ItemCombination combo, Inventory *tempInventory, int *ingredientLoc, int *tempFrames, int viableItems, MoveDescription *useDescription) {
 	// This is a potentially viable recipe with 1 ingredient
 	// Determine how many frames will be needed to select that item
 	*tempFrames = invFrames[viableItems - 1][ingredientLoc[0] - tempInventory->nulls];
@@ -230,7 +223,7 @@ void createCookDescription1Item(BranchPath *node, Recipe recipe, ItemCombination
  * length 2. Swaps items if it's faster to choose the second item first.
  * Generates Cook structure and points to this structure in useDescription.
  -------------------------------------------------------------------*/
-void createCookDescription2Items(BranchPath *node, Recipe recipe, ItemCombination combo, Inventory *tempInventory, int *ingredientLoc, int *tempFrames, int viableItems, MoveDescription *useDescription) {
+void createCookDescription2Items(const BranchPath *node, Recipe recipe, ItemCombination combo, Inventory *tempInventory, int *ingredientLoc, int *tempFrames, int viableItems, MoveDescription *useDescription) {
 	// This is a potentially viable recipe with 2 ingredients
 	//Baseline frames based on how many times we need to access the menu
 	*tempFrames = CHOOSE_2ND_INGREDIENT_FRAMES;
@@ -308,7 +301,7 @@ void createCookDescription2Items(BranchPath *node, Recipe recipe, ItemCombinatio
  *
  * Given the input parameters, allocate and set attributes for a legalMove node
  -------------------------------------------------------------------*/
-ABSL_MUST_USE_RESULT BranchPath *createLegalMove(BranchPath *node, Inventory inventory, MoveDescription description, int *outputsFulfilled, int numOutputsFulfilled) {
+BranchPath *createLegalMove(BranchPath *node, Inventory inventory, MoveDescription description, const outputCreatedArray_t outputsFulfilled, int numOutputsFulfilled) {
 	BranchPath *newLegalMove = malloc(sizeof(BranchPath));
 
 	if (newLegalMove == NULL) {
@@ -323,7 +316,7 @@ ABSL_MUST_USE_RESULT BranchPath *createLegalMove(BranchPath *node, Inventory inv
 	newLegalMove->description = description;
 	newLegalMove->prev = node;
 	newLegalMove->next = NULL;
-	newLegalMove->outputCreated = outputsFulfilled;
+	copyOutputsFulfilled(newLegalMove->outputCreated, outputsFulfilled);
 	newLegalMove->numOutputsCreated = numOutputsFulfilled;
 	newLegalMove->legalMoves = NULL;
 	newLegalMove->numLegalMoves = 0;
@@ -369,7 +362,7 @@ void filterOut2Ingredients(BranchPath *node) {
  *
  * Given input parameters, construct a new legal move to represent CH5
  -------------------------------------------------------------------*/
-void finalizeChapter5Eval(BranchPath *node, Inventory inventory, CH5 *ch5Data, int temp_frame_sum, int *outputsFulfilled, int numOutputsFulfilled) {
+void finalizeChapter5Eval(BranchPath *node, Inventory inventory, CH5 *ch5Data, int temp_frame_sum, const outputCreatedArray_t outputsFulfilled, int numOutputsFulfilled) {
 	// Get the index of where to insert this legal move to
 	int insertIndex = getInsertionIndex(node, temp_frame_sum);
 
@@ -378,10 +371,9 @@ void finalizeChapter5Eval(BranchPath *node, Inventory inventory, CH5 *ch5Data, i
 	description.data = ch5Data;
 	description.framesTaken = temp_frame_sum;
 	description.totalFramesTaken = node->description.totalFramesTaken + temp_frame_sum;
-	int *copyOfOutputsFulfilled = copyOutputsFulfilled(outputsFulfilled);
 
 	// Create the legalMove node
-	BranchPath *legalMove = createLegalMove(node, inventory, description, copyOfOutputsFulfilled, numOutputsFulfilled);
+	BranchPath *legalMove = createLegalMove(node, inventory, description, outputsFulfilled, numOutputsFulfilled);
 
 	// Apend the legal move
 	insertIntoLegalMoves(insertIndex, legalMove, node);
@@ -403,7 +395,7 @@ void finalizeChapter5Eval(BranchPath *node, Inventory inventory, CH5 *ch5Data, i
  * a valid recipe move. Also checks to see if the legal move exceeds
  * the frame limit
  -------------------------------------------------------------------*/
-void finalizeLegalMove(BranchPath *node, int tempFrames, MoveDescription useDescription, Inventory tempInventory, int *tempOutputsFulfilled, int numOutputsFulfilled, enum HandleOutput tossType, enum Type_Sort toss, int tossIndex) {
+void finalizeLegalMove(BranchPath *node, int tempFrames, MoveDescription useDescription, Inventory tempInventory, const outputCreatedArray_t tempOutputsFulfilled, int numOutputsFulfilled, enum HandleOutput tossType, enum Type_Sort toss, int tossIndex) {
 	// Determine if the legal move exceeds the frame limit. If so, return out
 	if (useDescription.totalFramesTaken > getLocalRecord() + BUFFER_SEARCH_FRAMES) {
 		return;
@@ -426,10 +418,9 @@ void finalizeLegalMove(BranchPath *node, int tempFrames, MoveDescription useDesc
 	cookNew->toss = toss;
 	cookNew->indexToss = tossIndex;
 	useDescription.data = cookNew;
-	int *copyOfOutputsFulfilled = copyOutputsFulfilled(tempOutputsFulfilled);
 
 	// Create the legalMove node
-	BranchPath *newLegalMove = createLegalMove(node, tempInventory, useDescription, copyOfOutputsFulfilled, numOutputsFulfilled);
+	BranchPath *newLegalMove = createLegalMove(node, tempInventory, useDescription, tempOutputsFulfilled, numOutputsFulfilled);
 
 	// Insert this new move into the current node's legalMove array
 	insertIntoLegalMoves(insertIndex, newLegalMove, node);
@@ -489,7 +480,6 @@ void freeNode(BranchPath *node) {
 	if (node->description.data != NULL) {
 		free(node->description.data);
 	}
-	free(node->outputCreated);
 	if (node->legalMoves != NULL) {
 		while (node->numLegalMoves > 0) {
 			freeLegalMove(node, 0);
@@ -509,8 +499,9 @@ void freeNode(BranchPath *node) {
 void fulfillChapter5(BranchPath *curNode) {
 	// Create an outputs chart but with the Dried Bouquet collected
 	// to ensure that the produced inventory can fulfill all remaining recipes
-	int *tempOutputsFulfilled = copyOutputsFulfilled(curNode->outputCreated);
-	tempOutputsFulfilled[getIndexOfRecipe(Dried_Bouquet)] = 1;
+	outputCreatedArray_t tempOutputsFulfilled;
+	copyOutputsFulfilled(tempOutputsFulfilled, curNode->outputCreated);
+	tempOutputsFulfilled[getIndexOfRecipe(Dried_Bouquet)] = true;
 	int numOutputsFulfilled = curNode->numOutputsCreated + 1;
 
 	Inventory newInventory = curNode->inventory;
@@ -544,7 +535,7 @@ void fulfillChapter5(BranchPath *curNode) {
 			handleDBCOAllocation2Nulls(curNode, newInventory, tempOutputsFulfilled, numOutputsFulfilled, eval);
 	}
 
-	free(tempOutputsFulfilled);
+	// We know tempOutputsFulfilled does not escape this scope, so safe to be unallocated on return.
 }
 
 /*-------------------------------------------------------------------
@@ -563,7 +554,7 @@ void fulfillRecipes(BranchPath *curNode) {
 	// Iterate through all recipe ingredient combos
 	for (int recipeIndex = 0; recipeIndex < upperOutputLimit; recipeIndex++) {
 		// Only want recipes that haven't been fulfilled
-		if (curNode->outputCreated[recipeIndex] == 1) {
+		if (curNode->outputCreated[recipeIndex]) {
 			continue;
 		}
 
@@ -588,7 +579,8 @@ void fulfillRecipes(BranchPath *curNode) {
 			Inventory newInventory = curNode->inventory;
 
 			// Mark that this output has been fulfilled for viability determination
-			int *tempOutputsFulfilled = copyOutputsFulfilled(curNode->outputCreated);
+			outputCreatedArray_t tempOutputsFulfilled;
+			copyOutputsFulfilled(tempOutputsFulfilled, curNode->outputCreated);
 			tempOutputsFulfilled[recipeIndex] = 1;
 			int numOutputsFulfilled = curNode->numOutputsCreated + 1;
 
@@ -606,7 +598,7 @@ void fulfillRecipes(BranchPath *curNode) {
 			handleRecipeOutput(curNode, newInventory, tempFrames, useDescription, tempOutputsFulfilled, numOutputsFulfilled, recipe.output, viableItems);
 
 			free(cookBase);
-			free(tempOutputsFulfilled);
+			// We know tempOutputsFulfilled does not escape this scope, so safe to be unallocated on return.
 		}
 	}
 }
@@ -621,7 +613,7 @@ void fulfillRecipes(BranchPath *curNode) {
  *
  * Given input parameters, generate Cook structure
  -------------------------------------------------------------------*/
-void generateCook(MoveDescription *description, ItemCombination combo, Recipe recipe, int *ingredientLoc, int swap) {
+void generateCook(MoveDescription *description, const ItemCombination combo, const Recipe recipe, const int *ingredientLoc, int swap) {
 	struct Cook *cook = malloc(sizeof(struct Cook));
 
 	if (cook == NULL) {
@@ -657,7 +649,7 @@ void generateCook(MoveDescription *description, ItemCombination combo, Recipe re
  * Assign frame duration to description structure and reference the
  * previous node to find the total frame duration for the roadmap thus far
  -------------------------------------------------------------------*/
-void generateFramesTaken(MoveDescription *description, BranchPath *node, int framesTaken) {
+void generateFramesTaken(MoveDescription *description, const BranchPath *node, int framesTaken) {
 	description->framesTaken = framesTaken;
 	description->totalFramesTaken = node->description.totalFramesTaken + framesTaken;
 }
@@ -671,7 +663,7 @@ void generateFramesTaken(MoveDescription *description, BranchPath *node, int fra
  * where to insert it in the current node's array of legal moves, which
  * is ordered based on frame count ascending
  -------------------------------------------------------------------*/
-int getInsertionIndex(BranchPath *curNode, int frames) {
+int getInsertionIndex(const BranchPath *curNode, int frames) {
 	if (curNode->legalMoves == NULL) {
 		return 0;
 	}
@@ -724,7 +716,7 @@ int getSortFrames(enum Action action) {
  * Coconut and the Keel Mango. Place the Keel Mango and Courage Shell
  * in various inventory locations. Determine if the move is legal.
  -------------------------------------------------------------------*/
-void handleChapter5EarlySortEndItems(BranchPath *node, Inventory inventory, int *outputsFulfilled, int numOutputsFulfilled, CH5_Eval eval) {
+void handleChapter5EarlySortEndItems(BranchPath *node, Inventory inventory, const outputCreatedArray_t outputsFulfilled, int numOutputsFulfilled, CH5_Eval eval) {
 	for (eval.KM_place_index = 0; eval.KM_place_index < 10; eval.KM_place_index++) {
 		// Don't allow current move to remove Thunder Rage or previously
 		// obtained items
@@ -789,7 +781,7 @@ void handleChapter5EarlySortEndItems(BranchPath *node, Inventory inventory, int 
  * placing the Keel Mango by tossing various inventory items and
  * evaluate legal moves.
  -------------------------------------------------------------------*/
-void handleChapter5Eval(BranchPath *node, Inventory inventory, int *outputsFulfilled, int numOutputsFulfilled, CH5_Eval eval) {
+void handleChapter5Eval(BranchPath *node, Inventory inventory, const outputCreatedArray_t outputsFulfilled, int numOutputsFulfilled, CH5_Eval eval) {
 	// Evaluate sorting before the Keel Mango
 	// Use -1 to identify that we are not collecting the Keel Mango until after the sort
 	eval.frames_KM = -1;
@@ -845,7 +837,7 @@ void handleChapter5Eval(BranchPath *node, Inventory inventory, int *outputsFulfi
  * Keel Mango. Place the Courage Shell in various inventory locations.
  * Determine if a move is legal.
  -------------------------------------------------------------------*/
-void handleChapter5LateSortEndItems(BranchPath *node, Inventory inventory, int *outputsFulfilled, int numOutputsFulfilled, CH5_Eval eval) {
+void handleChapter5LateSortEndItems(BranchPath *node, Inventory inventory, const outputCreatedArray_t outputsFulfilled, int numOutputsFulfilled, CH5_Eval eval) {
 	// Place the Courage Shell
 	for (eval.CS_place_index = 0; eval.CS_place_index < 10; eval.CS_place_index++) {
 		// Don't allow current move to remove Thunder Rage
@@ -896,7 +888,7 @@ void handleChapter5LateSortEndItems(BranchPath *node, Inventory inventory, int *
  * Only continue if a sort places the Coconut in slots 11-20.
  * Then, call an EndItems function to finalize the CH5 evaluation.
  -------------------------------------------------------------------*/
-void handleChapter5Sorts(BranchPath *node, Inventory inventory, int *outputsFulfilled, int numOutputsFulfilled, CH5_Eval eval) {
+void handleChapter5Sorts(BranchPath *node, Inventory inventory, const outputCreatedArray_t outputsFulfilled, int numOutputsFulfilled, CH5_Eval eval) {
 	for (eval.sort = Sort_Alpha_Asc; eval.sort <= Sort_Type_Des; eval.sort++) {
 		Inventory sorted_inventory = getSortedInventory(inventory, eval.sort);
 
@@ -929,7 +921,7 @@ void handleChapter5Sorts(BranchPath *node, Inventory inventory, int *outputsFulf
  * Preliminary function to allocate Dried Bouquet and Coconut before
  * evaluating the rest of Chapter 5. There are no nulls in the inventory.
  -------------------------------------------------------------------*/
-void handleDBCOAllocation0Nulls(BranchPath *curNode, Inventory tempInventory, int *tempOutputsFulfilled, int numOutputsFulfilled, CH5_Eval eval) {
+void handleDBCOAllocation0Nulls(BranchPath *curNode, Inventory tempInventory, const outputCreatedArray_t tempOutputsFulfilled, int numOutputsFulfilled, CH5_Eval eval) {
 	// No nulls to utilize for Chapter 5 intermission
 	// Both the DB and CO can only replace items in the first 10 slots
 	// The remaining items always slide down to fill the vacancy
@@ -976,7 +968,7 @@ void handleDBCOAllocation0Nulls(BranchPath *curNode, Inventory tempInventory, in
  * Preliminary function to allocate Dried Bouquet and Coconut before
  * evaluating the rest of Chapter 5. There is 1 null in the inventory.
  -------------------------------------------------------------------*/
-void handleDBCOAllocation1Null(BranchPath *curNode, Inventory tempInventory, int *tempOutputsFulfilled, int numOutputsFulfilled, CH5_Eval eval) {
+void handleDBCOAllocation1Null(BranchPath *curNode, Inventory tempInventory, const outputCreatedArray_t tempOutputsFulfilled, int numOutputsFulfilled, CH5_Eval eval) {
 	// The Dried Bouquet gets auto-placed in the 1st slot,
 	// and everything else gets shifted down one to fill the first NULL
 	tempInventory = addItem(tempInventory, Dried_Bouquet);
@@ -1011,7 +1003,7 @@ void handleDBCOAllocation1Null(BranchPath *curNode, Inventory tempInventory, int
  * Preliminary function to allocate Dried Bouquet and Coconut before
  * evaluating the rest of Chapter 5. There are >=2 nulls in the inventory.
  -------------------------------------------------------------------*/
-void handleDBCOAllocation2Nulls(BranchPath *curNode, Inventory tempInventory, int *tempOutputsFulfilled, int numOutputsFulfilled, CH5_Eval eval) {
+void handleDBCOAllocation2Nulls(BranchPath *curNode, Inventory tempInventory, const outputCreatedArray_t tempOutputsFulfilled, int numOutputsFulfilled, CH5_Eval eval) {
 	// The Dried Bouquet gets auto-placed due to having nulls
 	tempInventory = addItem(tempInventory, Dried_Bouquet);
 	eval.DB_place_index = 0;
@@ -1041,7 +1033,7 @@ void handleDBCOAllocation2Nulls(BranchPath *curNode, Inventory tempInventory, in
  * the output (either tossing the output, auto-placing it if there is a
  * null slot, or tossing a different item in the inventory)
  -------------------------------------------------------------------*/
-void handleRecipeOutput(BranchPath *curNode, Inventory tempInventory, int tempFrames, MoveDescription useDescription, int *tempOutputsFulfilled, int numOutputsFulfilled, enum Type_Sort output, int viableItems) {
+void handleRecipeOutput(BranchPath *curNode, Inventory tempInventory, int tempFrames, MoveDescription useDescription, const outputCreatedArray_t tempOutputsFulfilled, int numOutputsFulfilled, enum Type_Sort output, int viableItems) {
 	// Options vary by whether there are NULLs within the inventory
 	if (tempInventory.nulls >= 1) {
 		tempInventory = addItem(tempInventory, ((struct Cook*)useDescription.data)->output);
@@ -1138,10 +1130,8 @@ void handleSorts(BranchPath *curNode) {
 				int sortFrames = getSortFrames(sort);
 				generateFramesTaken(&description, curNode, sortFrames);
 				description.framesTaken = sortFrames;
-				int *copyOfOutputsFulfilled = copyOutputsFulfilled(curNode->outputCreated);
-
 				// Create the legalMove node
-				BranchPath *newLegalMove = createLegalMove(curNode, sorted_inventory, description, copyOfOutputsFulfilled, curNode->numOutputsCreated);
+				BranchPath *newLegalMove = createLegalMove(curNode, sorted_inventory, description, curNode->outputCreated, curNode->numOutputsCreated);
 
 				// Insert this new move into the current node's legalMove array
 				insertIntoLegalMoves(curNode->numLegalMoves, newLegalMove, curNode);
@@ -1175,7 +1165,8 @@ ABSL_MUST_USE_RESULT BranchPath *initializeRoot() {
 	root->description.totalFramesTaken = 0;
 	root->prev = NULL;
 	root->next = NULL;
-	root->outputCreated = calloc(NUM_RECIPES, sizeof(int));
+	// This will also 0 out all the other elements
+	copyOutputsFulfilled(root->outputCreated, EMPTY_RECIPES);
 	root->numOutputsCreated = 0;
 	root->legalMoves = NULL;
 	root->numLegalMoves = 0;
@@ -1229,7 +1220,7 @@ void insertIntoLegalMoves(int insertIndex, BranchPath *newLegalMove, BranchPath 
  * Duplicate all the contents of a roadmap to a new memory region.
  * This is used for optimizeRoadmap.
  -------------------------------------------------------------------*/
-BranchPath *copyAllNodes(BranchPath *newNode, BranchPath *oldNode) {
+BranchPath *copyAllNodes(BranchPath *newNode, const BranchPath *oldNode) {
 	do {
 		newNode->moves = oldNode->moves;
 		newNode->inventory = oldNode->inventory;
@@ -1286,8 +1277,7 @@ BranchPath *copyAllNodes(BranchPath *newNode, BranchPath *oldNode) {
 				break;
 		}
 
-		int *newOutputCreated = copyOutputsFulfilled(oldNode->outputCreated);
-		newNode->outputCreated = newOutputCreated;
+		copyOutputsFulfilled(newNode->outputCreated, oldNode->outputCreated);
 		newNode->numOutputsCreated = oldNode->numOutputsCreated;
 		newNode->legalMoves = NULL;
 		newNode->numLegalMoves = 0;
@@ -1324,9 +1314,9 @@ BranchPath *copyAllNodes(BranchPath *newNode, BranchPath *oldNode) {
  * are placed in more efficient locations in the roadmap. This is effective
  * in shaving off upwards of 100 frames off of a roadmap.
  -------------------------------------------------------------------*/
-struct OptimizeResult optimizeRoadmap(BranchPath *root) {
+struct OptimizeResult optimizeRoadmap(const BranchPath *root) {
 	// First copy all nodes to new memory locations so we can begin rearranging nodes
-	BranchPath *curNode = root;
+	const BranchPath *curNode = root;
 	BranchPath *newRoot = malloc(sizeof(BranchPath));
 
 	if (newRoot == NULL) {
@@ -1383,7 +1373,7 @@ void periodicGithubCheck() {
 	else if (update == 1) {
 		printf("Please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!\n");
 		printf("Press ENTER to exit the program.\n");
-		char exitChar = getchar();
+		ABSL_ATTRIBUTE_UNUSED char exitChar = getchar();
 		exit(1);
 	}
 }
@@ -1411,8 +1401,8 @@ void popAllButFirstLegalMove(BranchPath *node) {
  * Print to a txt file the data which pertains to Chapter 5 evaluation
  * (where to place Dried Bouquet, Coconut, etc.)
  -------------------------------------------------------------------*/
-void printCh5Data(BranchPath *curNode, MoveDescription desc, FILE *fp) {
-	CH5 *ch5Data = desc.data;
+void printCh5Data(const BranchPath *curNode, const MoveDescription desc, FILE *fp) {
+	const CH5 *ch5Data = desc.data;
 
 	// Determine how many nulls there are when allocations start
 	int nulls = curNode->prev->inventory.nulls;
@@ -1460,7 +1450,7 @@ void printCh5Data(BranchPath *curNode, MoveDescription desc, FILE *fp) {
  *
  * Print to a txt file the data which pertains to Chapter 5 sorting
  -------------------------------------------------------------------*/
-void printCh5Sort(CH5 *ch5Data, FILE *fp) {
+void printCh5Sort(const CH5 *ch5Data, FILE *fp) {
 	fprintf(fp, "sort ");
 	switch (ch5Data->ch5Sort) {
 		case Sort_Alpha_Asc :
@@ -1489,7 +1479,7 @@ void printCh5Sort(CH5 *ch5Data, FILE *fp) {
  * Print to a txt file the data which pertains to cooking a recipe,
  * which includes what items were used and what happens to the output.
  -------------------------------------------------------------------*/
-void printCookData(BranchPath *curNode, MoveDescription desc, FILE *fp) {
+void printCookData(const BranchPath *curNode, const MoveDescription desc, FILE *fp) {
 	struct Cook *cookData = desc.data;
 	int nulls = curNode->prev->inventory.nulls;
 	fprintf(fp, "Use [%s] in slot %d ", getItemName(cookData->item1),
@@ -1550,7 +1540,7 @@ void printFileHeader(FILE *fp) {
  *
  * Print to a txt file the header information for the file.
  -------------------------------------------------------------------*/
-void printInventoryData(BranchPath *curNode, FILE *fp) {
+void printInventoryData(const BranchPath *curNode, FILE *fp) {
 	int nulls = curNode->inventory.nulls;
 	int i;
 	for (i = nulls; i < 10; ++i) {
@@ -1578,9 +1568,9 @@ void printInventoryData(BranchPath *curNode, FILE *fp) {
  * Print to a txt file data pertaining to which recipes
  * have been cooked thus far.
  -------------------------------------------------------------------*/
-void printOutputsCreated(BranchPath *curNode, FILE *fp) {
+void printOutputsCreated(const BranchPath *curNode, FILE *fp) {
 	for (int i = 0; i < NUM_RECIPES; i++) {
-		if (curNode->outputCreated[i] == 1) {
+		if (curNode->outputCreated[i]) {
 			fprintf(fp, "\tTrue");
 		}
 		else {
@@ -1589,7 +1579,7 @@ void printOutputsCreated(BranchPath *curNode, FILE *fp) {
 	}
 }
 
-void printNodeDescription(BranchPath * curNode, FILE * fp)
+void printNodeDescription(const BranchPath * curNode, FILE * fp)
 {
 	MoveDescription desc = curNode->description;
 	enum Action curNodeAction = desc.action;
@@ -1618,19 +1608,19 @@ void printNodeDescription(BranchPath * curNode, FILE * fp)
  * is called when a roadmap has been found which beats the current
  * local record.
  -------------------------------------------------------------------*/
-void printResults(char *filename, BranchPath *path) {
+void printResults(const char *filename, const BranchPath *path) {
 	FILE *fp = fopen(filename, "w");
 	if (fp == NULL) {
 		printf("Could not locate %s... This is a bug.\n", filename);
 		printf("Press ENTER to exit.\n");
-		char exitChar = getchar();
+		ABSL_ATTRIBUTE_UNUSED char exitChar = getchar();
 		exit(1);
 	}
 	// Write header information
 	printFileHeader(fp);
 
 	// Print data information
-	BranchPath *curNode = path;
+	const BranchPath *curNode = path;
 	do {
 		printNodeDescription(curNode, fp);
 
@@ -1689,13 +1679,16 @@ void printSortData(FILE *fp, enum Action curNodeAction) {
  *
  * Given a set of recipes, find alternative places in the roadmap to
  * cook these recipes such that we minimize the frame cost.
+ * Note: Even though newRoot is never modified in this function,
+ * it may be set as the pointer to newly allocated nodes, and thus is not const
  -------------------------------------------------------------------*/
-void reallocateRecipes(BranchPath* newRoot, enum Type_Sort* rearranged_recipes, int num_rearranged_recipes) {
+void reallocateRecipes(BranchPath* newRoot, const enum Type_Sort* rearranged_recipes, int num_rearranged_recipes) {
 	for (int recipe_offset = 0; recipe_offset < num_rearranged_recipes; recipe_offset++) {
 		// Establish a default bound for the optimal place for this item
 		int record_frames = 9999;
 		BranchPath *record_placement_node = NULL;
 		struct Cook *record_description = NULL;
+		struct Cook temp_description = {0};
 
 		// Evaluate all recipes and determine the optimal recipe and location
 		int recipe_index = getIndexOfRecipe(rearranged_recipes[recipe_offset]);
@@ -1704,8 +1697,11 @@ void reallocateRecipes(BranchPath* newRoot, enum Type_Sort* rearranged_recipes, 
 			ItemCombination combo = recipe.combos[recipe_combo_index];
 
 			// Evaluate placing after each node where it can be placed
-			for (BranchPath *placement = combo.numItems == 2 ? newRoot->next : newRoot;
-				 placement != NULL; placement = placement->next) {
+			for (struct BranchPath *mutablePlacement = combo.numItems == 2 ? newRoot->next : newRoot;
+			     mutablePlacement != NULL; mutablePlacement = mutablePlacement->next) {
+				// Prefer to work with the const version when possible to ensure we really don't modify it.
+				// It only has to be non-const because of assignment into
+				const struct BranchPath *placement = mutablePlacement;
 				// Only want moments when there are no NULLs in the inventory
 				if (placement->inventory.nulls) {
 					continue;
@@ -1727,24 +1723,18 @@ void reallocateRecipes(BranchPath* newRoot, enum Type_Sort* rearranged_recipes, 
 				// This is a valid recipe and location to fulfill (and toss) the output
 				// Calculate the frames needed to produce this step
 				int temp_frames = TOSS_FRAMES;
-				struct Cook *temp_description = malloc(sizeof(struct Cook));
-				if (temp_description == NULL) {
-					printf("Fatal error! Ran out of heap memory.\n");
-					printf("Press enter to quit.");
-					char exitChar = getchar();
-					exit(1);
-				}
-				temp_description->output = recipe.output;
-				temp_description->handleOutput = Toss;
+				temp_description = EMPTY_COOK;
+				temp_description.output = recipe.output;
+				temp_description.handleOutput = Toss;
 
 				if (combo.numItems == 1) {
 					// Only one ingredient to navigate to
 					temp_frames += invFrames[placement->inventory.length - 1][indexItem1];
-					temp_description->numItems = 1;
-					temp_description->item1 = combo.item1;
-					temp_description->itemIndex1 = indexItem1;
-					temp_description->item2 = -1;
-					temp_description->itemIndex2 = -1;
+					temp_description.numItems = 1;
+					temp_description.item1 = combo.item1;
+					temp_description.itemIndex1 = indexItem1;
+					temp_description.item2 = -1;
+					temp_description.itemIndex2 = -1;
 				}
 				else {
 					if (indexItem2 < 0) {
@@ -1757,23 +1747,23 @@ void reallocateRecipes(BranchPath* newRoot, enum Type_Sort* rearranged_recipes, 
 					// Pick the larger-index number ingredient first, as it will reduce
 					// the frames needed to reach the other ingredient
 					temp_frames += CHOOSE_2ND_INGREDIENT_FRAMES;
-					temp_description->numItems = 2;
+					temp_description.numItems = 2;
 
 					if (indexItem1 > indexItem2) {
 						temp_frames += invFrames[placement->inventory.length - 1][indexItem1];
 						temp_frames += invFrames[placement->inventory.length - 2][indexItem2];
-						temp_description->item1 = combo.item1;
-						temp_description->itemIndex1 = indexItem1;
-						temp_description->item2 = combo.item2;
-						temp_description->itemIndex2 = indexItem2;
+						temp_description.item1 = combo.item1;
+						temp_description.itemIndex1 = indexItem1;
+						temp_description.item2 = combo.item2;
+						temp_description.itemIndex2 = indexItem2;
 					}
 					else {
 						temp_frames += invFrames[placement->inventory.length - 1][indexItem2];
 						temp_frames += invFrames[placement->inventory.length - 2][indexItem1];
-						temp_description->item1 = combo.item2;
-						temp_description->itemIndex1 = indexItem2;
-						temp_description->item2 = combo.item1;
-						temp_description->itemIndex2 = indexItem1;
+						temp_description.item1 = combo.item2;
+						temp_description.itemIndex1 = indexItem2;
+						temp_description.item2 = combo.item1;
+						temp_description.itemIndex2 = indexItem1;
 					}
 				}
 
@@ -1781,16 +1771,18 @@ void reallocateRecipes(BranchPath* newRoot, enum Type_Sort* rearranged_recipes, 
 				if (temp_frames < record_frames) {
 					// Update the record information
 					record_frames = temp_frames;
-					record_placement_node = placement;
+					record_placement_node = mutablePlacement;
 
-					// If we are overwriting a previous record, free the previous description
-					if (record_description != NULL) {
-						free(record_description);
+					if (record_description == NULL) {
+						record_description = malloc(sizeof(struct Cook));
+						if (record_description == NULL) {
+							printf("Fatal error! Ran out of heap memory.\n");
+							printf("Press enter to quit.");
+							char exitChar = getchar();
+							exit(1);
+						}
 					}
-					record_description = temp_description;
-				}
-				else {
-					free(temp_description);
+					*record_description = temp_description;
 				}
 			}
 		}
@@ -1825,15 +1817,15 @@ void reallocateRecipes(BranchPath* newRoot, enum Type_Sort* rearranged_recipes, 
 		insertNode->description.action = Cook;
 		insertNode->description.data = (void *)record_description;
 		insertNode->description.framesTaken = record_frames;
-		insertNode->outputCreated = copyOutputsFulfilled(record_placement_node->outputCreated);
-		insertNode->outputCreated[recipe_index] = 1;
+		copyOutputsFulfilled(insertNode->outputCreated, record_placement_node->outputCreated);
+		insertNode->outputCreated[recipe_index] = true;
 		insertNode->numOutputsCreated = record_placement_node->numOutputsCreated + 1;
 		insertNode->legalMoves = NULL;
 		insertNode->numLegalMoves = 0;
 
 		// Update all subsequent nodes with
 		for (BranchPath *node = insertNode->next; node!= NULL; node = node->next) {
-			node->outputCreated[recipe_index] = 1;
+			node->outputCreated[recipe_index] = true;
 			++node->numOutputsCreated;
 			++node->moves;
 		}
@@ -1909,7 +1901,7 @@ int removeRecipesForReallocation(BranchPath* node, enum Type_Sort *rearranged_re
  * second item before the first item originally listed in the recipe
  * combo.
  -------------------------------------------------------------------*/
-int selectSecondItemFirst(int *ingredientLoc, int nulls, int viableItems) {
+int selectSecondItemFirst(const int *ingredientLoc, int nulls, int viableItems) {
 	int visibleLoc0 = ingredientLoc[0] - nulls;
 	int visibleLoc1 = ingredientLoc[1] - nulls;
 
@@ -1954,8 +1946,9 @@ int selectSecondItemFirst(int *ingredientLoc, int nulls, int viableItems) {
  * lowerBound one index towards the end of the list, ending at upperBound
  -------------------------------------------------------------------*/
 void shiftDownLegalMoves(BranchPath *node, int lowerBound, int uppderBound) {
+	BranchPath **legalMoves = node->legalMoves;
 	for (int i = uppderBound - 1; i >= lowerBound; i--) {
-		node->legalMoves[i+1] = node->legalMoves[i];
+		legalMoves[i+1] = legalMoves[i];
 	}
 }
 
@@ -2089,7 +2082,7 @@ void swapItems(int *ingredientLoc) {
  * For the given recipe, try to toss items in the inventory in order
  * to make room for the recipe output.
  -------------------------------------------------------------------*/
-void tryTossInventoryItem(BranchPath *curNode, Inventory tempInventory, MoveDescription useDescription, int *tempOutputsFulfilled, int numOutputsFulfilled, enum Type_Sort output, int tempFrames, int viableItems) {
+void tryTossInventoryItem(BranchPath *curNode, Inventory tempInventory, MoveDescription useDescription, const outputCreatedArray_t tempOutputsFulfilled, int numOutputsFulfilled, enum Type_Sort output, int tempFrames, int viableItems) {
 	for (int tossedIndex = 0; tossedIndex < 10; tossedIndex++) {
 		enum Type_Sort tossedItem = tempInventory.inventory[tossedIndex];
 
@@ -2210,7 +2203,7 @@ Inventory getSortedInventory(Inventory inventory, enum Action sort) {
 	}
 }
 
-void logIterations(int ID, int stepIndex, BranchPath * curNode, int iterationCount, int level)
+void logIterations(int ID, int stepIndex, const BranchPath * curNode, int iterationCount, int level)
 {
 	char callString[30];
 	char iterationString[100];
@@ -2231,7 +2224,7 @@ void logIterations(int ID, int stepIndex, BranchPath * curNode, int iterationCou
  * a roadmap is found, the data is printed to a .txt file, and the result
  * is passed back to start.c to try submitting to the server.
  -------------------------------------------------------------------*/
-Result calculateOrder(int ID) {
+Result calculateOrder(const int ID) {
 	int randomise = getConfigInt("randomise");
 	int select = getConfigInt("select");
 	int debug = getConfigInt("debug");
