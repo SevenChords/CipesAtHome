@@ -103,12 +103,18 @@
     (defined(__GNUC__) && !defined(__clang__))
 #define ABSL_ATTRIBUTE_ALWAYS_INLINE __attribute__((always_inline))
 #define ABSL_HAVE_ATTRIBUTE_ALWAYS_INLINE 1
+#elif defined(_MSC_VER)
+#define ABSL_ATTRIBUTE_ALWAYS_INLINE __forceinline
+#define ABSL_HAVE_ATTRIBUTE_ALWAYS_INLINE 1
 #else
 #define ABSL_ATTRIBUTE_ALWAYS_INLINE
 #endif
 
 #if ABSL_HAVE_ATTRIBUTE(noinline) || (defined(__GNUC__) && !defined(__clang__))
 #define ABSL_ATTRIBUTE_NOINLINE __attribute__((noinline))
+#define ABSL_HAVE_ATTRIBUTE_NOINLINE 1
+#elif defined(_MSC_VER)
+#define ABSL_ATTRIBUTE_NOINLINE __declspec(noinline)
 #define ABSL_HAVE_ATTRIBUTE_NOINLINE 1
 #else
 #define ABSL_ATTRIBUTE_NOINLINE
@@ -423,12 +429,21 @@
 // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=66425
 //
 // Note: past advice was to place the macro after the argument list.
-#if ABSL_HAVE_ATTRIBUTE(nodiscard)
+#if ABSL_HAVE_CPP_ATTRIBUTE(nodiscard)
 #define ABSL_MUST_USE_RESULT [[nodiscard]]
 #elif defined(__clang__) && ABSL_HAVE_ATTRIBUTE(warn_unused_result)
 #define ABSL_MUST_USE_RESULT __attribute__((warn_unused_result))
 #else
 #define ABSL_MUST_USE_RESULT
+#endif
+
+// Same as above, but allows GCC
+#if ABSL_HAVE_CPP_ATTRIBUTE(nodiscard)
+#define ABSL_MUST_USE_RESULT_INCLUSIVE [[nodiscard]]
+#elif (defined(__clang__) && ABSL_HAVE_ATTRIBUTE(warn_unused_result)) || defined(__GNUC__)
+#define ABSL_MUST_USE_RESULT_INCLUSIVE __attribute__((warn_unused_result))
+#else
+#define ABSL_MUST_USE_RESULT_INCLUSIVE
 #endif
 
 // ABSL_ATTRIBUTE_HOT, ABSL_ATTRIBUTE_COLD
@@ -617,7 +632,7 @@
 #if __has_feature(cxx_attributes) && __has_warning("-Wimplicit-fallthrough")
 #define ABSL_FALLTHROUGH_INTENDED [[clang::fallthrough]]
 #endif
-#elif defined(__GNUC__) && __GNUC__ >= 7
+#elif defined(__GNUC__) && __GNUC__ >= 7 && !defined(__MINGW32__)
 #define ABSL_FALLTHROUGH_INTENDED [[gnu::fallthrough]]
 #endif
 
@@ -646,8 +661,16 @@
 // Every usage of a deprecated entity will trigger a warning when compiled with
 // clang's `-Wdeprecated-declarations` option. This option is turned off by
 // default, but the warnings will be reported by clang-tidy.
-#if defined(__clang__) && defined(__cplusplus) && __cplusplus >= 201103L
+#if ( \
+  defined(__clang__) && ( \
+    ABSL_HAVE_ATTRIBUTE(deprecated) \
+    || (__clang_major__ > 3 || (__clang_major__ == 3 && __clang_minor__ >= 3) \
+    || (defined(__cplusplus) && __cplusplus >= 201103L)) \
+  ) || ( \
+  defined(__GNUC__) && (__GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 1))))
 #define ABSL_DEPRECATED(message) __attribute__((deprecated(message)))
+#elif defined(_MSC_VER) && _MSC_VER >= 1900
+#define ABSL_DEPRECATED(message) __declspec(deprecated((message)))
 #endif
 
 #ifndef ABSL_DEPRECATED

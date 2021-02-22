@@ -142,7 +142,7 @@ static_assert(ABSL_INTERNAL_INLINE_NAMESPACE_STR[0] != 'h' ||
 //
 // Note: Use this macro to avoid an extra level of #ifdef __has_builtin check.
 // http://releases.llvm.org/3.3/tools/clang/docs/LanguageExtensions.html
-#ifdef __has_builtin
+#if defined(__has_builtin) || (defined(__GNUC__) && __GNUC__ >= 10)
 #define ABSL_HAVE_BUILTIN(x) __has_builtin(x)
 #else
 #define ABSL_HAVE_BUILTIN(x) 0
