@@ -210,10 +210,14 @@
   } while (0)
 #elif defined(_MSC_VER)
 #define ABSL_INTERNAL_ASSUME(cond) __assume(cond)
-#else
+#elif __cplusplus
 #define ABSL_INTERNAL_ASSUME(cond)      \
   do {                                  \
-    static_cast<void>(false && (cond)); \
+    static_cast<void>(0 && (cond)); \
+  } while (0)
+#else
+	do {                                  \
+    (void)(0 && (cond)); \
   } while (0)
 #endif
 
