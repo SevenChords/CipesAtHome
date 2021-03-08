@@ -433,17 +433,34 @@ void freeAllNodes(BranchPath *node) {
 }
 
 /*-------------------------------------------------------------------
- * Function 	: freeLegalMove
+ * Function 	: freeLegalMoveOnly
  * Inputs	: BranchPath	*node
  *		  int			index
  *
- * Free the legal move at index in the node's array of legal moves
+ * Free the legal move at index in the node's array of legal moves,
+ * but unlike freeLegalMove(), this does NOT shift the existing legal
+ * moves to fill the gap. This is useful in cases where where the
+ * caller can assure such consistency is not needed (For example,
+ * freeing the last legal move or freeing all legal moves).
  -------------------------------------------------------------------*/
-void freeLegalMove(BranchPath *node, int index) {
+static void freeLegalMoveOnly(BranchPath *node, int index) {
 	freeNode(node->legalMoves[index]);
 	node->legalMoves[index] = NULL;
 	node->numLegalMoves--;
 	node->next = NULL;
+}
+
+/*-------------------------------------------------------------------
+ * Function 	: freeLegalMove
+ * Inputs	: BranchPath	*node
+ *		  int			index
+ *
+ * Free the legal move at index in the node's array of legal moves,
+ * And shift the existing legal moves after the index to fill the gap.
+ -------------------------------------------------------------------*/
+
+void freeLegalMove(BranchPath *node, int index) {
+	freeLegalMoveOnly(node, index);
 
 	// Shift up the rest of the legal moves
 	shiftUpLegalMoves(node, index + 1);
@@ -460,8 +477,13 @@ void freeNode(BranchPath *node) {
 		free(node->description.data);
 	}
 	if (node->legalMoves != NULL) {
-		while (node->numLegalMoves > 0) {
-			freeLegalMove(node, 0);
+		const int max = node->numLegalMoves;
+		int i = 0;
+		while (i < max) {
+			// Don't need to worry about shifting up when we do this.
+			// Or resetting slots to NULL.
+			// We are blowing it all away anyways.
+			freeLegalMoveOnly(node, i++);
 		}
 		free(node->legalMoves);
 	}
@@ -1329,10 +1351,14 @@ void periodicGithubCheck() {
  * In the event we are within the last few nodes of the roadmap, get rid
  * of all but the fastest legal move.
  -------------------------------------------------------------------*/
-void popAllButFirstLegalMove(BranchPath *node) {
-	for (int i = 1; i < node->numLegalMoves; i++) {
-		freeLegalMove(node, i);
-		i--;
+void popAllButFirstLegalMove(struct BranchPath *node) {
+	// First case, we may need to set the final slot to NULL (the one _after_ the last element)
+	// Which is handled by the full freeLegalMoves (in the shiftUpLegalMoves inner call).
+	int i = node->numLegalMoves - 1;
+	freeLegalMove(node, i--);
+	for (; i > 0 ; --i) {
+		// Now we don't need to check final slot.
+		freeLegalMoveOnly(node, i);
 	}
 }
 
@@ -1873,11 +1899,15 @@ int selectSecondItemFirst(const int *ingredientLoc, int nulls, int viableItems) 
  * array to place a new legal move. Shift all legal moves starting at
  * lowerBound one index towards the end of the list, ending at upperBound
  -------------------------------------------------------------------*/
-void shiftDownLegalMoves(BranchPath *node, int lowerBound, int uppderBound) {
-	BranchPath **legalMoves = node->legalMoves;
-	for (int i = uppderBound - 1; i >= lowerBound; i--) {
-		legalMoves[i+1] = legalMoves[i];
-	}
+void shiftDownLegalMoves(struct BranchPath *node, int lowerBound, int upperBound) {
+	if (upperBound == lowerBound) return;
+	struct BranchPath **legalMoves = node->legalMoves;
+	memmove(&legalMoves[lowerBound + 1], &legalMoves[lowerBound], sizeof(&legalMoves[0])*(upperBound - lowerBound));
+	/* The above memmove is equivalent to this for loop.
+ 	for (int i = uppderBound - 1; i >= lowerBound; i--) {
+ 		legalMoves[i+1] = legalMoves[i];
+ 	}*/
+
 }
 
 /*-------------------------------------------------------------------
@@ -1889,13 +1919,27 @@ void shiftDownLegalMoves(BranchPath *node, int lowerBound, int uppderBound) {
  * move AFTER the null is index. Iterate starting at the index of the
  * NULL legal moves and shift all subsequent legal moves towards the
  * front of the array.
+ * WARNING: node->numLegalMove MUST already be decremented before
+ * calling this function. Thus this function will actually edit
+ * node->legalModes[node->numLegalMoves] on the assumption that
+ * numLegalMoves is actually now below the allocated region.
+ * NOTE: the destination actually starts with index - 1. If index == 0,
+ * then you are asking to shift down index 0, which is already at the top,
+ * so this function will do nothing.
+ *
+ * This function does NOT update node->numLegalMoves. Caller should
+ * do it themselves.
  -------------------------------------------------------------------*/
-void shiftUpLegalMoves(BranchPath *node, int startIndex) {
-	for (int i = startIndex - 1; i < node->numLegalMoves; i++) {
-		node->legalMoves[i] = node->legalMoves[i+1];
-	}
+void shiftUpLegalMoves(struct BranchPath *node, int startIndex) {
+	if (startIndex == 0) return;
+	BranchPath **legalMoves = node->legalMoves;
+	memmove(&legalMoves[startIndex - 1], &legalMoves[startIndex], sizeof(&legalMoves[0])*(node->numLegalMoves - startIndex + 1));
+	/* The above memmove is equivalent to this for loop.
+	for (int i = startIndex; i <= node->numLegalMoves; i++) {
+		node->legalMoves[i-1] = node->legalMoves[i];
+	}*/
 	// Null where the last entry was before shifting
-	node->legalMoves[node->numLegalMoves] = NULL;
+	legalMoves[node->numLegalMoves] = NULL;
 }
 
 /*-------------------------------------------------------------------
