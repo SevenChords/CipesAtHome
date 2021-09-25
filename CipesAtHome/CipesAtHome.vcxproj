@@ -163,6 +163,12 @@
     <ClInclude Include="..\logger.h" />
     <ClInclude Include="..\recipes.h" />
     <ClInclude Include="..\start.h" />
+    <ClInclude Include="..\absl\attributes.h" />
+    <ClInclude Include="..\absl\config.h" />
+    <ClInclude Include="..\absl\optimizations.h" />
+    <ClInclude Include="..\absl\options.h" />
+    <ClInclude Include="..\absl\policy_checks.h" />
+    <ClInclude Include="..\absl\port.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\config.txt">
