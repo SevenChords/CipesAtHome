@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include <curl/curl.h>
 #include <sys/stat.h>
 #include "cJSON.h"
@@ -47,8 +48,9 @@ static size_t write_data(char *contents, size_t size, size_t nmemb, void *userda
  * This is the main cURL GET function. Communicate with either GitHub
  * or the Blob server to obtain either the latest program version or
  * the current fastest frame record respectively.
+ * The returning value (if non-NULL) MUST be freed.
  -------------------------------------------------------------------*/
-char *handle_get(char* url) {
+ABSL_MUST_USE_RESULT_INCLUSIVE char *handle_get(char* url) {
 	CURL *curl;
 	struct memory chunk;
 	chunk.data = NULL;
@@ -63,6 +65,7 @@ char *handle_get(char* url) {
 		curl_easy_setopt(curl, CURLOPT_USERAGENT, "curl/7.68.0");
 		res = curl_easy_perform(curl);
 		if (res != CURLE_OK) {
+			curl_easy_cleanup(curl);
 			return NULL;
 		}
 		
@@ -133,6 +136,9 @@ void handle_post(char* url, FILE *fp, int localRecord, char *nickname) {
 	if (curl) {
 		cJSON *json = cJSON_Parse(wt.data);
 		char *json_str = cJSON_PrintUnformatted(json);
+		cJSON_Delete(json);
+		// TODO(TechSY730) Merge this assert function and reenable
+		// checkMallocFailed(json_str);
 		struct curl_slist *headers = NULL;
 		headers = curl_slist_append(headers, "Content-Type: application/json");
 		headers = curl_slist_append(headers, "charset: utf-8");
@@ -143,6 +149,8 @@ void handle_post(char* url, FILE *fp, int localRecord, char *nickname) {
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &rt);
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
 		curl_easy_perform(curl);
+		curl_slist_free_all(headers);
+		free(json_str);
 		
 		curl_easy_cleanup(curl);
 	}
@@ -197,11 +205,16 @@ int testRecord(int localRecord) {
 int checkForUpdates(const char *local_ver) {
 	char *url = "https://api.github.com/repos/SevenChords/CipesAtHome/releases/latest";
 	char *data = handle_get(url);
+	if (data == NULL) {
+		return -1;
+	}
 	cJSON *json = cJSON_Parse(data);
-	json = cJSON_GetObjectItemCaseSensitive(json, "tag_name");
-	char *ver = cJSON_GetStringValue(json);
+	cJSON *json_item = cJSON_GetObjectItemCaseSensitive(json, "tag_name");
+	char *ver = cJSON_GetStringValue(json_item);
+	free(data);
 	
 	if (ver == NULL) {
+		cJSON_Delete(json);
 		return -1;
 	}
 	
