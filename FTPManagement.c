@@ -137,7 +137,8 @@ void handle_post(char* url, FILE *fp, int localRecord, char *nickname) {
 		cJSON *json = cJSON_Parse(wt.data);
 		char *json_str = cJSON_PrintUnformatted(json);
 		cJSON_Delete(json);
-		checkMallocFailed(json_str);
+		// TODO(TechSY730) Merge this assert function and reenable
+		// checkMallocFailed(json_str);
 		struct curl_slist *headers = NULL;
 		headers = curl_slist_append(headers, "Content-Type: application/json");
 		headers = curl_slist_append(headers, "charset: utf-8");
