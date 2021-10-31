@@ -19,12 +19,6 @@
 #include "absl/base/port.h"
 
 #ifdef _MSC_FULL_VER
-#define _IS_WINDOWS 1
-#else
-#define _IS_WINDOWS 0
-#endif
-
-#if _IS_WINDOWS
 #include <windows.h>
 #endif
 
