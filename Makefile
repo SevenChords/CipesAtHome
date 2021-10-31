@@ -1,7 +1,7 @@
 CFLAGS=-lcurl -lconfig -fopenmp -I . -Wall -O2
 TARGET=recipesAtHome
-DEPS=start.h inventory.h recipes.h config.h FTPManagement.h cJSON.h calculator.h logger.h $(wildcard absl/base/*.h )
-OBJ=start.o inventory.o recipes.o config.o FTPManagement.o cJSON.o calculator.o logger.o
+DEPS=start.h inventory.h recipes.h config.h FTPManagement.h cJSON.h calculator.h logger.h shutdown.h $(wildcard absl/base/*.h )
+OBJ=start.o inventory.o recipes.o config.o FTPManagement.o cJSON.o calculator.o logger.o shutdown.o
 
 UNAME:=$(shell uname)
 ifeq ($(UNAME), Linux)

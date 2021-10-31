@@ -11,6 +11,7 @@ struct Result {
 	int callNumber;
 };
 
+// May get a value <0 if local record was corrupt.
 int getLocalRecord();
 void setLocalRecord(int frames);
 const char* getLocalVersion();
