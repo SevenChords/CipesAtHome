@@ -84,8 +84,6 @@ void applyJumpStorageFramePenalty(BranchPath *node) {
 		node->description.framesTaken += JUMP_STORAGE_NO_TOSS_FRAMES;
 		node->description.totalFramesTaken += JUMP_STORAGE_NO_TOSS_FRAMES;
 	}
-
-	return;
 }
 
 /*-------------------------------------------------------------------
@@ -97,7 +95,6 @@ void applyJumpStorageFramePenalty(BranchPath *node) {
  -------------------------------------------------------------------*/
 void copyCook(struct Cook *cookNew, struct Cook *cookOld) {
 	*cookNew = *cookOld;
-	return;
 }
 
 /*-------------------------------------------------------------------
@@ -1259,8 +1256,6 @@ void insertIntoLegalMoves(int insertIndex, BranchPath *newLegalMove, BranchPath 
 
 	// Increase numLegalMoves
 	curNode->numLegalMoves++;
-
-	return;
 }
 
 /*-------------------------------------------------------------------
@@ -1443,8 +1438,6 @@ void popAllButFirstLegalMove(BranchPath *node) {
 		freeLegalMove(node, i);
 		i--;
 	}
-
-	return;
 }
 
 /*-------------------------------------------------------------------
@@ -2066,8 +2059,6 @@ void shuffleLegalMoves(BranchPath *node) {
 		node->legalMoves[index1] = node->legalMoves[index2];
 		node->legalMoves[index2] = temp;
 	}
-
-	return;
 }
 
 /*-------------------------------------------------------------------
@@ -2085,8 +2076,6 @@ void swapItems(int *ingredientLoc) {
 	locTemp = ingredientLoc[0];
 	ingredientLoc[0] = ingredientLoc[1];
 	ingredientLoc[1] = locTemp;
-
-	return;
 }
 
 /*-------------------------------------------------------------------
@@ -2124,8 +2113,6 @@ void tryTossInventoryItem(BranchPath *curNode, Inventory tempInventory, MoveDesc
 
 		finalizeLegalMove(curNode, replacedFrames, useDescription, replacedInventory, tempOutputsFulfilled, numOutputsFulfilled, TossOther, tossedItem, tossedIndex);
 	}
-
-	return;
 }
 
 /*-------------------------------------------------------------------
