@@ -54,13 +54,13 @@ int numTimesExitRequest = 0;
 
 void countAndSetShutdown(bool isSignal) {
 	if (++numTimesExitRequest >= NUM_TIMES_EXITED_BEFORE_HARD_QUIT) {
-		if (!_IS_WINDOWS || !isSignal) {
+		if (!_MSC_FULL_VER || !isSignal) {
 			printf("\nExit reqested %d times; shutting down now.\n", NUM_TIMES_EXITED_BEFORE_HARD_QUIT);
 		}
 		exit(1);
 	} else {
 		requestShutdown();
-		if (!_IS_WINDOWS || !isSignal) {
+		if (!_MSC_FULL_VER || !isSignal) {
 			printf("\nExit requested, finishing up work. Should shutdown soon (CTRL-C 3 times to force exit)\n");
 		}
 	}
@@ -70,7 +70,7 @@ void handleTermSignal(int signal) {
 	countAndSetShutdown(true);
 }
 
-#if _IS_WINDOWS
+#if _MSC_FULL_VER
 BOOL WINAPI windowsCtrlCHandler(DWORD fdwCtrlType) {
 	switch (fdwCtrlType) {
 	case CTRL_C_EVENT: ABSL_FALLTHROUGH_INTENDED;
@@ -86,7 +86,7 @@ BOOL WINAPI windowsCtrlCHandler(DWORD fdwCtrlType) {
 void setSignalHandlers() {
 	signal(SIGTERM, handleTermSignal);
 	signal(SIGINT, handleTermSignal);
-#if _IS_WINDOWS
+#if _MSC_FULL_VER
 	if (!SetConsoleCtrlHandler(windowsCtrlCHandler, TRUE)) {
 		printf("Unable to set CTRL-C handler. CTRL-C may cause unclean shutdown.\n");
 	}
