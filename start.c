@@ -102,15 +102,17 @@ int main() {
 	// If select and randomise are both 0, the same roadmap will be calculated on every thread, so set threads = 1
 	// The debug setting can only be meaningfully used with one thread as well.
 	int workerCount = (getConfigInt("select") || getConfigInt("randomise"))
-					  && !getConfigInt("debug") ? getConfigInt("workerCount") : 1;
-	local_ver = getConfigStr("Version");
-	init_level_cfg();
+					  && getConfigInt("debug") ? 1 : getConfigInt("workerCount");
+
+	local_ver = getConfigStr("Version"); // Recipes@Home version
+	init_level_cfg(); // set log level from config
 	curl_global_init(CURL_GLOBAL_DEFAULT);	// Initialize libcurl
-	int update = checkForUpdates(local_ver);
 	
 	// Greeting message to user
 	printf("Welcome to Recipes@Home!\n");
 	printf("Leave this program running as long as you want to search for new recipe orders.\n");
+
+	// Try to retrieve the record from the Blob server
 	int blob_record = getFastestRecordOnBlob();
 	if (blob_record == 0) {
 		printf("There was an error contacting the server to retrieve the fastest time.\n");
@@ -120,6 +122,8 @@ int main() {
 		printf("The current fastest record is %d frames. Happy cooking!\n", blob_record);
 	}
 	
+	// Reference the Github for the latest release version
+	int update = checkForUpdates(local_ver);
 	if (update == -1) {
 		printf("Could not check version on Github. Please check your internet connection.\n");
 		printf("Otherwise, we can't submit completed roadmaps to the server!\n");
@@ -129,19 +133,10 @@ int main() {
 		return -1;
 	}
 	else if (update == 1) {
-		printf("Please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!\n");
+		printf("There is a newer version of Recipes@Home.\nTo continue, please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!\n");
 		printf("Press ENTER to quit.\n");
 		char exitChar = getchar();
 		return -1;
-	}
-
-	// Verify that username field is not malformed,
-	// as this would cause errors when a roadmap is submitted to the servers
-	if (getConfigStr("Username") == NULL) {
-		printf("Username field is malformed. Please verify that your username is within quotation marks next to \"Username = \"\n");
-		printf("Press ENTER to exit the program.\n");
-		char exitChar = getchar();
-		exit(1);
 	}
 
 	// Verify that the results folder exists
@@ -156,16 +151,16 @@ int main() {
 	if (fp != NULL) {
 		int PB_record;
 		if (fscanf(fp, "%d", &PB_record) == 1) {
-			if (PB_record < 0) {
-				printf("PB.txt is corrupted (PB record less then 0 frames). Ignoring.\n");
+			if (PB_record < 1000) {
+				printf("The record stored in PB.txt can't be right... Ignoring.\n");
 			} else {
 				current_frame_record = PB_record;
+				// Submit the user's fastest roadmap to the server for leaderboard purposes
+				// in case this was not submitted upon initial discovery
 				testRecord(current_frame_record);
 			}
 		}
 		fclose(fp);
-
-		// Submit the user's fastest roadmap to the server for leaderboard purposes
 	}
 
 	// Initialize global variables in calculator.c
