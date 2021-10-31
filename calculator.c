@@ -87,17 +87,6 @@ void applyJumpStorageFramePenalty(BranchPath *node) {
 }
 
 /*-------------------------------------------------------------------
- * Function 	: copyCook
- * Inputs	: struct Cook *cookNew
- *		  struct Cook *cookOld
- *
- * A simple function to copy the data within cookOld to cookNew.
- -------------------------------------------------------------------*/
-void copyCook(struct Cook *cookNew, struct Cook *cookOld) {
-	*cookNew = *cookOld;
-}
-
-/*-------------------------------------------------------------------
  * Function 	: copyOutputsFulfilled
  * Inputs	: int* oldOutputsFulfilled
  * Outputs	:
@@ -462,7 +451,7 @@ void finalizeLegalMove(BranchPath *node, int tempFrames, MoveDescription useDesc
 		exit(1);
 	}
 
-	copyCook(cookNew, (struct Cook *)useDescription.data);
+	*cookNew = *((struct Cook*)useDescription.data);
 	cookNew->handleOutput = tossType;
 	cookNew->toss = toss;
 	cookNew->indexToss = tossIndex;
@@ -1298,7 +1287,7 @@ BranchPath *copyAllNodes(BranchPath *newNode, BranchPath *oldNode) {
 					exit(1);
 				}
 
-				copyCook((struct Cook *)newNode->description.data, (struct Cook *)oldNode->description.data);
+				*((struct Cook*) newNode->description.data) = *((struct Cook*) oldNode->description.data);
 				break;
 			case (Ch5) :
 				newNode->description.data = malloc(sizeof(CH5));
