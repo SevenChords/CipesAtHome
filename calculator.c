@@ -102,7 +102,7 @@ int *copyOutputsFulfilled(int *oldOutputsFulfilled) {
 		exit(1);
 	}
 
-	memcpy((void *)newOutputsFulfilled, (void *)oldOutputsFulfilled, sizeof(int) * NUM_RECIPES);
+	memcpy(newOutputsFulfilled, oldOutputsFulfilled, sizeof(int) * NUM_RECIPES);
 	return newOutputsFulfilled;
 }
 
