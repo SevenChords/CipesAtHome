@@ -151,6 +151,7 @@
     <ClCompile Include="..\log.c" />
     <ClCompile Include="..\logger.c" />
     <ClCompile Include="..\recipes.c" />
+    <ClCompile Include="..\shutdown.c" />
     <ClCompile Include="..\start.c" />
   </ItemGroup>
   <ItemGroup>
@@ -162,6 +163,7 @@
     <ClInclude Include="..\log.h" />
     <ClInclude Include="..\logger.h" />
     <ClInclude Include="..\recipes.h" />
+    <ClInclude Include="..\shutdown.h" />
     <ClInclude Include="..\start.h" />
     <ClInclude Include="..\absl\attributes.h" />
     <ClInclude Include="..\absl\config.h" />

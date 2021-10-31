@@ -42,6 +42,9 @@
     <ClCompile Include="..\recipes.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\shutdown.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\inventory.h">
@@ -87,6 +90,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\absl\port.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shutdown.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -78,14 +78,15 @@ void handleTermSignal(int signal) {
 
 #if _IS_WINDOWS
 BOOL WINAPI windowsCtrlCHandler(DWORD fdwCtrlType) {
-	switch(fdwCtrlType) {
-    case CTRL_C_EVENT: ABSL_FALLTHROUGH_INTENDED;
-    case CTRL_CLOSE_EVENT:
-      countAndSetShutdown(false);
-      return TRUE;
-    default:
-    	return FALSE
-  }
+	switch (fdwCtrlType) {
+	case CTRL_C_EVENT: ABSL_FALLTHROUGH_INTENDED;
+	case CTRL_CLOSE_EVENT:
+		countAndSetShutdown(false);
+		return TRUE;
+	default:
+		return FALSE;
+	}
+}
 #endif
 
 void setSignalHandlers() {
