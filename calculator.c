@@ -2522,13 +2522,13 @@ Result calculateOrder(int ID) {
 			periodicGithubCheck();
 		}
 
-		// Unexpected break out of loop. Return the nothing results.
-		return (Result) { -1, -1 };
-
 		// For profiling
 		/*if (total_dives == 100) {
 			exit(1);
 		}*/
 
 	}
+
+	// Unexpected break out of loop. Return the nothing results.
+	return (Result) { -1, -1 };
 }
