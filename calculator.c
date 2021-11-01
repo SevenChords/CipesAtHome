@@ -1922,6 +1922,8 @@ int removeRecipesForReallocation(BranchPath* node, enum Type_Sort *rearranged_re
  * if the first item is picked first, in which case they must be swapped.
  -------------------------------------------------------------------*/
 int selectSecondItemFirst(int *ingredientLoc, size_t nulls, int viableItems) {
+	// Check if it's faster to select the second item
+	// But also check that that order is possible if there are nulls in the inventory
 	int fasterToSelectSecond =
 		   (ingredientLoc[0] - (int)nulls) >= 2
 		&&  ingredientLoc[0] > ingredientLoc[1]
@@ -1929,9 +1931,15 @@ int selectSecondItemFirst(int *ingredientLoc, size_t nulls, int viableItems) {
 		|| (ingredientLoc[0] - (int)nulls) < ingredientLoc[1]
 		&& (ingredientLoc[0] - (int)nulls) >= viableItems / 2;
 	
-	int nullRemovesSecondItem = ingredientLoc[1] >= 10 && ingredientLoc[1] == ingredientLoc[0] - nulls;
+	int nullRemovesSecondItem;
+	if (fasterToSelectSecond) {
+		nullRemovesSecondItem = ingredientLoc[0] >= 10 && ingredientLoc[0] == ingredientLoc[1] - nulls;
+	}
+	else {
+		nullRemovesSecondItem = ingredientLoc[1] >= 10 && ingredientLoc[1] == ingredientLoc[0] - nulls;
+	}
 
-	return fasterToSelectSecond || nullRemovesSecondItem;
+	return fasterToSelectSecond ? !nullRemovesSecondItem : nullRemovesSecondItem;
 }
 
 /*-------------------------------------------------------------------
