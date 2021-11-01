@@ -19,6 +19,12 @@
 #include "absl/base/port.h"
 
 #ifdef _MSC_FULL_VER
+#define _IS_WINDOWS 1
+#else
+#define _IS_WINDOWS 0
+#endif
+
+#if _IS_WINDOWS
 #include <windows.h>
 #endif
 
@@ -54,13 +60,13 @@ int numTimesExitRequest = 0;
 
 void countAndSetShutdown(bool isSignal) {
 	if (++numTimesExitRequest >= NUM_TIMES_EXITED_BEFORE_HARD_QUIT) {
-		if (!_MSC_FULL_VER || !isSignal) {
+		if (!_IS_WINDOWS || !isSignal) {
 			printf("\nExit reqested %d times; shutting down now.\n", NUM_TIMES_EXITED_BEFORE_HARD_QUIT);
 		}
 		exit(1);
 	} else {
 		requestShutdown();
-		if (!_MSC_FULL_VER || !isSignal) {
+		if (!_IS_WINDOWS || !isSignal) {
 			printf("\nExit requested, finishing up work. Should shutdown soon (CTRL-C 3 times to force exit)\n");
 		}
 	}
@@ -70,7 +76,7 @@ void handleTermSignal(int signal) {
 	countAndSetShutdown(true);
 }
 
-#if _MSC_FULL_VER
+#if _IS_WINDOWS
 BOOL WINAPI windowsCtrlCHandler(DWORD fdwCtrlType) {
 	switch (fdwCtrlType) {
 	case CTRL_C_EVENT: ABSL_FALLTHROUGH_INTENDED;
@@ -86,7 +92,7 @@ BOOL WINAPI windowsCtrlCHandler(DWORD fdwCtrlType) {
 void setSignalHandlers() {
 	signal(SIGTERM, handleTermSignal);
 	signal(SIGINT, handleTermSignal);
-#if _MSC_FULL_VER
+#if _IS_WINDOWS
 	if (!SetConsoleCtrlHandler(windowsCtrlCHandler, TRUE)) {
 		printf("Unable to set CTRL-C handler. CTRL-C may cause unclean shutdown.\n");
 	}
