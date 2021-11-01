@@ -238,14 +238,6 @@ void createCookDescription2Items(BranchPath *node, Recipe recipe, ItemCombinatio
 			swap = 1;
 		}
 
-		// This will cause the item in index length - 1 - nulls to disappear
-		// Verify that the second ingredient is NOT in this index
-		if (ingredientLoc[0] == lastVisibleSlot && ingredientLoc[1] == lastVisibleSlot - tempInventory->nulls) {
-			// This item will disappear. We will need to swap the order of the items
-			swapItems(ingredientLoc);
-			swap = swap ? 0 : 1;
-		}
-
 		// Calculate the number of frames to grab the first item
 		*tempFrames += invFrames[viableItems - 1][ingredientLoc[0] - tempInventory->nulls];
 
@@ -1926,14 +1918,20 @@ int removeRecipesForReallocation(BranchPath* node, enum Type_Sort *rearranged_re
  *
  * Calculates a boolean expression which determines whether it is faster
  * to select the second item before the first item originally listed in
- * the recipe combo.
+ * the recipe combo. It also checks to see if the second item will disappear
+ * if the first item is picked first, in which case they must be swapped.
  -------------------------------------------------------------------*/
 int selectSecondItemFirst(int *ingredientLoc, size_t nulls, int viableItems) {
-	return (ingredientLoc[0] - (int)nulls) >= 2
-		   && ingredientLoc[0] > ingredientLoc[1]
-		   && (ingredientLoc[0] - (int)nulls) <= viableItems/2
-		   || (ingredientLoc[0] - (int)nulls) < ingredientLoc[1]
-		   && (ingredientLoc[0] - (int)nulls) >= viableItems/2;
+	int fasterToSelectSecond =
+		   (ingredientLoc[0] - (int)nulls) >= 2
+		&&  ingredientLoc[0] > ingredientLoc[1]
+		&& (ingredientLoc[0] - (int)nulls) <= viableItems / 2
+		|| (ingredientLoc[0] - (int)nulls) < ingredientLoc[1]
+		&& (ingredientLoc[0] - (int)nulls) >= viableItems / 2;
+	
+	int nullRemovesSecondItem = ingredientLoc[1] >= 10 && ingredientLoc[1] == ingredientLoc[0] - nulls;
+
+	return fasterToSelectSecond || nullRemovesSecondItem;
 }
 
 /*-------------------------------------------------------------------
