@@ -510,9 +510,11 @@ void fulfillChapter5(BranchPath *curNode) {
 	// Create the CH5 eval struct
 	CH5_Eval eval;
 
+	size_t viableItems = newInventory.length - newInventory.nulls - min(newInventory.length - 10, newInventory.nulls);
+
 	// Calculate frames it takes the navigate to the Mousse Cake and the Hot Dog for the trade
-	eval.frames_HD = 2 * invFrames[newInventory.length - 2 * newInventory.nulls - 1][indexOfItemInInventory(newInventory, Hot_Dog) - newInventory.nulls];
-	eval.frames_MC = invFrames[newInventory.length - 2 * newInventory.nulls - 1][mousse_cake_index - newInventory.nulls];
+	eval.frames_HD = 2 * invFrames[viableItems - 1][indexOfItemInInventory(newInventory, Hot_Dog) - newInventory.nulls];
+	eval.frames_MC = invFrames[viableItems - 1][mousse_cake_index - newInventory.nulls];
 
 	// If the Mousse Cake is in the first 10 slots, change it to NULL
 	if (mousse_cake_index < 10) {
@@ -580,7 +582,7 @@ void fulfillRecipes(BranchPath *curNode) {
 			int numOutputsFulfilled = curNode->numOutputsCreated + 1;
 
 			// How many items there are to choose from (Not NULL or hidden)
-			int viableItems = newInventory.length - 2 * newInventory.nulls;
+			int viableItems = newInventory.length - newInventory.nulls - min(newInventory.length - 10, newInventory.nulls);
 
 			int tempFrames;
 
