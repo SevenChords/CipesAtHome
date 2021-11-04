@@ -1886,30 +1886,42 @@ int removeRecipesForReallocation(BranchPath* node, enum Type_Sort *rearranged_re
  *		  int 				viableItems
  * Outputs	: int (0 or 1)
  *
- * Calculates a boolean expression which determines whether it is faster
- * to select the second item before the first item originally listed in
- * the recipe combo. It also checks to see if the second item will disappear
- * if the first item is picked first, in which case they must be swapped.
+ * Determines whether it is either required or faster to select the
+ * second item before the first item originally listed in the recipe
+ * combo.
  -------------------------------------------------------------------*/
 int selectSecondItemFirst(int *ingredientLoc, size_t nulls, int viableItems) {
-	// Check if it's faster to select the second item
-	// But also check that that order is possible if there are nulls in the inventory
-	int fasterToSelectSecond =
-		   (ingredientLoc[0] - (int)nulls) >= 2
-		&&  ingredientLoc[0] > ingredientLoc[1]
-		&& (ingredientLoc[0] - (int)nulls) <= viableItems / 2
-		|| (ingredientLoc[0] - (int)nulls) < ingredientLoc[1]
-		&& (ingredientLoc[0] - (int)nulls) >= viableItems / 2;
-	
-	int nullRemovesSecondItem;
-	if (fasterToSelectSecond) {
-		nullRemovesSecondItem = ingredientLoc[0] >= 10 && ingredientLoc[0] == ingredientLoc[1] - nulls;
-	}
-	else {
-		nullRemovesSecondItem = ingredientLoc[1] >= 10 && ingredientLoc[1] == ingredientLoc[0] - nulls;
-	}
+	size_t visibleLoc0 = ingredientLoc[0] - nulls;
+	size_t visibleLoc1 = ingredientLoc[1] - nulls;
 
-	return fasterToSelectSecond ? !nullRemovesSecondItem : nullRemovesSecondItem;
+	if (ingredientLoc[0] > ingredientLoc[1]) {
+		// When swapped, the first ingredient will be between the other
+		// ingredient and the beginning. This will also swap the first two when
+		// they are in descending order, which is not necessary but not
+		// incorrect.
+		if (visibleLoc1 <= viableItems / 2) {
+			return 1;
+		}
+		// In this case, the given order is not possible because the second item
+		// will be hidden.
+		if (ingredientLoc[1] >= 10 && visibleLoc0 == ingredientLoc[1]) {
+			return 1;
+		}
+	}
+	else if (visibleLoc0 >= (viableItems + 1) / 2) {
+		// When swapped, the hidden item will be between the other ingredient
+		// and the end. The second condition is not necessary but helps reduce
+		// extraneous swaps.
+		if (visibleLoc1 > ingredientLoc[0] && visibleLoc1 >= 10) {
+			return 1;
+		}
+		// When swapped, the hidden ingredient will be between the other
+		// ingredient and the end.
+		if (ingredientLoc[1] < 10) {
+			return 1;
+		}
+	}
+	return 0;
 }
 
 /*-------------------------------------------------------------------
