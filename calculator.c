@@ -225,75 +225,43 @@ void createCookDescription2Items(BranchPath *node, Recipe recipe, ItemCombinatio
 	//Baseline frames based on how many times we need to access the menu
 	*tempFrames = CHOOSE_2ND_INGREDIENT_FRAMES;
 
+	// Swap ingredient order if necessary. There are some configurations where
+	// it is 2 frames faster to pick the ingredients in the reverse order or
+	// only one order is possible.
 	int swap = 0;
+	if (selectSecondItemFirst(ingredientLoc, tempInventory->nulls, viableItems)) {
+		swapItems(ingredientLoc);
+		swap = 1;
+	}
 
-	// Due to weird side-effects from Inventory Overload, choosing the item in index inventory.length - 1 will
-	// always cause the item in index inventory.length - 1 - inventory.nulls to disappear. In this case, we need
-	// to be super careful about trying to swap the ingredient order, as certain orders may be impossible.
-	int lastVisibleSlot = tempInventory->length - 1;
-	if (tempInventory->nulls) {
-		// Determine if it's faster to select the second item first
-		if (selectSecondItemFirst(ingredientLoc, tempInventory->nulls, viableItems)) {
-			swapItems(ingredientLoc);
-			swap = 1;
-		}
+	int visibleLoc0 = ingredientLoc[0] - tempInventory->nulls;
+	int visibleLoc1 = ingredientLoc[1] - tempInventory->nulls;
 
-		// Calculate the number of frames to grab the first item
-		*tempFrames += invFrames[viableItems - 1][ingredientLoc[0] - tempInventory->nulls];
+	// Add the frames to choose the first ingredient.
+	*tempFrames += invFrames[viableItems - 1][visibleLoc0];
 
-		// Based on the index of the first item, calculate the frames to grab the second item
-
-		// If the first ingredient is in slots 1-10, the item is removed.
-		// We only care about this in order to adjust the index of the second item,
-		// which decreases by 1 in this scenario.
-		if (ingredientLoc[0] < 10 && ingredientLoc[1] > ingredientLoc[0]) {
-			*tempFrames += invFrames[viableItems - 2][ingredientLoc[1] - tempInventory->nulls - 1];
-		}
-		// The anomaly occurs
-		else if (ingredientLoc[0] == lastVisibleSlot) {
-			// We do not need to adjust the index of the item, as the index is before the removed item
-			if (ingredientLoc[1] < lastVisibleSlot - tempInventory->nulls) {
-				*tempFrames += invFrames[viableItems - 2][ingredientLoc[1] - tempInventory->nulls];
-			}
-			// Adjust the index because this index occurs after the index of the removed item
-			else {
-				*tempFrames += invFrames[viableItems - 2][ingredientLoc[1] - tempInventory->nulls - 1];
-			}
-		}
-		else {
-			// The first item will not disappear, OR it will not affect the index of the second item
-			if (ingredientLoc[0] >= 10) {
-				*tempFrames += invFrames[viableItems - 1][ingredientLoc[1] - tempInventory->nulls];
-			}
-			else {
-				*tempFrames += invFrames[viableItems - 2][ingredientLoc[1] - tempInventory->nulls];
-			}
+	// Depending on the first ingredient's position and the state of the
+	// inventory, it or another item could be hidden during the second
+	// ingredient selection.
+	if (ingredientLoc[0] < 10) {
+		--viableItems;
+		// If the second ingredient comes after the first, its position will be
+		// 1 less.
+		if (ingredientLoc[0] < ingredientLoc[1]) {
+			--visibleLoc1;
 		}
 	}
-	else {
-		// Determine which order of ingredients to take
-		// The first picked item always vanishes from the list of ingredients when picking the 2nd ingredient
-		// There are some configurations where it is 2 frames faster to pick the ingredients in the reverse order
-		if (selectSecondItemFirst(ingredientLoc, tempInventory->nulls, viableItems)) {
-			// It's faster to select the 2nd item, so make it the priority and switch the order
-			swapItems(ingredientLoc);
-			swap = 1;
-		}
-
-		// Calculate the number of frames needed to grab the first item
-		*tempFrames += invFrames[viableItems - 1][ingredientLoc[0] - tempInventory->nulls];
-
-		// Determine the frames needed for the 2nd ingredient
-		// First ingredient is always removed from the menu, so there is always 1 less viable item
-		if (ingredientLoc[1] > ingredientLoc[0]) {
-			// In this case, the 2nd ingredient has "moved up" one slot since the 1st ingredient vanishes
-			*tempFrames += invFrames[viableItems - 2][ingredientLoc[1] - tempInventory->nulls - 1];
-		}
-		else {
-			// In this case, the 2nd ingredient was found earlier on than the 1st ingredient, so no change to index
-			*tempFrames += invFrames[viableItems - 2][ingredientLoc[1] - tempInventory->nulls];
+	else if (visibleLoc0 >= 10) {
+		--viableItems;
+		// If there are nulls in this case, the wrong item is hidden. If the
+		// second ingredient comes after the hidden item, its position will be
+		// 1 less.
+		if (visibleLoc0 < ingredientLoc[1]) {
+			--visibleLoc1;
 		}
 	}
+	// Add the frames to choose the second ingredient.
+	*tempFrames += invFrames[viableItems - 1][visibleLoc1];
 
 	// Set each inventory index to null if the item was in the first 10 slots
 	// To reduce complexity, remove the items in ascending order of index
@@ -542,9 +510,11 @@ void fulfillChapter5(BranchPath *curNode) {
 	// Create the CH5 eval struct
 	CH5_Eval eval;
 
+	size_t viableItems = newInventory.length - newInventory.nulls - min(newInventory.length - 10, newInventory.nulls);
+
 	// Calculate frames it takes the navigate to the Mousse Cake and the Hot Dog for the trade
-	eval.frames_HD = 2 * invFrames[newInventory.length - 2 * newInventory.nulls - 1][indexOfItemInInventory(newInventory, Hot_Dog) - newInventory.nulls];
-	eval.frames_MC = invFrames[newInventory.length - 2 * newInventory.nulls - 1][mousse_cake_index - newInventory.nulls];
+	eval.frames_HD = 2 * invFrames[viableItems - 1][indexOfItemInInventory(newInventory, Hot_Dog) - newInventory.nulls];
+	eval.frames_MC = invFrames[viableItems - 1][mousse_cake_index - newInventory.nulls];
 
 	// If the Mousse Cake is in the first 10 slots, change it to NULL
 	if (mousse_cake_index < 10) {
@@ -612,7 +582,7 @@ void fulfillRecipes(BranchPath *curNode) {
 			int numOutputsFulfilled = curNode->numOutputsCreated + 1;
 
 			// How many items there are to choose from (Not NULL or hidden)
-			int viableItems = newInventory.length - 2 * newInventory.nulls;
+			int viableItems = newInventory.length - newInventory.nulls - min(newInventory.length - 10, newInventory.nulls);
 
 			int tempFrames;
 
@@ -1916,30 +1886,42 @@ int removeRecipesForReallocation(BranchPath* node, enum Type_Sort *rearranged_re
  *		  int 				viableItems
  * Outputs	: int (0 or 1)
  *
- * Calculates a boolean expression which determines whether it is faster
- * to select the second item before the first item originally listed in
- * the recipe combo. It also checks to see if the second item will disappear
- * if the first item is picked first, in which case they must be swapped.
+ * Determines whether it is either required or faster to select the
+ * second item before the first item originally listed in the recipe
+ * combo.
  -------------------------------------------------------------------*/
 int selectSecondItemFirst(int *ingredientLoc, size_t nulls, int viableItems) {
-	// Check if it's faster to select the second item
-	// But also check that that order is possible if there are nulls in the inventory
-	int fasterToSelectSecond =
-		   (ingredientLoc[0] - (int)nulls) >= 2
-		&&  ingredientLoc[0] > ingredientLoc[1]
-		&& (ingredientLoc[0] - (int)nulls) <= viableItems / 2
-		|| (ingredientLoc[0] - (int)nulls) < ingredientLoc[1]
-		&& (ingredientLoc[0] - (int)nulls) >= viableItems / 2;
-	
-	int nullRemovesSecondItem;
-	if (fasterToSelectSecond) {
-		nullRemovesSecondItem = ingredientLoc[0] >= 10 && ingredientLoc[0] == ingredientLoc[1] - nulls;
-	}
-	else {
-		nullRemovesSecondItem = ingredientLoc[1] >= 10 && ingredientLoc[1] == ingredientLoc[0] - nulls;
-	}
+	size_t visibleLoc0 = ingredientLoc[0] - nulls;
+	size_t visibleLoc1 = ingredientLoc[1] - nulls;
 
-	return fasterToSelectSecond ? !nullRemovesSecondItem : nullRemovesSecondItem;
+	if (ingredientLoc[0] > ingredientLoc[1]) {
+		// When swapped, the first ingredient will be between the other
+		// ingredient and the beginning. This will also swap the first two when
+		// they are in descending order, which is not necessary but not
+		// incorrect.
+		if (visibleLoc1 <= viableItems / 2) {
+			return 1;
+		}
+		// In this case, the given order is not possible because the second item
+		// will be hidden.
+		if (ingredientLoc[1] >= 10 && visibleLoc0 == ingredientLoc[1]) {
+			return 1;
+		}
+	}
+	else if (visibleLoc0 >= (viableItems + 1) / 2) {
+		// When swapped, the hidden item will be between the other ingredient
+		// and the end. The second condition is not necessary but helps reduce
+		// extraneous swaps.
+		if (visibleLoc1 > ingredientLoc[0] && visibleLoc1 >= 10) {
+			return 1;
+		}
+		// When swapped, the hidden ingredient will be between the other
+		// ingredient and the end.
+		if (ingredientLoc[1] < 10) {
+			return 1;
+		}
+	}
+	return 0;
 }
 
 /*-------------------------------------------------------------------
