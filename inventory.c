@@ -347,7 +347,7 @@ char *getItemName(Type_Sort t_key) {
  * Returns a double pointer which can be used to reference how many
  * frames it takes to access a specific item
  * inv_frames[x][y] where:
- *	- x = number of valid items in inventory
+ *	- x = number of valid items in inventory - 1
  *	- y = index of item minus any nulls in the inventory prior to index of item
  -------------------------------------------------------------------*/
 int **getInventoryFrames() {

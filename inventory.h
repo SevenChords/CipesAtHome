@@ -265,7 +265,9 @@ enum Alpha_Sort getAlphaKey(enum Type_Sort item);
 // Return the string name for a particular item
 char *getItemName(enum Type_Sort t_key);
 
-// Return a pointer to an array of length 21 with each index i containing a variable length j which tracks the frameloss to navigate to the jth index in an inventory of size i
+// Return a pointer to an array of length 21 with each index i pointing to an
+// array of length i+1, with each index j thereof tracking the frames taken to
+// navigate to the jth index in an inventory of size i+1
 int **getInventoryFrames();
 
 // I don't believe we need this
