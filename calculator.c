@@ -510,7 +510,8 @@ void fulfillChapter5(BranchPath *curNode) {
 	// Create the CH5 eval struct
 	CH5_Eval eval;
 
-	size_t viableItems = newInventory.length - newInventory.nulls - min(newInventory.length - 10, newInventory.nulls);
+	// Explicit int casts are to prevent intermediary underflows from the uint_8 math.
+	int viableItems = (int)newInventory.length - newInventory.nulls - min((int)newInventory.length - 10, newInventory.nulls);
 
 	// Calculate frames it takes the navigate to the Mousse Cake and the Hot Dog for the trade
 	eval.frames_HD = 2 * invFrames[viableItems - 1][indexOfItemInInventory(newInventory, Hot_Dog) - newInventory.nulls];
@@ -1404,7 +1405,7 @@ void printCh5Data(BranchPath *curNode, MoveDescription desc, FILE *fp) {
 	CH5 *ch5Data = desc.data;
 
 	// Determine how many nulls there are when allocations start
-	size_t nulls = curNode->prev->inventory.nulls;
+	int nulls = curNode->prev->inventory.nulls;
 	if (indexOfItemInInventory(curNode->prev->inventory, Mousse_Cake) < 10) {
 		++nulls;
 	}
@@ -1480,7 +1481,7 @@ void printCh5Sort(CH5 *ch5Data, FILE *fp) {
  -------------------------------------------------------------------*/
 void printCookData(BranchPath *curNode, MoveDescription desc, FILE *fp) {
 	struct Cook *cookData = desc.data;
-	size_t nulls = curNode->prev->inventory.nulls;
+	int nulls = curNode->prev->inventory.nulls;
 	fprintf(fp, "Use [%s] in slot %d ", getItemName(cookData->item1),
 		cookData->itemIndex1 - (cookData->itemIndex1 < 10 ? nulls : 0) + 1);
 
@@ -1540,8 +1541,8 @@ void printFileHeader(FILE *fp) {
  * Print to a txt file the header information for the file.
  -------------------------------------------------------------------*/
 void printInventoryData(BranchPath *curNode, FILE *fp) {
-	size_t nulls = curNode->inventory.nulls;
-	size_t i;
+	int nulls = curNode->inventory.nulls;
+	int i;
 	for (i = nulls; i < 10; ++i) {
 		fprintf(fp, "\t%s", getItemName(curNode->inventory.inventory[i]));
 	}
@@ -1890,9 +1891,9 @@ int removeRecipesForReallocation(BranchPath* node, enum Type_Sort *rearranged_re
  * second item before the first item originally listed in the recipe
  * combo.
  -------------------------------------------------------------------*/
-int selectSecondItemFirst(int *ingredientLoc, size_t nulls, int viableItems) {
-	size_t visibleLoc0 = ingredientLoc[0] - nulls;
-	size_t visibleLoc1 = ingredientLoc[1] - nulls;
+int selectSecondItemFirst(int *ingredientLoc, int nulls, int viableItems) {
+	int visibleLoc0 = ingredientLoc[0] - nulls;
+	int visibleLoc1 = ingredientLoc[1] - nulls;
 
 	if (ingredientLoc[0] > ingredientLoc[1]) {
 		// When swapped, the first ingredient will be between the other

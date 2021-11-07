@@ -1,7 +1,10 @@
 #ifndef INVENTORY_H
 #define INVENTORY_H
 
+#include <stdint.h>
+
 #include "recipes.h"
+#include "absl/base/port.h"
 
 enum Alpha_Sort {
 	POW_Block_a,
@@ -224,8 +227,10 @@ enum Type_Sort {
 };
 
 struct Inventory {
-	size_t nulls;
-	size_t length;
+	// The maximum value these should have is 20.
+	// These are used in format strings, so we want fixed width, not potentially variable that uint_fast8_t can be
+	uint8_t nulls;
+	uint8_t length;
 	enum Type_Sort inventory[20];
 };
 
