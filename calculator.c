@@ -2255,7 +2255,7 @@ Result calculateOrder(int ID) {
 
 		if (total_dives % branchInterval == 0) {
 			char temp1[30];
-			char temp2[30];
+			char temp2[40];
 			sprintf(temp1, "Call %d", ID);
 			sprintf(temp2, "Searching New Branch %d", total_dives);
 			recipeLog(3, "Calculator", "Info", temp1, temp2);
