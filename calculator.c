@@ -1047,14 +1047,14 @@ void handleRecipeOutput(BranchPath *curNode, Inventory tempInventory, int tempFr
 		useDescription.framesTaken += TOSS_FRAMES;
 		useDescription.totalFramesTaken += TOSS_FRAMES;
 
+		// Evaluate the viability of tossing all current inventory items
+		// Assumed that it is impossible to toss and replace any items in the last 10 positions
+		tryTossInventoryItem(curNode, tempInventory, useDescription, tempOutputsFulfilled, numOutputsFulfilled, output, tempFrames, viableItems);
+
 		// Evaluate viability of tossing the output item itself
 		if (stateOK(tempInventory, tempOutputsFulfilled, recipeList)) {
 			finalizeLegalMove(curNode, tempFrames, useDescription, tempInventory, tempOutputsFulfilled, numOutputsFulfilled, Toss, output, -1);
 		}
-
-		// Evaluate the viability of tossing all current inventory items
-		// Assumed that it is impossible to toss and replace any items in the last 10 positions
-		tryTossInventoryItem(curNode, tempInventory, useDescription, tempOutputsFulfilled, numOutputsFulfilled, output, tempFrames, viableItems);
 	}
 }
 
