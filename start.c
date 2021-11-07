@@ -18,7 +18,7 @@
 #include <signal.h>
 #include "absl/base/port.h"
 
-#ifdef _MSC_FULL_VER
+#if defined(_MSC_FULL_VER) || defined(__MINGW32__)
 #define _IS_WINDOWS 1
 #else
 #define _IS_WINDOWS 0
