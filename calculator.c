@@ -41,6 +41,8 @@ typedef struct Result Result;
 int **invFrames;
 Recipe *recipeList;
 
+static const int UNSET_INDEX_SIGNED = -99999;
+
 ABSL_ATTRIBUTE_ALWAYS_INLINE static inline bool checkShutdownOnIndex(int i) {
 	return i % CHECK_SHUTDOWN_INTERVAL == 0 && askedToShutdown();
 }
@@ -1707,7 +1709,7 @@ void reallocateRecipes(BranchPath* newRoot, enum Type_Sort* rearranged_recipes, 
 
 				// Only want recipes where all ingredients are in the last 10 slots of the evaluated inventory
 				int indexItem1 = indexOfItemInInventory(placement->inventory, combo.item1);
-				int indexItem2;
+				int indexItem2 = UNSET_INDEX_SIGNED;
 				if (indexItem1 < 10) {
 					continue;
 				}
@@ -1741,6 +1743,12 @@ void reallocateRecipes(BranchPath* newRoot, enum Type_Sort* rearranged_recipes, 
 					temp_description->itemIndex2 = -1;
 				}
 				else {
+					if (indexItem2 < 0) {
+						printf("Fatal error! indexItem2 was not set in a branch where it should have.\n");
+						printf("Press enter to quit.");
+						char exitChar = getchar();
+						exit(1);
+					}
 					// Two ingredients to navigate to, but order matters
 					// Pick the larger-index number ingredient first, as it will reduce
 					// the frames needed to reach the other ingredient
