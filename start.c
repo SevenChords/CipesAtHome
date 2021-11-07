@@ -147,7 +147,11 @@ int main() {
 
 	// Verify that the results folder exists
 	// If not, create the directory
+#if _IS_WINDOWS
+	mkdir("./results");
+#else
 	mkdir("./results", 0777);
+#endif
 
 	// To avoid generating roadmaps that are slower than the user's record best,
 	// use PB.txt to identify the user's current best
