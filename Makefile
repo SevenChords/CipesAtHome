@@ -2,8 +2,8 @@ WARNINGS_AND_ERRORS?=-Wall -Werror=format-overflow -Werror=format-truncation -We
 WARNINGS_AND_ERRORS_CC?=-Werror=implicit-function-declaration -Werror=implicit-int -Werror=incompatible-pointer-types -Werror=discarded-qualifiers
 WARNINGS_AND_ERRORS_CXX?=
 BASE_CFLAGS=-lcurl -lconfig -fopenmp -I . -Wall -O2 $(WARNINGS_AND_ERRORS) $(WARNINGS_AND_ERRORS_CC)
-OLD_CFLAGS:=$(CFLAGS)
-CFLAGS=$(BASE_CFLAGS) $(OLD_CFLAGS)
+USER_CFLAGS:=$(CFLAGS)
+CFLAGS=$(BASE_CFLAGS) $(USER_CFLAGS)
 FINAL_TARGET_CFLAGS?=-Wl,--gc-sections
 TARGET=recipesAtHome
 DEPS=start.h inventory.h recipes.h config.h FTPManagement.h cJSON.h calculator.h logger.h shutdown.h $(wildcard absl/base/*.h )
