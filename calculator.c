@@ -10,6 +10,7 @@
 #include <time.h>
 #include <string.h>
 #include <stdbool.h>
+#include <omp.h>
 #include "absl/base/port.h"
 
 #define NUM_RECIPES 58 			// Including Chapter 5 representation
