@@ -2393,7 +2393,7 @@ Result calculateOrder(int ID) {
 
 					printf("Which move would you like to perform? ");
 					int moveToExplore;
-					int ignored = scanf("%d", &moveToExplore);  // For now, we are going to blindly assume it was written.
+					ABSL_ATTRIBUTE_UNUSED int ignored = scanf("%d", &moveToExplore);  // For now, we are going to blindly assume it was written.
 					fprintf(fp, "\n");
 
 					if (moveToExplore == curNode->numLegalMoves) {
