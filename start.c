@@ -148,7 +148,7 @@ int main() {
 	// Verify that the results folder exists
 	// If not, create the directory
 #if _IS_WINDOWS
-	mkdir("./results");
+	CreateDirectoryA("./results", NULL);
 #else
 	mkdir("./results", 0777);
 #endif
