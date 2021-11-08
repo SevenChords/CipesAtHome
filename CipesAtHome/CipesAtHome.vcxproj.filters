@@ -74,22 +74,22 @@
     <ClInclude Include="..\start.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\absl\attributes.h">
+    <ClInclude Include="..\absl\base\attributes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\absl\config.h">
+    <ClInclude Include="..\absl\base\config.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\absl\optimizations.h">
+    <ClInclude Include="..\absl\base\optimization.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\absl\options.h">
+    <ClInclude Include="..\absl\base\options.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\absl\policy_checks.h">
+    <ClInclude Include="..\absl\base\policy_checks.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\absl\port.h">
+    <ClInclude Include="..\absl\base\port.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\shutdown.h">
