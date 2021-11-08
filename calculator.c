@@ -54,7 +54,9 @@ ABSL_ATTRIBUTE_ALWAYS_INLINE static inline bool checkShutdownOnIndexLong(long i)
 
 // TEMPORARY WORKAROUND for an unintentionally added implicit reference.
 // When the real min function comes in, replace this definition with that one.
+#ifndef min
 #define min(x, y) ((y) < (x) ? (y) : (x))
+#endif
 
 /*-------------------------------------------------------------------
  * Function 	: initializeInvFrames
@@ -1193,7 +1195,7 @@ BranchPath *initializeRoot() {
  -------------------------------------------------------------------*/
 void insertIntoLegalMoves(int insertIndex, BranchPath *newLegalMove, BranchPath *curNode) {
 	// Reallocate the legalMove array to make room for a new legal move
-	BranchPath **temp = realloc(curNode->legalMoves, sizeof(BranchPath*) * (curNode->numLegalMoves + 1));
+	BranchPath **temp = realloc(curNode->legalMoves, sizeof(BranchPath*) * ((size_t)curNode->numLegalMoves + 1));
 
 	if (temp == NULL) {
 		printf("Fatal error! Ran out of heap memory.\n");
@@ -1798,6 +1800,7 @@ void reallocateRecipes(BranchPath* newRoot, enum Type_Sort* rearranged_recipes, 
 			// This is an error
 			recipeLog(7, "Calculator", "Roadmap", "Optimize", "OptimizeRoadmap couldn't find a valid placement...");
 			exit(1);
+			return;  // Never reached; here to let compiler know the function does not continue after this.
 		}
 
 		BranchPath *insertNode = malloc(sizeof(BranchPath));
@@ -1806,6 +1809,7 @@ void reallocateRecipes(BranchPath* newRoot, enum Type_Sort* rearranged_recipes, 
 			printf("Press enter to quit.");
 			char exitChar = getchar();
 			exit(1);
+			return;  // Never reached; here to let compiler know the function does not continue after this.
 		}
 
 		// Set pointers to and from surrounding structs
@@ -2389,7 +2393,7 @@ Result calculateOrder(int ID) {
 
 					printf("Which move would you like to perform? ");
 					int moveToExplore;
-					scanf("%d", &moveToExplore);
+					int ignored = scanf("%d", &moveToExplore);  // For now, we are going to blindly assume it was written.
 					fprintf(fp, "\n");
 
 					if (moveToExplore == curNode->numLegalMoves) {
@@ -2476,10 +2480,16 @@ Result calculateOrder(int ID) {
 				}
 				else {
 					// Verify that this new roadmap is faster than PB
-					int pb_record;
-					fscanf(fp, "%d", &pb_record);
+					int pb_record = 9999;
+					int num_assigned = fscanf(fp, "%d", &pb_record);
 					fclose(fp);
 					fp = NULL;
+					if (ABSL_PREDICT_FALSE(num_assigned < 1)) {
+						recipeLog(1, "Calculator", "Roadmap", "Error", "Unable to read current PB, overwriting.");
+					}
+					else if (ABSL_PREDICT_FALSE(pb_record < 0 || pb_record >= 9999)) {
+						recipeLog(1, "Calculator", "Roadmap", "Error", "Current PB file is corrupt, overwriting with new PB.");
+					}
 					if (result_cache.frames > pb_record) {
 						// This is a slower thread and a faster record was already found
 						result_cache = (Result) { -1, -1 };
