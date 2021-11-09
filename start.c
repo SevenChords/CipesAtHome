@@ -18,7 +18,7 @@
 #include <signal.h>
 #include "absl/base/port.h"
 
-#ifdef _MSC_FULL_VER
+#if defined(_MSC_FULL_VER) || defined(__MINGW32__)
 #define _IS_WINDOWS 1
 #else
 #define _IS_WINDOWS 0
@@ -98,7 +98,7 @@ void setSignalHandlers() {
 	}
 #endif
 }
-	
+
 int main() {
 
 	int cycle_count = 1;
@@ -113,7 +113,7 @@ int main() {
 	local_ver = getConfigStr("Version"); // Recipes@Home version
 	init_level_cfg(); // set log level from config
 	curl_global_init(CURL_GLOBAL_DEFAULT);	// Initialize libcurl
-	
+
 	// Greeting message to user
 	printf("Welcome to Recipes@Home!\n");
 	printf("Leave this program running as long as you want to search for new recipe orders.\n");
@@ -127,7 +127,7 @@ int main() {
 	else {
 		printf("The current fastest record is %d frames. Happy cooking!\n", blob_record);
 	}
-	
+
 	// Reference the Github for the latest release version
 	int update = checkForUpdates(local_ver);
 	if (update == -1) {
@@ -147,7 +147,11 @@ int main() {
 
 	// Verify that the results folder exists
 	// If not, create the directory
+#if _IS_WINDOWS
+	CreateDirectoryA("./results", NULL);
+#else
 	mkdir("./results", 0777);
+#endif
 
 	// To avoid generating roadmaps that are slower than the user's record best,
 	// use PB.txt to identify the user's current best
@@ -174,30 +178,30 @@ int main() {
 	// persist through all parallel calls to calculator.c
 	initializeInvFrames();
 	initializeRecipeList();
-	
+
 	setSignalHandlers();
-	
+
 	// Create workerCount threads
 	omp_set_num_threads(workerCount);
 	#pragma omp parallel
 	{
 		int ID = omp_get_thread_num();
-		
+
 		// Seed each thread's PRNG for the select and randomise config options
 		srand(((int)time(NULL)) ^ ID);
-		
+
 		while (1) {
 			if (askedToShutdown()) {
 				break;
 			}
 			struct Result result = calculateOrder(ID);
-			
+
 			// result might store -1 frames for errors that might be recoverable
 			if (result.frames > -1) {
 				testRecord(result.frames);
 			}
 		}
 	}
-	
+
 	return 0;
 }

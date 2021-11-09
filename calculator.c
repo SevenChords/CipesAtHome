@@ -10,6 +10,7 @@
 #include <time.h>
 #include <string.h>
 #include <stdbool.h>
+#include <omp.h>
 #include "absl/base/port.h"
 
 #define NUM_RECIPES 58 			// Including Chapter 5 representation
@@ -41,13 +42,21 @@ typedef struct Result Result;
 int **invFrames;
 Recipe *recipeList;
 
-ABSL_ATTRIBUTE_ALWAYS_INLINE inline bool checkShutdownOnIndex(int i) {
+static const int UNSET_INDEX_SIGNED = -99999;
+
+ABSL_ATTRIBUTE_ALWAYS_INLINE static inline bool checkShutdownOnIndex(int i) {
 	return i % CHECK_SHUTDOWN_INTERVAL == 0 && askedToShutdown();
 }
 
-ABSL_ATTRIBUTE_ALWAYS_INLINE inline bool checkShutdownOnIndexLong(long i) {
+ABSL_ATTRIBUTE_ALWAYS_INLINE static inline bool checkShutdownOnIndexLong(long i) {
 	return i % CHECK_SHUTDOWN_INTERVAL == 0 && askedToShutdown();
 }
+
+// TEMPORARY WORKAROUND for an unintentionally added implicit reference.
+// When the real min function comes in, replace this definition with that one.
+#ifndef min
+#define min(x, y) ((y) < (x) ? (y) : (x))
+#endif
 
 /*-------------------------------------------------------------------
  * Function 	: initializeInvFrames
@@ -510,7 +519,8 @@ void fulfillChapter5(BranchPath *curNode) {
 	// Create the CH5 eval struct
 	CH5_Eval eval;
 
-	size_t viableItems = newInventory.length - newInventory.nulls - min(newInventory.length - 10, newInventory.nulls);
+	// Explicit int casts are to prevent intermediary underflows from the uint_8 math.
+	int viableItems = (int)newInventory.length - newInventory.nulls - min((int)newInventory.length - 10, newInventory.nulls);
 
 	// Calculate frames it takes the navigate to the Mousse Cake and the Hot Dog for the trade
 	eval.frames_HD = 2 * invFrames[viableItems - 1][indexOfItemInInventory(newInventory, Hot_Dog) - newInventory.nulls];
@@ -1185,7 +1195,7 @@ BranchPath *initializeRoot() {
  -------------------------------------------------------------------*/
 void insertIntoLegalMoves(int insertIndex, BranchPath *newLegalMove, BranchPath *curNode) {
 	// Reallocate the legalMove array to make room for a new legal move
-	BranchPath **temp = realloc(curNode->legalMoves, sizeof(BranchPath*) * (curNode->numLegalMoves + 1));
+	BranchPath **temp = realloc(curNode->legalMoves, sizeof(BranchPath*) * ((size_t)curNode->numLegalMoves + 1));
 
 	if (temp == NULL) {
 		printf("Fatal error! Ran out of heap memory.\n");
@@ -1404,7 +1414,7 @@ void printCh5Data(BranchPath *curNode, MoveDescription desc, FILE *fp) {
 	CH5 *ch5Data = desc.data;
 
 	// Determine how many nulls there are when allocations start
-	size_t nulls = curNode->prev->inventory.nulls;
+	int nulls = curNode->prev->inventory.nulls;
 	if (indexOfItemInInventory(curNode->prev->inventory, Mousse_Cake) < 10) {
 		++nulls;
 	}
@@ -1480,7 +1490,7 @@ void printCh5Sort(CH5 *ch5Data, FILE *fp) {
  -------------------------------------------------------------------*/
 void printCookData(BranchPath *curNode, MoveDescription desc, FILE *fp) {
 	struct Cook *cookData = desc.data;
-	size_t nulls = curNode->prev->inventory.nulls;
+	int nulls = curNode->prev->inventory.nulls;
 	fprintf(fp, "Use [%s] in slot %d ", getItemName(cookData->item1),
 		cookData->itemIndex1 - (cookData->itemIndex1 < 10 ? nulls : 0) + 1);
 
@@ -1540,8 +1550,8 @@ void printFileHeader(FILE *fp) {
  * Print to a txt file the header information for the file.
  -------------------------------------------------------------------*/
 void printInventoryData(BranchPath *curNode, FILE *fp) {
-	size_t nulls = curNode->inventory.nulls;
-	size_t i;
+	int nulls = curNode->inventory.nulls;
+	int i;
 	for (i = nulls; i < 10; ++i) {
 		fprintf(fp, "\t%s", getItemName(curNode->inventory.inventory[i]));
 	}
@@ -1702,7 +1712,7 @@ void reallocateRecipes(BranchPath* newRoot, enum Type_Sort* rearranged_recipes, 
 
 				// Only want recipes where all ingredients are in the last 10 slots of the evaluated inventory
 				int indexItem1 = indexOfItemInInventory(placement->inventory, combo.item1);
-				int indexItem2;
+				int indexItem2 = UNSET_INDEX_SIGNED;
 				if (indexItem1 < 10) {
 					continue;
 				}
@@ -1736,6 +1746,12 @@ void reallocateRecipes(BranchPath* newRoot, enum Type_Sort* rearranged_recipes, 
 					temp_description->itemIndex2 = -1;
 				}
 				else {
+					if (indexItem2 < 0) {
+						printf("Fatal error! indexItem2 was not set in a branch where it should have.\n");
+						printf("Press enter to quit.");
+						char exitChar = getchar();
+						exit(1);
+					}
 					// Two ingredients to navigate to, but order matters
 					// Pick the larger-index number ingredient first, as it will reduce
 					// the frames needed to reach the other ingredient
@@ -1784,6 +1800,7 @@ void reallocateRecipes(BranchPath* newRoot, enum Type_Sort* rearranged_recipes, 
 			// This is an error
 			recipeLog(7, "Calculator", "Roadmap", "Optimize", "OptimizeRoadmap couldn't find a valid placement...");
 			exit(1);
+			return;  // Never reached; here to let compiler know the function does not continue after this.
 		}
 
 		BranchPath *insertNode = malloc(sizeof(BranchPath));
@@ -1792,6 +1809,7 @@ void reallocateRecipes(BranchPath* newRoot, enum Type_Sort* rearranged_recipes, 
 			printf("Press enter to quit.");
 			char exitChar = getchar();
 			exit(1);
+			return;  // Never reached; here to let compiler know the function does not continue after this.
 		}
 
 		// Set pointers to and from surrounding structs
@@ -1890,9 +1908,9 @@ int removeRecipesForReallocation(BranchPath* node, enum Type_Sort *rearranged_re
  * second item before the first item originally listed in the recipe
  * combo.
  -------------------------------------------------------------------*/
-int selectSecondItemFirst(int *ingredientLoc, size_t nulls, int viableItems) {
-	size_t visibleLoc0 = ingredientLoc[0] - nulls;
-	size_t visibleLoc1 = ingredientLoc[1] - nulls;
+int selectSecondItemFirst(int *ingredientLoc, int nulls, int viableItems) {
+	int visibleLoc0 = ingredientLoc[0] - nulls;
+	int visibleLoc1 = ingredientLoc[1] - nulls;
 
 	if (ingredientLoc[0] > ingredientLoc[1]) {
 		// When swapped, the first ingredient will be between the other
@@ -2242,7 +2260,7 @@ Result calculateOrder(int ID) {
 
 		if (total_dives % branchInterval == 0) {
 			char temp1[30];
-			char temp2[30];
+			char temp2[40];
 			sprintf(temp1, "Call %d", ID);
 			sprintf(temp2, "Searching New Branch %d", total_dives);
 			recipeLog(3, "Calculator", "Info", temp1, temp2);
@@ -2375,7 +2393,7 @@ Result calculateOrder(int ID) {
 
 					printf("Which move would you like to perform? ");
 					int moveToExplore;
-					scanf("%d", &moveToExplore);
+					ABSL_ATTRIBUTE_UNUSED int ignored = scanf("%d", &moveToExplore);  // For now, we are going to blindly assume it was written.
 					fprintf(fp, "\n");
 
 					if (moveToExplore == curNode->numLegalMoves) {
@@ -2462,10 +2480,16 @@ Result calculateOrder(int ID) {
 				}
 				else {
 					// Verify that this new roadmap is faster than PB
-					int pb_record;
-					fscanf(fp, "%d", &pb_record);
+					int pb_record = 9999;
+					int num_assigned = fscanf(fp, "%d", &pb_record);
 					fclose(fp);
 					fp = NULL;
+					if (ABSL_PREDICT_FALSE(num_assigned < 1)) {
+						recipeLog(1, "Calculator", "Roadmap", "Error", "Unable to read current PB, overwriting.");
+					}
+					else if (ABSL_PREDICT_FALSE(pb_record < 0 || pb_record >= 9999)) {
+						recipeLog(1, "Calculator", "Roadmap", "Error", "Current PB file is corrupt, overwriting with new PB.");
+					}
 					if (result_cache.frames > pb_record) {
 						// This is a slower thread and a faster record was already found
 						result_cache = (Result) { -1, -1 };
