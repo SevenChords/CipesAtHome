@@ -29,7 +29,7 @@ struct memory {
 static size_t write_data(char *contents, size_t size, size_t nmemb, void *userdata) {
 	size_t realsize = size * nmemb;
 	struct memory *mem = (struct memory *)userdata;
-	
+
 	char *ptr = realloc(mem->data, mem->size + realsize + 1);
 	if (ptr == NULL)
 		return 0;
@@ -43,14 +43,14 @@ static size_t write_data(char *contents, size_t size, size_t nmemb, void *userda
 /*-------------------------------------------------------------------
  * Function 	: handle_get
  * Inputs	: char	*url
- * Outputs	: char	*data	
+ * Outputs	: char	*data
  *
  * This is the main cURL GET function. Communicate with either GitHub
  * or the Blob server to obtain either the latest program version or
  * the current fastest frame record respectively.
  * The returning value (if non-NULL) MUST be freed.
  -------------------------------------------------------------------*/
-ABSL_MUST_USE_RESULT_INCLUSIVE char *handle_get(char* url) {
+ABSL_MUST_USE_RESULT char *handle_get(char* url) {
 	CURL *curl;
 	struct memory chunk;
 	chunk.data = NULL;
@@ -68,7 +68,7 @@ ABSL_MUST_USE_RESULT_INCLUSIVE char *handle_get(char* url) {
 			curl_easy_cleanup(curl);
 			return NULL;
 		}
-		
+
 		curl_easy_cleanup(curl);
 	}
 
@@ -77,8 +77,8 @@ ABSL_MUST_USE_RESULT_INCLUSIVE char *handle_get(char* url) {
 
 /*-------------------------------------------------------------------
  * Function 	: getFastestRecordOnBlob
- * Inputs	: 
- * Outputs	: int record	
+ * Inputs	:
+ * Outputs	: int record
  *
  * Retrieve the server's current fastest roadmap length.
  -------------------------------------------------------------------*/
@@ -92,9 +92,9 @@ int getFastestRecordOnBlob() {
 		free(data);
 		return record;
 	}
-	
+
 	// Log
-	
+
 	return 0;
 }
 
@@ -113,7 +113,7 @@ void handle_post(char* url, FILE *fp, int localRecord, char *nickname) {
 	struct memory rt;
 	rt.data = NULL;
 	rt.size = 0;
-	
+
 	fseek(fp, 0, SEEK_END);
 	long fsize = ftell(fp);
 	fseek(fp, 0, SEEK_SET);
@@ -142,7 +142,7 @@ void handle_post(char* url, FILE *fp, int localRecord, char *nickname) {
 		struct curl_slist *headers = NULL;
 		headers = curl_slist_append(headers, "Content-Type: application/json");
 		headers = curl_slist_append(headers, "charset: utf-8");
-		
+
 		curl_easy_setopt(curl, CURLOPT_URL, url);
 		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json_str);
 		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -151,7 +151,7 @@ void handle_post(char* url, FILE *fp, int localRecord, char *nickname) {
 		curl_easy_perform(curl);
 		curl_slist_free_all(headers);
 		free(json_str);
-		
+
 		curl_easy_cleanup(curl);
 	}
 	curl_global_cleanup();
@@ -193,7 +193,7 @@ int testRecord(int localRecord) {
 	strncpy(nickname, username, 19);
 	nickname[19] = '\0';
 	handle_post("https://hundorecipes.azurewebsites.net/api/uploadAndVerify", fp, localRecord, nickname);
-	
+
 	return 0;
 }
 
@@ -216,18 +216,18 @@ int checkForUpdates(const char *local_ver) {
 	cJSON *json_item = cJSON_GetObjectItemCaseSensitive(json, "tag_name");
 	char *ver = cJSON_GetStringValue(json_item);
 	free(data);
-	
+
 	if (ver == NULL) {
 		cJSON_Delete(json);
 		return -1;
 	}
-	
+
 	// Compare local version with github version
 	if (strncmp(local_ver, ver, 4) != 0) {
 		cJSON_Delete(json);
 		return 1;
 	}
-	
+
 	// Add logs
 	cJSON_Delete(json);
 	return 0;

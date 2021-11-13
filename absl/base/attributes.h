@@ -431,20 +431,12 @@
 // Note: past advice was to place the macro after the argument list.
 #if ABSL_HAVE_CPP_ATTRIBUTE(nodiscard)
 #define ABSL_MUST_USE_RESULT [[nodiscard]]
-#elif defined(__clang__) && ABSL_HAVE_ATTRIBUTE(warn_unused_result)
+#elif (defined(__clang__) && ABSL_HAVE_ATTRIBUTE(warn_unused_result)) || defined(__GNUC__)
 #define ABSL_MUST_USE_RESULT __attribute__((warn_unused_result))
 #else
 #define ABSL_MUST_USE_RESULT
 #endif
 
-// Same as above, but allows GCC
-#if ABSL_HAVE_CPP_ATTRIBUTE(nodiscard)
-#define ABSL_MUST_USE_RESULT_INCLUSIVE [[nodiscard]]
-#elif (defined(__clang__) && ABSL_HAVE_ATTRIBUTE(warn_unused_result)) || defined(__GNUC__)
-#define ABSL_MUST_USE_RESULT_INCLUSIVE __attribute__((warn_unused_result))
-#else
-#define ABSL_MUST_USE_RESULT_INCLUSIVE
-#endif
 
 // ABSL_ATTRIBUTE_HOT, ABSL_ATTRIBUTE_COLD
 //
