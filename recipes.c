@@ -3,6 +3,7 @@
 #include "recipes.h"
 #include <string.h>
 #include "inventory.h"
+#include "absl/base/port.h"
 
 #define NUM_RECIPES 58 // Including Dried Bouquet trade
 #define NUM_ITEMS 107 // All listed items
@@ -30,7 +31,7 @@ struct ItemCombination parseCombo(int itemCount, enum Type_Sort item1, enum Type
  * Hard-coded array which tracks all recipes, the number of combinations
  * for each recipe, and the items that make up each of those combos.
  -------------------------------------------------------------------*/
-struct Recipe* getRecipeList() {
+ABSL_MUST_USE_RESULT struct Recipe* getRecipeList() {
 	struct Recipe* recipes = malloc(sizeof(struct Recipe) * NUM_RECIPES);
 
 	// Begin hard-coding recipes

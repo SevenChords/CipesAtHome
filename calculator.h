@@ -3,6 +3,7 @@
 #include "inventory.h"
 #include "recipes.h"
 #include "start.h"
+#include "absl/base/attributes.h"
 
 // Represent the action at a particular node in the roadmap
 enum Action {
@@ -98,6 +99,7 @@ int removeRecipesForReallocation(struct BranchPath *node, enum Type_Sort *rearra
 
 // Legal move functions
 
+ABSL_MUST_USE_RESULT  // Output is newly allocated and needs to be freed at some point
 struct BranchPath* createLegalMove(struct BranchPath* node, struct Inventory inventory, struct MoveDescription description, int* outputsFulfilled, int numOutputsFulfilled);
 void filterOut2Ingredients(struct BranchPath* node);
 void finalizeChapter5Eval(struct BranchPath* node, struct Inventory inventory, struct CH5* ch5Data, int temp_frame_sum, int* outputsFulfilled, int numOutputsFulfilled);
@@ -128,6 +130,7 @@ void handleChapter5LateSortEndItems(struct BranchPath* node, struct Inventory in
 void handleDBCOAllocation0Nulls(struct BranchPath* curNode, struct Inventory tempInventory, int* tempOutputsFulfilled, int numOutputsFulfilled, struct CH5_Eval eval);
 void handleDBCOAllocation1Null(struct BranchPath* curNode, struct Inventory tempInventory, int* tempOutputsFulfilled, int numOutputsFulfilled, struct CH5_Eval eval);
 void handleDBCOAllocation2Nulls(struct BranchPath* curNode, struct Inventory tempInventory, int* tempOutputsFulfilled, int numOutputsFulfilled, struct CH5_Eval eval);
+ABSL_MUST_USE_RESULT  // Output is newly allocated and needs to be freed at some point
 struct CH5* createChapter5Struct(struct CH5_Eval eval, int lateSort);
 
 // Initialization functions
@@ -166,9 +169,11 @@ int selectSecondItemFirst(int* ingredientLoc, int nulls, int viableItems);
 void swapItems(int* ingredientLoc);
 
 // General node functions
+ABSL_MUST_USE_RESULT  // Output is newly allocated and needs to be freed at some point
 int *copyOutputsFulfilled(int *oldOutputsFulfilled);
 void freeAllNodes(struct BranchPath* node);
 void freeNode(struct BranchPath *node);
+ABSL_MUST_USE_RESULT  // Output is newly allocated and needs to be freed at some point
 struct BranchPath* initializeRoot();
 
 // Other
