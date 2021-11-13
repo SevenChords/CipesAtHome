@@ -114,17 +114,6 @@ void shiftUpLegalMoves(struct BranchPath* node, int startIndex);
 
 // Cooking functions
 
-/*-------------------------------------------------------------------
- * Function 	: copyCook
- * Inputs	: struct Cook *cookNew
- *		  struct Cook *cookOld
- *
- * A simple function to copy the data within cookOld to cookNew.
- -------------------------------------------------------------------*/
-ABSL_ATTRIBUTE_ALWAYS_INLINE inline void copyCook(struct Cook *cookNew, struct Cook *cookOld) {
-	*cookNew = *cookOld;
-	return;
-}
 void createCookDescription2Items(const struct BranchPath* node, struct Recipe recipe, struct ItemCombination combo, struct Inventory* tempInventory, int* ingredientLoc, int* tempFrames, int viableItems, struct MoveDescription* useDescription);
 void createCookDescription1Item(const struct BranchPath* node, struct Recipe recipe, struct ItemCombination combo, struct Inventory* tempInventory, int* ingredientLoc, int* tempFrames, int viableItems, struct MoveDescription* useDescription);
 struct MoveDescription createCookDescription(const struct BranchPath* node, struct Recipe recipe, struct ItemCombination combo, struct Inventory *tempInventory, int* tempFrames, int viableItems);
