@@ -433,6 +433,8 @@
 #define ABSL_MUST_USE_RESULT [[nodiscard]]
 #elif (defined(__clang__) && ABSL_HAVE_ATTRIBUTE(warn_unused_result)) || defined(__GNUC__)
 #define ABSL_MUST_USE_RESULT __attribute__((warn_unused_result))
+#elif defined(_MSC_VER) && _MSC_VER >= 1200
+#define ABSL_MUST_USE_RESULT _Check_return_
 #else
 #define ABSL_MUST_USE_RESULT
 #endif
