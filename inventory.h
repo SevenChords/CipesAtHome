@@ -250,7 +250,7 @@ struct Recipe {
 int getIndexOfRecipe(enum Type_Sort item);
 ABSL_MUST_USE_RESULT  // Output is newly allocated and needs to be freed at some point
 struct Recipe* getRecipeList();
-int stateOK(struct Inventory inventory, const int* const outputsCreated, struct Recipe* recipeList);
+int stateOK(struct Inventory inventory, const outputCreatedArray_t outputsCreated, struct Recipe* recipeList);
 
 struct ItemCombination parseCombo(int itemCount, enum Type_Sort item1, enum Type_Sort item2);
 

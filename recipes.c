@@ -3,6 +3,7 @@
 #include "recipes.h"
 #include <string.h>
 #include "inventory.h"
+#include "recipes.h"
 #include "absl/base/port.h"
 
 #define NUM_RECIPES 58 // Including Dried Bouquet trade
@@ -574,8 +575,8 @@ int getIndexOfRecipe(enum Type_Sort item) {
  *
  * A simple memcpy to duplicate a previous instance of dependentRecipes.
  -------------------------------------------------------------------*/
-void copyDependentRecipes(int *newDependentRecipes, int *dependentRecipes) {
-	memcpy((void *)newDependentRecipes, (void *)dependentRecipes, sizeof(int) * NUM_RECIPES);
+void copyDependentRecipes(int *newDependentRecipes, const int *dependentRecipes) {
+	memcpy((void *)newDependentRecipes, (const void *)dependentRecipes, sizeof(int) * NUM_RECIPES);
 }
 
 /*-------------------------------------------------------------------
@@ -592,7 +593,7 @@ void copyDependentRecipes(int *newDependentRecipes, int *dependentRecipes) {
  * be creatable.
  -------------------------------------------------------------------*/
 // Returns 1 if true, 0 if false
-int checkRecipe(struct ItemCombination combo, int *makeableItems, const int * const outputsCreated, int *dependentRecipes, struct Recipe *recipeList) {
+int checkRecipe(struct ItemCombination combo, int *makeableItems, const outputCreatedArray_t outputsCreated, int *dependentRecipes, struct Recipe *recipeList) {
 	// Determine if the recipe items can still be fulfilled
 	for (int i = 0; i < combo.numItems; i++) {
 		enum Type_Sort ingredient = i == 0 ? combo.item1 : combo.item2;
@@ -662,7 +663,7 @@ int checkRecipe(struct ItemCombination combo, int *makeableItems, const int * co
  * been already created, and calls checkRecipe to see if each remaining
  * recipe can still be fulfilled at some point in the roadmap.
  -------------------------------------------------------------------*/
-int stateOK(struct Inventory inventory, const int * const outputsCreated, struct Recipe *recipeList) {
+int stateOK(struct Inventory inventory, const outputCreatedArray_t outputsCreated, struct Recipe *recipeList) {
 	// With the given inventory, can the remaining recipes be fulfilled?
 
 	// If Chapter 5 has not been done, verify that Thunder Rage is in the inventory
@@ -703,122 +704,122 @@ int stateOK(struct Inventory inventory, const int * const outputsCreated, struct
 	// from being overwritten and allowing it to be read at the end
 	// If it's 1, then this will be a no-op and the index at end+1 will be
 	// overwritten again
-	endRecipe += 1 ^ outputsCreated[0];
+	endRecipe += !outputsCreated[0];
 	// Loop continues
 	outputsLeft[endRecipe] = 1;
-	endRecipe += 1 ^ outputsCreated[1];
+	endRecipe += !outputsCreated[1];
 	outputsLeft[endRecipe] = 2;
-	endRecipe += 1 ^ outputsCreated[2];
+	endRecipe += !outputsCreated[2];
 	outputsLeft[endRecipe] = 3;
-	endRecipe += 1 ^ outputsCreated[3];
+	endRecipe += !outputsCreated[3];
 	outputsLeft[endRecipe] = 4;
-	endRecipe += 1 ^ outputsCreated[4];
+	endRecipe += !outputsCreated[4];
 	outputsLeft[endRecipe] = 5;
-	endRecipe += 1 ^ outputsCreated[5];
+	endRecipe += !outputsCreated[5];
 	outputsLeft[endRecipe] = 6;
-	endRecipe += 1 ^ outputsCreated[6];
+	endRecipe += !outputsCreated[6];
 	outputsLeft[endRecipe] = 7;
-	endRecipe += 1 ^ outputsCreated[7];
+	endRecipe += !outputsCreated[7];
 	outputsLeft[endRecipe] = 8;
-	endRecipe += 1 ^ outputsCreated[8];
+	endRecipe += !outputsCreated[8];
 	outputsLeft[endRecipe] = 9;
-	endRecipe += 1 ^ outputsCreated[9];
+	endRecipe += !outputsCreated[9];
 	outputsLeft[endRecipe] = 10;
-	endRecipe += 1 ^ outputsCreated[10];
+	endRecipe += !outputsCreated[10];
 	outputsLeft[endRecipe] = 11;
-	endRecipe += 1 ^ outputsCreated[11];
+	endRecipe += !outputsCreated[11];
 	outputsLeft[endRecipe] = 12;
-	endRecipe += 1 ^ outputsCreated[12];
+	endRecipe += !outputsCreated[12];
 	outputsLeft[endRecipe] = 13;
-	endRecipe += 1 ^ outputsCreated[13];
+	endRecipe += !outputsCreated[13];
 	outputsLeft[endRecipe] = 14;
-	endRecipe += 1 ^ outputsCreated[14];
+	endRecipe += !outputsCreated[14];
 	outputsLeft[endRecipe] = 15;
-	endRecipe += 1 ^ outputsCreated[15];
+	endRecipe += !outputsCreated[15];
 	outputsLeft[endRecipe] = 16;
-	endRecipe += 1 ^ outputsCreated[16];
+	endRecipe += !outputsCreated[16];
 	outputsLeft[endRecipe] = 17;
-	endRecipe += 1 ^ outputsCreated[17];
+	endRecipe += !outputsCreated[17];
 	outputsLeft[endRecipe] = 18;
-	endRecipe += 1 ^ outputsCreated[18];
+	endRecipe += !outputsCreated[18];
 	outputsLeft[endRecipe] = 19;
-	endRecipe += 1 ^ outputsCreated[19];
+	endRecipe += !outputsCreated[19];
 	outputsLeft[endRecipe] = 20;
-	endRecipe += 1 ^ outputsCreated[20];
+	endRecipe += !outputsCreated[20];
 	outputsLeft[endRecipe] = 21;
-	endRecipe += 1 ^ outputsCreated[21];
+	endRecipe += !outputsCreated[21];
 	outputsLeft[endRecipe] = 22;
-	endRecipe += 1 ^ outputsCreated[22];
+	endRecipe += !outputsCreated[22];
 	outputsLeft[endRecipe] = 23;
-	endRecipe += 1 ^ outputsCreated[23];
+	endRecipe += !outputsCreated[23];
 	outputsLeft[endRecipe] = 24;
-	endRecipe += 1 ^ outputsCreated[24];
+	endRecipe += !outputsCreated[24];
 	outputsLeft[endRecipe] = 25;
-	endRecipe += 1 ^ outputsCreated[25];
+	endRecipe += !outputsCreated[25];
 	outputsLeft[endRecipe] = 26;
-	endRecipe += 1 ^ outputsCreated[26];
+	endRecipe += !outputsCreated[26];
 	outputsLeft[endRecipe] = 27;
-	endRecipe += 1 ^ outputsCreated[27];
+	endRecipe += !outputsCreated[27];
 	outputsLeft[endRecipe] = 28;
-	endRecipe += 1 ^ outputsCreated[28];
+	endRecipe += !outputsCreated[28];
 	outputsLeft[endRecipe] = 29;
-	endRecipe += 1 ^ outputsCreated[29];
+	endRecipe += !outputsCreated[29];
 	outputsLeft[endRecipe] = 30;
-	endRecipe += 1 ^ outputsCreated[30];
+	endRecipe += !outputsCreated[30];
 	outputsLeft[endRecipe] = 31;
-	endRecipe += 1 ^ outputsCreated[31];
+	endRecipe += !outputsCreated[31];
 	outputsLeft[endRecipe] = 32;
-	endRecipe += 1 ^ outputsCreated[32];
+	endRecipe += !outputsCreated[32];
 	outputsLeft[endRecipe] = 33;
-	endRecipe += 1 ^ outputsCreated[33];
+	endRecipe += !outputsCreated[33];
 	outputsLeft[endRecipe] = 34;
-	endRecipe += 1 ^ outputsCreated[34];
+	endRecipe += !outputsCreated[34];
 	outputsLeft[endRecipe] = 35;
-	endRecipe += 1 ^ outputsCreated[35];
+	endRecipe += !outputsCreated[35];
 	outputsLeft[endRecipe] = 36;
-	endRecipe += 1 ^ outputsCreated[36];
+	endRecipe += !outputsCreated[36];
 	outputsLeft[endRecipe] = 37;
-	endRecipe += 1 ^ outputsCreated[37];
+	endRecipe += !outputsCreated[37];
 	outputsLeft[endRecipe] = 38;
-	endRecipe += 1 ^ outputsCreated[38];
+	endRecipe += !outputsCreated[38];
 	outputsLeft[endRecipe] = 39;
-	endRecipe += 1 ^ outputsCreated[39];
+	endRecipe += !outputsCreated[39];
 	outputsLeft[endRecipe] = 40;
-	endRecipe += 1 ^ outputsCreated[40];
+	endRecipe += !outputsCreated[40];
 	outputsLeft[endRecipe] = 41;
-	endRecipe += 1 ^ outputsCreated[41];
+	endRecipe += !outputsCreated[41];
 	outputsLeft[endRecipe] = 42;
-	endRecipe += 1 ^ outputsCreated[42];
+	endRecipe += !outputsCreated[42];
 	outputsLeft[endRecipe] = 43;
-	endRecipe += 1 ^ outputsCreated[43];
+	endRecipe += !outputsCreated[43];
 	outputsLeft[endRecipe] = 44;
-	endRecipe += 1 ^ outputsCreated[44];
+	endRecipe += !outputsCreated[44];
 	outputsLeft[endRecipe] = 45;
-	endRecipe += 1 ^ outputsCreated[45];
+	endRecipe += !outputsCreated[45];
 	outputsLeft[endRecipe] = 46;
-	endRecipe += 1 ^ outputsCreated[46];
+	endRecipe += !outputsCreated[46];
 	outputsLeft[endRecipe] = 47;
-	endRecipe += 1 ^ outputsCreated[47];
+	endRecipe += !outputsCreated[47];
 	outputsLeft[endRecipe] = 48;
-	endRecipe += 1 ^ outputsCreated[48];
+	endRecipe += !outputsCreated[48];
 	outputsLeft[endRecipe] = 49;
-	endRecipe += 1 ^ outputsCreated[49];
+	endRecipe += !outputsCreated[49];
 	outputsLeft[endRecipe] = 50;
-	endRecipe += 1 ^ outputsCreated[50];
+	endRecipe += !outputsCreated[50];
 	outputsLeft[endRecipe] = 51;
-	endRecipe += 1 ^ outputsCreated[51];
+	endRecipe += !outputsCreated[51];
 	outputsLeft[endRecipe] = 52;
-	endRecipe += 1 ^ outputsCreated[52];
+	endRecipe += !outputsCreated[52];
 	outputsLeft[endRecipe] = 53;
-	endRecipe += 1 ^ outputsCreated[53];
+	endRecipe += !outputsCreated[53];
 	outputsLeft[endRecipe] = 54;
-	endRecipe += 1 ^ outputsCreated[54];
+	endRecipe += !outputsCreated[54];
 	outputsLeft[endRecipe] = 55;
-	endRecipe += 1 ^ outputsCreated[55];
+	endRecipe += !outputsCreated[55];
 	outputsLeft[endRecipe] = 56;
-	endRecipe += 1 ^ outputsCreated[56];
+	endRecipe += !outputsCreated[56];
 	outputsLeft[endRecipe] = 57;
-	endRecipe += 1 ^ outputsCreated[57];
+	endRecipe += !outputsCreated[57];
 
 	// Iterate through all output items that haven't been created
 	for (int currentRecipe = startRecipe; currentRecipe < endRecipe; currentRecipe++) {
