@@ -101,7 +101,7 @@ void applyJumpStorageFramePenalty(BranchPath *node) {
  * Outputs	:
  * A simple memcpy to duplicate oldOutputsFulfilled to a new array
  -------------------------------------------------------------------*/
-int *copyOutputsFulfilled(int *oldOutputsFulfilled) {
+ABSL_MUST_USE_RESULT int *copyOutputsFulfilled(int *oldOutputsFulfilled) {
 	int *newOutputsFulfilled = malloc(sizeof(int) * NUM_RECIPES);
 
 	if (newOutputsFulfilled == NULL) {
@@ -129,8 +129,9 @@ int *copyOutputsFulfilled(int *oldOutputsFulfilled) {
  * lateSort tracks whether we performed the sort before or after the
  * Keel Mango, for printing purposes
  -------------------------------------------------------------------*/
-CH5 *createChapter5Struct(CH5_Eval eval, int lateSort) {
+ABSL_MUST_USE_RESULT CH5 *createChapter5Struct(CH5_Eval eval, int lateSort) {
 	CH5 *ch5 = malloc(sizeof(CH5));
+
 
 	if (ch5 == NULL) {
 		printf("Fatal error! Ran out of heap memory.\n");
@@ -307,7 +308,7 @@ void createCookDescription2Items(BranchPath *node, Recipe recipe, ItemCombinatio
  *
  * Given the input parameters, allocate and set attributes for a legalMove node
  -------------------------------------------------------------------*/
-BranchPath *createLegalMove(BranchPath *node, Inventory inventory, MoveDescription description, int *outputsFulfilled, int numOutputsFulfilled) {
+ABSL_MUST_USE_RESULT BranchPath *createLegalMove(BranchPath *node, Inventory inventory, MoveDescription description, int *outputsFulfilled, int numOutputsFulfilled) {
 	BranchPath *newLegalMove = malloc(sizeof(BranchPath));
 
 	if (newLegalMove == NULL) {
@@ -1156,7 +1157,7 @@ void handleSorts(BranchPath *curNode) {
  *
  * Generate the root of the tree graph
  -------------------------------------------------------------------*/
-BranchPath *initializeRoot() {
+ABSL_MUST_USE_RESULT BranchPath *initializeRoot() {
 	BranchPath *root = malloc(sizeof(BranchPath));
 
 	if (root == NULL) {
