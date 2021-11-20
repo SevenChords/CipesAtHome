@@ -33,13 +33,13 @@
     <ClCompile Include="..\config.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\recipes.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\FTPManagement.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\start.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\recipes.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\shutdown.c">
@@ -77,6 +77,9 @@
     <ClInclude Include="..\start.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\shutdown.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\absl\base\attributes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -93,9 +96,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\absl\base\port.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\shutdown.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

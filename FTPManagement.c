@@ -51,7 +51,7 @@ static size_t write_data(char *contents, size_t size, size_t nmemb, void *userda
  * the current fastest frame record respectively.
  * The returning value (if non-NULL) MUST be freed.
  -------------------------------------------------------------------*/
-ABSL_MUST_USE_RESULT_INCLUSIVE char *handle_get(char* url) {
+ABSL_MUST_USE_RESULT char *handle_get(char* url) {
 	CURL *curl;
 	struct memory chunk;
 	chunk.data = NULL;

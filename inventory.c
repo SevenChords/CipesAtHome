@@ -342,7 +342,7 @@ char *getItemName(Type_Sort t_key) {
 
 /*-------------------------------------------------------------------
  * Function 	: getInventoryFrames
- * Inputs	: 
+ * Inputs	:
  * Outputs	: int **inv_frames
  *
  * Returns a double pointer which can be used to reference how many
@@ -374,7 +374,7 @@ int **getInventoryFrames() {
 
 /*-------------------------------------------------------------------
  * Function 	: getStartingInventory
- * Inputs	: 
+ * Inputs	:
  * Outputs	: enum Type_Sort *inventory
  *
  * Returns a pointer to an array which contains all items we start with
@@ -403,7 +403,7 @@ struct Inventory getStartingInventory() {
 	inventory.inventory[17] = Maple_Syrup;
 	inventory.inventory[18] = Hot_Sauce;
 	inventory.inventory[19] = Jammin_Jelly;
-	
+
 	return inventory;
 }
 
