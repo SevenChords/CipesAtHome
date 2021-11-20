@@ -7,4 +7,27 @@ recipes.log
 *.ipch
 *.db
 *.o
+*.obj
+*.dll
 recipesAtHome
+recipesAtHome.exe
+
+### Various outputs of profiling and analysis
+gmon.out
+gprof.results
+
+### Junk files that can be left over from git mergetool
+*.orig
+
+# These should actually be *.BACKUP_<1 or more digits>.<any extention>, but sadly .gitignore uses glob syntax, which doesn't have a way to express that.
+# So as an imperfect workaround, just check that the first one is a digit, and then hope the rest aren't a problem.
+# +([0-9]) would be what we want. But that is a GNU extension to fnmatch, not standard :(
+*_BACKUP_[0-9]*.*
+*_BASE_[0-9]*.*
+*_LOCAL_[0-9]*.*
+*_REMOTE_[0-9]*.*
+
+**/*_BACKUP_[0-9]*.*
+**/*_BASE_[0-9]*.*
+**/*_LOCAL_[0-9]*.*
+**/*_REMOTE_[0-9]*.*
