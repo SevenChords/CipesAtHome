@@ -28,6 +28,22 @@
 #endif
 
  /*-------------------------------------------------------------------
+ * Function 	: awaitKeyFromUser
+ * Outputs: char the character entered by the user.
+ *
+ * Maps directly to 'getchar()' from 'stdio.h', but does not come with
+ * the warning that the output must be used.
+ *
+ * This function is for cases where the program wants to pause for user
+ * input (usually to read a message), but might not actually care what
+ * character the user entered.
+ -------------------------------------------------------------------*/
+ABSL_ATTRIBUTE_ALWAYS_INLINE
+inline char awaitKeyFromUser() {
+	return getchar();
+}
+
+ /*-------------------------------------------------------------------
  * Function 	: checkMallocFailed
  * Inputs	: void* p
  *
@@ -41,7 +57,7 @@ inline void checkMallocFailed(const void* const p) {
 	if (ABSL_PREDICT_FALSE(p == NULL)) {
 		printf("Fatal error! Ran out of heap memory.\n");
 		printf("Press enter to quit.\n");
-		ABSL_ATTRIBUTE_UNUSED char exitChar = getchar();
+		awaitKeyFromUser();
 		exit(1);
 	}
 }

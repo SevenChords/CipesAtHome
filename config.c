@@ -2,12 +2,13 @@
 #include <stdlib.h>
 #include <libconfig.h>
 #include "config.h"
+#include "base.h"
 
 config_t *config;
 
 /*-------------------------------------------------------------------
  * Function 	: initConfig
- * Inputs	: 
+ * Inputs	:
  * Outputs	: config_t config
  *
  * This uses the libconfig library to parse a user-modifiable config file.
@@ -19,7 +20,7 @@ void initConfig() {
 	if (config_read_file(configInstance, "config.txt") == CONFIG_FALSE) {
 		printf("Could not read config file! Please assure that config.txt is in the root directory and is formatted correctly.\n");
 		printf("Press ENTER to exit.");
-		getchar();
+		awaitKeyFromUser();
 		exit(1);
 	}
 

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "calculator.h"
+#include "base.h"
 #include "FTPManagement.h"
 #include "recipes.h"
 #include "start.h"
@@ -1126,7 +1127,7 @@ ABSL_MUST_USE_RESULT BranchPath *initializeRoot() {
 	if (root == NULL) {
 		printf("Fatal error! Ran out of heap memory.\n");
 		printf("Press enter to quit.");
-		char exitChar = getchar();
+		awaitKeyFromUser();
 		exit(1);
 	}
 
@@ -1321,7 +1322,7 @@ void periodicGithubCheck() {
 	else if (update == 1) {
 		printf("Please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!\n");
 		printf("Press ENTER to exit the program.\n");
-		ABSL_ATTRIBUTE_UNUSED char exitChar = getchar();
+		awaitKeyFromUser();
 		exit(1);
 	}
 }
@@ -1561,7 +1562,7 @@ void printResults(const char *filename, const BranchPath *path) {
 	if (fp == NULL) {
 		printf("Could not locate %s... This is a bug.\n", filename);
 		printf("Press ENTER to exit.\n");
-		ABSL_ATTRIBUTE_UNUSED char exitChar = getchar();
+		awaitKeyFromUser();
 		exit(1);
 	}
 	// Write header information
@@ -1688,7 +1689,7 @@ void reallocateRecipes(BranchPath* newRoot, const enum Type_Sort* rearranged_rec
 					if (indexItem2 < 0) {
 						printf("Fatal error! indexItem2 was not set in a branch where it should have.\n");
 						printf("Press enter to quit.");
-						char exitChar = getchar();
+						awaitKeyFromUser();
 						exit(1);
 					}
 					// Two ingredients to navigate to, but order matters
@@ -1723,12 +1724,7 @@ void reallocateRecipes(BranchPath* newRoot, const enum Type_Sort* rearranged_rec
 
 					if (record_description == NULL) {
 						record_description = malloc(sizeof(struct Cook));
-						if (record_description == NULL) {
-							printf("Fatal error! Ran out of heap memory.\n");
-							printf("Press enter to quit.");
-							char exitChar = getchar();
-							exit(1);
-						}
+						checkMallocFailed(record_description);
 					}
 					*record_description = temp_description;
 				}
