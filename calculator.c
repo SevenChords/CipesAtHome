@@ -1124,12 +1124,7 @@ void handleSorts(BranchPath *curNode) {
 ABSL_MUST_USE_RESULT BranchPath *initializeRoot() {
 	BranchPath *root = malloc(sizeof(BranchPath));
 
-	if (root == NULL) {
-		printf("Fatal error! Ran out of heap memory.\n");
-		printf("Press enter to quit.");
-		awaitKeyFromUser();
-		exit(1);
-	}
+	checkMallocFailed(root);
 
 	root->moves = 0;
 	root->inventory = getStartingInventory();
