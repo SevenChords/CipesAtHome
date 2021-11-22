@@ -132,13 +132,13 @@ int main() {
 		printf("Otherwise, we can't submit completed roadmaps to the server!\n");
 		printf("Alternatively you may have been rate-limited. Please wait a while and try again.\n");
 		printf("Press ENTER to quit.\n");
-		awaitKeyFromUser()
+		awaitKeyFromUser();
 		return -1;
 	}
 	else if (update == 1) {
 		printf("There is a newer version of Recipes@Home.\nTo continue, please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!\n");
 		printf("Press ENTER to quit.\n");
-		awaitKeyFromUser()
+		awaitKeyFromUser();
 		return -1;
 	}
 
