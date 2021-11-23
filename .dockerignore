@@ -1,5 +1,7 @@
+# Strange fix for double star exclusions: https://github.com/moby/moby/issues/30018#issuecomment-875710305
+**/*.*
 !Makefile
-!*.c
-!*.h
+!**/*.c
+!**/*.h
 !config.txt
 !entrypoint.sh
