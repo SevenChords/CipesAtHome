@@ -9,6 +9,7 @@
 #include <libconfig.h>
 #include "config.h"
 #include "logger.h"
+#include "base.h"
 
 struct memory {
 	char *data;
@@ -119,12 +120,7 @@ void handle_post(char* url, FILE *fp, int localRecord, char *nickname) {
 	fseek(fp, 0, SEEK_SET);
 	wt.data = malloc(fsize+ strlen(nickname) + 50); // Offer enough padding for postfields
 
-	if (wt.data == NULL) {
-		printf("Fatal error! Ran out of heap memory.\n");
-		printf("Press enter to quit.");
-		char exitChar = getchar();
-		exit(1);
-	}
+	checkMallocFailed(wt.data);
 
 	size_t bytes_written;
 	bytes_written = sprintf(wt.data, "{\"frames\":\"%d\",\"userName\":\"%s\",\"routeContent\":\"", localRecord, nickname);
@@ -137,8 +133,7 @@ void handle_post(char* url, FILE *fp, int localRecord, char *nickname) {
 		cJSON *json = cJSON_Parse(wt.data);
 		char *json_str = cJSON_PrintUnformatted(json);
 		cJSON_Delete(json);
-		// TODO(TechSY730) Merge this assert function and reenable
-		// checkMallocFailed(json_str);
+		checkMallocFailed(json_str);
 		struct curl_slist *headers = NULL;
 		headers = curl_slist_append(headers, "Content-Type: application/json");
 		headers = curl_slist_append(headers, "charset: utf-8");

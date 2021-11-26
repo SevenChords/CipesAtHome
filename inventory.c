@@ -3,6 +3,7 @@
 #include <string.h>
 #include "inventory.h"
 #include "logger.h"
+#include "base.h"
 
 #define VOLATILE_INVENTORY_SIZE 10
 #define INVENTORY_SIZE 20
@@ -357,12 +358,7 @@ int **getInventoryFrames() {
 	for (int i = 0; i < INVENTORY_MAX_SIZE; i++) {
 		int *frames = malloc(sizeof(int) * (i+1));
 
-		if (frames == NULL) {
-			printf("Fatal error! Ran out of heap memory.\n");
-			printf("Press enter to quit.");
-			char exitChar = getchar();
-			exit(1);
-		}
+		checkMallocFailed(frames);
 
 		for (int j = 0; j < i + 1; j++) {
 			if (j < i+1-j)

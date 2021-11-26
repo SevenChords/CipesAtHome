@@ -173,6 +173,7 @@
     <ClCompile Include="..\start.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\base.h" />
     <ClInclude Include="..\calculator.h" />
     <ClInclude Include="..\cJSON.h" />
     <ClInclude Include="..\config.h" />

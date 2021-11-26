@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <omp.h>
 #include <libconfig.h>
+#include "base.h"
 #include "inventory.h"
 #include "config.h"
 #include "recipes.h"
@@ -17,12 +18,6 @@
 #include <sys/types.h>
 #include <signal.h>
 #include "absl/base/port.h"
-
-#if defined(_MSC_FULL_VER) || defined(__MINGW32__)
-#define _IS_WINDOWS 1
-#else
-#define _IS_WINDOWS 0
-#endif
 
 #if _IS_WINDOWS
 #include <windows.h>
@@ -59,6 +54,8 @@ int numTimesExitRequest = 0;
 #define NUM_TIMES_EXITED_BEFORE_HARD_QUIT 3
 
 void countAndSetShutdown(bool isSignal) {
+	// On Windows, it is undefined behavior trying to use stdio.h functions in a signal handler (which this is called from).
+	// So for now, these messages are stifled on Windows. This may be revisited at a later point.
 	if (++numTimesExitRequest >= NUM_TIMES_EXITED_BEFORE_HARD_QUIT) {
 		if (!_IS_WINDOWS || !isSignal) {
 			printf("\nExit reqested %d times; shutting down now.\n", NUM_TIMES_EXITED_BEFORE_HARD_QUIT);
@@ -67,7 +64,7 @@ void countAndSetShutdown(bool isSignal) {
 	} else {
 		requestShutdown();
 		if (!_IS_WINDOWS || !isSignal) {
-			printf("\nExit requested, finishing up work. Should shutdown soon (CTRL-C 3 times to force exit)\n");
+			printf("\nExit requested, finishing up work. Should shutdown soon (CTRL-C %d times total to force exit)\n", NUM_TIMES_EXITED_BEFORE_HARD_QUIT);
 		}
 	}
 }
@@ -135,13 +132,13 @@ int main() {
 		printf("Otherwise, we can't submit completed roadmaps to the server!\n");
 		printf("Alternatively you may have been rate-limited. Please wait a while and try again.\n");
 		printf("Press ENTER to quit.\n");
-		char exitChar = getchar();
+		awaitKeyFromUser();
 		return -1;
 	}
 	else if (update == 1) {
 		printf("There is a newer version of Recipes@Home.\nTo continue, please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!\n");
 		printf("Press ENTER to quit.\n");
-		char exitChar = getchar();
+		awaitKeyFromUser();
 		return -1;
 	}
 
