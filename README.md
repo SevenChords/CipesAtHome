@@ -65,9 +65,15 @@ Below are a set of config parameters which can be changed by the user. These wil
 - **Username**: This name will be submitted to the server to specify who found the roadmap. If you would like to be known for finding the fastest roadmap, change this name to a username of your choice. This is limited by 19 characters. A Discord bot in the TTYD speedrunning server will alert us with this Username when a new fastest roadmap is found.
 
 ## Docker Setup
-If your system is set up with Docker, you can quickly run CipesAtHome with a Docker image:
+If your system is set up with Docker, you can quickly run CipesAtHome with a Docker image.
+1. The following architectures are available:
+   - linux/amd64
+   - linux/386
+   - linux/arm64
+   - linux/arm/v7
+   - linux/arm/v6
 1. Mount the `/config` directory, set any environment variables, and run the container:
-   - `docker run -e USERNAME=MyName -v /my/volume/location/cipesathome:/config sevenchords/cipesathome`
+   - `docker run -e USERNAME=MyName -v /my/volume/location/cipesathome:/config ghcr.io/sevenchords/cipesathome`
 1. On first run, a config.txt will automatically be created. Feel free to modify it, as it will be used on the next startup.
    - If you're having issues with the config file, check its filesystem permissions and make sure it ends with a newline
 
