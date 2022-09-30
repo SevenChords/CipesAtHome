@@ -36,6 +36,7 @@ static const struct Cook EMPTY_COOK = {0};
 
 typedef enum Alpha_Sort Alpha_Sort;
 typedef enum Type_Sort Type_Sort;
+typedef enum Action Action;
 typedef struct MoveDescription MoveDescription;
 typedef struct Recipe Recipe;
 typedef struct BranchPath BranchPath;
@@ -44,9 +45,232 @@ typedef struct CH5_Eval CH5_Eval;
 typedef struct ItemCombination ItemCombination;
 typedef struct Inventory Inventory;
 typedef struct Result Result;
+typedef struct Serial Serial;
 
 int **invFrames;
 Recipe *recipeList;
+
+// Used to uniquely identify a particular item combination for serialization purposes
+int recipeOffsetLookup[57] = {
+	0, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15, 16, 17, 18, 23, 24, 25,
+	26, 28, 31, 35, 37, 39, 40, 41, 44, 45, 46, 48, 50, 52,
+	59, 60, 61, 62, 63, 64, 66, 68, 71, 77, 82, 83, 85, 86,
+	87, 88, 89, 90, 92, 147, 148, 149, 152, 153, 154, 155};
+
+// Uniquely identify a particular item combination
+// Utilize the hard-coded offset lookup to reduce time complexity a bit
+uint8_t getRecipeIndex(struct Cook *pCook)
+{
+	int i = getIndexOfRecipe(pCook->output);
+	int offset = recipeOffsetLookup[i];
+
+	for (int j = 0; j < recipeList[i].countCombos; j++)
+	{
+		ItemCombination listCombo = recipeList[i].combos[j];
+
+		if (listCombo.numItems != pCook->numItems)
+			continue;
+
+		bool bFirstItemMatch = listCombo.item1 == pCook->item1 || (pCook->numItems == 2 && listCombo.item1 == pCook->item2);
+		bool bSecondItemMatch = listCombo.item2 == pCook->item2 || (pCook->numItems == 2 && listCombo.item2 == pCook->item1);
+
+		if (bFirstItemMatch && (pCook->numItems == 1 || bSecondItemMatch))
+			return offset + j;
+	}
+
+	return UINT8_MAX;
+}
+
+// returns the number of bytes used to serialize the node
+uint8_t serializeCookNode(BranchPath *node, void **data)
+{
+	uint8_t dataLen = 0;
+	struct Cook *pCook = (struct Cook*)node->description.data;
+	Serial parentSerial = node->prev->serial;
+
+	// Don't really need to hash Mistake, and removing all recipe combos for mistakes saves space for our serialization
+	if (pCook->output == Mistake)
+	{
+		Serial nodeSerial = (Serial) {0, NULL};
+		node->serial = nodeSerial;
+		return 0;
+	}
+	else if (pCook->output == Dried_Bouquet)
+	{
+		// This shouldn't happen
+		exit(1);
+	}
+
+	uint8_t recipeIdx = getRecipeIndex(pCook);
+	assert(recipeIdx != UINT8_MAX);
+
+	dataLen = 1;
+
+	int8_t outputPlace = pCook->indexToss;
+	bool bAutoplace = (outputPlace == -1);
+
+	if (!bAutoplace)
+		dataLen = 2;
+
+	if (parentSerial.length == 0)
+	{
+		// We have nothing to copy. Just malloc 3 bytes
+		*data = malloc(dataLen);
+		checkMallocFailed(*data);
+	}
+	else
+	{
+		*data = malloc(parentSerial.length + dataLen);
+		checkMallocFailed(*data);
+
+		memcpy(*data, parentSerial.data, parentSerial.length);
+	}
+
+	memset(*data + parentSerial.length, recipeIdx, 1);
+
+	if (!bAutoplace)
+		memset(*data + parentSerial.length + 1, (uint8_t) outputPlace, 1);
+
+	return dataLen;
+}
+
+uint8_t serializeSortNode(BranchPath *node, void **data)
+{
+	uint8_t dataLen = 1;
+	Serial parentSerial = node->prev->serial;
+
+	if (parentSerial.length == 0)
+	{
+		*data = malloc(dataLen);
+		checkMallocFailed(*data);
+	}
+	else
+	{
+		*data = malloc(parentSerial.length + dataLen);
+		checkMallocFailed(*data);
+		memcpy(*data, parentSerial.data, parentSerial.length);
+	}
+
+	memset(*data + parentSerial.length, (node->description.action - 2) + recipeOffsetLookup[56], 1);
+
+	return dataLen;
+}
+
+uint8_t serializeCH5Node(BranchPath *node, void **data)
+{
+	uint8_t actionValue = recipeOffsetLookup[56] + 4;
+	Serial parentSerial = node->prev->serial;
+
+	CH5 *pCH5 = (CH5*)node->description.data;
+	uint8_t lateSort = (uint8_t) pCH5->lateSort;
+	uint8_t sort = (uint8_t) pCH5->ch5Sort - 2;
+	uint8_t uCS = (uint8_t) pCH5->indexCourageShell;
+	int iDB = pCH5->indexDriedBouquet;
+	int iCO = pCH5->indexCoconut;
+	int iKM = pCH5->indexKeelMango;
+
+	if (lateSort == 1)
+		actionValue += 40;
+	
+	actionValue += (sort * 10);
+	actionValue += uCS;
+
+	uint8_t dataLen = 1;
+
+	// Tack on additional bits for each item that is not autoplaced
+	uint8_t optionalByte1 = 0;
+	uint8_t optionalByte2 = 0;
+
+	if (iDB > -1)
+	{
+		dataLen = 2;
+		optionalByte1 = ((uint8_t)(iDB)) << 4;
+	}
+	if (iCO > -1)
+	{
+		dataLen = 2;
+		if (iDB > -1)
+			optionalByte1 |= (uint8_t)(iCO);
+		else
+			optionalByte1 = ((uint8_t)(iCO)) << 4;
+	}
+	if (iKM > -1)
+	{
+		dataLen = 2;
+		if (iDB > -1 && iCO > -1)
+		{
+			dataLen = 3;
+			optionalByte2 = ((uint8_t)(iKM)) << 4;
+		}
+		else if (iDB > -1 || iCO > -1)
+			optionalByte1 |= (uint8_t)(iKM);
+		else
+			optionalByte1 = ((uint8_t)(iKM)) << 4;
+	}
+	
+	if (parentSerial.length == 0)
+	{
+		*data = malloc(dataLen);
+		checkMallocFailed(*data);
+	}
+	else
+	{
+		*data = malloc(parentSerial.length + dataLen);
+		checkMallocFailed(*data);
+		memcpy(*data, parentSerial.data, parentSerial.length);
+	}
+
+	memset(*data + parentSerial.length, actionValue, 1);
+
+	if (dataLen >= 2)
+		memset(*data + parentSerial.length+1, optionalByte1, 1);
+	if (dataLen == 3)
+		memset(*data + parentSerial.length+2, optionalByte2, 1);
+
+	return dataLen;
+}
+
+// To serialize nodes, we need to represent the following actions as a number:
+// 0-154: all possible recipe combinations
+// 155-158: all four sorts
+// 159-238: all possible CH5 actions
+// Additionally, we need to tack on extra bits if a recipe output is not auto-placed
+// and tack on extra bits if any CH5 items are not auto-placed
+void serializeNode(BranchPath *node)
+{
+	if (node->moves == 0)
+	{
+		node->serial = (Serial) {0, NULL};
+		return;
+	}
+
+	void *data = NULL;
+	uint8_t dataLen = 0; // in bytes
+	Serial parentSerial = node->prev->serial;
+	Action nodeAction = node->description.action;
+
+	switch(nodeAction)
+	{
+	case Begin:
+		
+	case Cook:
+		dataLen = serializeCookNode(node, &data);
+		break;
+	case Sort_Alpha_Asc:
+	case Sort_Alpha_Des:
+	case Sort_Type_Asc:
+	case Sort_Type_Des:
+		dataLen = serializeSortNode(node, &data);
+		break;
+	case Ch5:
+		dataLen = serializeCH5Node(node, &data);
+		break;
+	default:
+		exit(1);
+	}
+
+	node->serial = (Serial) {parentSerial.length + dataLen, data};
+}
 
 ABSL_ATTRIBUTE_ALWAYS_INLINE static inline bool checkShutdownOnIndex(int i) {
 	return i % CHECK_SHUTDOWN_INTERVAL == 0 && askedToShutdown();
@@ -310,6 +534,8 @@ BranchPath *createLegalMove(BranchPath *node, Inventory inventory, MoveDescripti
 	else {
 		newLegalMove->totalSorts = node->totalSorts;
 	}
+	
+	serializeNode(newLegalMove);
 
 	return newLegalMove;
 }
@@ -487,6 +713,10 @@ void freeNode(BranchPath *node) {
 		}
 		free(node->legalMoves);
 	}
+
+	if (node->serial.length > 0)
+		free(node->serial.data);
+	
 	free(node);
 }
 
@@ -1162,6 +1392,7 @@ ABSL_MUST_USE_RESULT BranchPath *initializeRoot() {
 	root->legalMoves = NULL;
 	root->numLegalMoves = 0;
 	root->totalSorts = 0;
+	serializeNode(root);
 	return root;
 }
 
@@ -1213,17 +1444,9 @@ BranchPath *copyAllNodes(BranchPath *newNode, const BranchPath *oldNode) {
 		newNode->description = oldNode->description;
 		switch (newNode->description.action) {
 			case (Begin) :
-				newNode->description.data = NULL;
-				break;
 			case (Sort_Alpha_Asc) :
-				newNode->description.data = NULL;
-				break;
 			case (Sort_Alpha_Des) :
-				newNode->description.data = NULL;
-				break;
 			case (Sort_Type_Asc) :
-				newNode->description.data = NULL;
-				break;
 			case (Sort_Type_Des) :
 				newNode->description.data = NULL;
 				break;
@@ -1257,6 +1480,7 @@ BranchPath *copyAllNodes(BranchPath *newNode, const BranchPath *oldNode) {
 		newNode->numOutputsCreated = oldNode->numOutputsCreated;
 		newNode->legalMoves = NULL;
 		newNode->numLegalMoves = 0;
+		serializeNode(newNode);
 		if (newNode->numOutputsCreated < NUM_RECIPES) {
 			newNode->next = malloc(sizeof(BranchPath));
 
@@ -1781,6 +2005,7 @@ void reallocateRecipes(BranchPath* newRoot, const enum Type_Sort* rearranged_rec
 		insertNode->numOutputsCreated = record_placement_node->numOutputsCreated + 1;
 		insertNode->legalMoves = NULL;
 		insertNode->numLegalMoves = 0;
+		insertNode->serial = (Serial) {0, NULL};
 
 		// Update all subsequent nodes with
 		for (BranchPath *node = insertNode->next; node!= NULL; node = node->next) {

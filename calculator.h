@@ -8,13 +8,13 @@
 
 // Represent the action at a particular node in the roadmap
 enum Action {
-	Begin,
-	Cook,
-	Sort_Alpha_Asc,
-	Sort_Alpha_Des,
-	Sort_Type_Asc,
-	Sort_Type_Des,
-	Ch5
+	Begin = 0,
+	Cook = 1,
+	Sort_Alpha_Asc = 2,
+	Sort_Alpha_Des = 3,
+	Sort_Type_Asc = 4,
+	Sort_Type_Des = 5,
+	Ch5 = 6
 };
 
 // What do we do after producing a recipe?
@@ -73,6 +73,11 @@ struct MoveDescription {
 	int totalFramesTaken;	// Cummulative frame loss
 };
 
+struct Serial {
+	uint8_t length;
+	void *data;
+};
+
 struct BranchPath {
 	int moves;							// Represents how many nodes we've traversed down a particular branch (0 for root, 57 for leaf node)
 	struct Inventory inventory;
@@ -84,6 +89,7 @@ struct BranchPath {
 	struct BranchPath **legalMoves;		// Represents possible next paths to take
 	int numLegalMoves;
 	int totalSorts;
+	struct Serial serial;
 };
 
 // Structure to return the head and tail of an optimized roadmap
@@ -172,6 +178,9 @@ void swapItems(int* ingredientLoc);
 void freeAllNodes(struct BranchPath* node);
 void freeNode(struct BranchPath *node);
 struct BranchPath* initializeRoot();
+
+// Serial functions
+void serializeNode(struct BranchPath *node);
 
 // Other
 void periodicGithubCheck();
