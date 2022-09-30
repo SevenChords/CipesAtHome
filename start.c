@@ -191,7 +191,7 @@ int main() {
 			if (askedToShutdown()) {
 				break;
 			}
-			struct Result result = calculateOrder(ID);
+			Result result = calculateOrder(ID);
 
 			// result might store -1 frames for errors that might be recoverable
 			if (result.frames > -1) {

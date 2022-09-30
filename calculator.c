@@ -32,20 +32,7 @@ static const int UNSET_INDEX_SIGNED = -99999;
 
 static const int INT_OUTPUT_ARRAY_SIZE_BYTES = sizeof(outputCreatedArray_t);
 static const outputCreatedArray_t EMPTY_RECIPES = {0};
-static const struct Cook EMPTY_COOK = {0};
-
-typedef enum Alpha_Sort Alpha_Sort;
-typedef enum Type_Sort Type_Sort;
-typedef enum Action Action;
-typedef struct MoveDescription MoveDescription;
-typedef struct Recipe Recipe;
-typedef struct BranchPath BranchPath;
-typedef struct CH5 CH5;
-typedef struct CH5_Eval CH5_Eval;
-typedef struct ItemCombination ItemCombination;
-typedef struct Inventory Inventory;
-typedef struct Result Result;
-typedef struct Serial Serial;
+static const Cook EMPTY_COOK = {0};
 
 int **invFrames;
 Recipe *recipeList;
@@ -59,7 +46,7 @@ int recipeOffsetLookup[57] = {
 
 // Uniquely identify a particular item combination
 // Utilize the hard-coded offset lookup to reduce time complexity a bit
-uint8_t getRecipeIndex(struct Cook *pCook)
+uint8_t getRecipeIndex(Cook *pCook)
 {
 	int i = getIndexOfRecipe(pCook->output);
 	int offset = recipeOffsetLookup[i];
@@ -85,7 +72,7 @@ uint8_t getRecipeIndex(struct Cook *pCook)
 uint8_t serializeCookNode(BranchPath *node, void **data)
 {
 	uint8_t dataLen = 0;
-	struct Cook *pCook = (struct Cook*)node->description.data;
+	Cook *pCook = (Cook*)node->description.data;
 	Serial parentSerial = node->prev->serial;
 
 	// Don't really need to hash Mistake, and removing all recipe combos for mistakes saves space for our serialization
@@ -251,18 +238,18 @@ void serializeNode(BranchPath *node)
 
 	switch(nodeAction)
 	{
-	case Begin:
+	case EBegin:
 		
-	case Cook:
+	case ECook:
 		dataLen = serializeCookNode(node, &data);
 		break;
-	case Sort_Alpha_Asc:
-	case Sort_Alpha_Des:
-	case Sort_Type_Asc:
-	case Sort_Type_Des:
+	case ESort_Alpha_Asc:
+	case ESort_Alpha_Des:
+	case ESort_Type_Asc:
+	case ESort_Type_Des:
 		dataLen = serializeSortNode(node, &data);
 		break;
-	case Ch5:
+	case ECh5:
 		dataLen = serializeCH5Node(node, &data);
 		break;
 	default:
@@ -311,7 +298,7 @@ void initializeRecipeList() {
  * totalFramesTaken to reflect this change.
  -------------------------------------------------------------------*/
 void applyJumpStorageFramePenalty(BranchPath *node) {
-	if (((struct Cook *) node->description.data)->handleOutput == Autoplace) {
+	if (((Cook *) node->description.data)->handleOutput == Autoplace) {
 		node->description.framesTaken += JUMP_STORAGE_NO_TOSS_FRAMES;
 		node->description.totalFramesTaken += JUMP_STORAGE_NO_TOSS_FRAMES;
 	}
@@ -371,7 +358,7 @@ ABSL_MUST_USE_RESULT CH5 *createChapter5Struct(CH5_Eval eval, int lateSort) {
  -------------------------------------------------------------------*/
 MoveDescription createCookDescription(const BranchPath *node, Recipe recipe, ItemCombination combo, Inventory *tempInventory, int *tempFrames, int viableItems) {
 	MoveDescription useDescription;
-	useDescription.action = Cook;
+	useDescription.action = ECook;
 
 	int ingredientLoc[2];
 
@@ -528,7 +515,7 @@ BranchPath *createLegalMove(BranchPath *node, Inventory inventory, MoveDescripti
 	newLegalMove->numOutputsCreated = numOutputsFulfilled;
 	newLegalMove->legalMoves = NULL;
 	newLegalMove->numLegalMoves = 0;
-	if (description.action >= Sort_Alpha_Asc && description.action <= Sort_Type_Des) {
+	if (description.action >= ESort_Alpha_Asc && description.action <= ESort_Type_Des) {
 		newLegalMove->totalSorts = node->totalSorts + 1;
 	}
 	else {
@@ -550,8 +537,8 @@ BranchPath *createLegalMove(BranchPath *node, Inventory inventory, MoveDescripti
  -------------------------------------------------------------------*/
 void filterOut2Ingredients(BranchPath *node) {
 	for (int i = 0; i < node->numLegalMoves; i++) {
-		if (node->legalMoves[i]->description.action == Cook) {
-			struct Cook *cook = node->legalMoves[i]->description.data;
+		if (node->legalMoves[i]->description.action == ECook) {
+			Cook *cook = node->legalMoves[i]->description.data;
 			if (cook->numItems == 2) {
 				freeLegalMove(node, i);
 				i--; // Update i so we don't skip over the newly moved legalMoves
@@ -577,7 +564,7 @@ void finalizeChapter5Eval(BranchPath *node, Inventory inventory, CH5 *ch5Data, i
 	int insertIndex = getInsertionIndex(node, temp_frame_sum);
 
 	MoveDescription description;
-	description.action = Ch5;
+	description.action = ECh5;
 	description.data = ch5Data;
 	description.framesTaken = temp_frame_sum;
 	description.totalFramesTaken = node->description.totalFramesTaken + temp_frame_sum;
@@ -614,11 +601,11 @@ void finalizeLegalMove(BranchPath *node, int tempFrames, MoveDescription useDesc
 	// Determine where to insert this legal move into the list of legal moves (sorted by frames taken)
 	int insertIndex = getInsertionIndex(node, tempFrames);
 
-	struct Cook *cookNew = malloc(sizeof(struct Cook));
+	Cook *cookNew = malloc(sizeof(Cook));
 
 	checkMallocFailed(cookNew);
 
-	*cookNew = *((struct Cook*)useDescription.data);
+	*cookNew = *((Cook*)useDescription.data);
 	cookNew->handleOutput = tossType;
 	cookNew->toss = toss;
 	cookNew->indexToss = tossIndex;
@@ -823,7 +810,7 @@ void fulfillRecipes(BranchPath *curNode) {
 			MoveDescription useDescription = createCookDescription(curNode, recipe, combo, &newInventory, &tempFrames, viableItems);
 
 			// Store the base useDescription's cook pointer to be freed later
-			struct Cook *cookBase = (struct Cook *)useDescription.data;
+			Cook *cookBase = (Cook *)useDescription.data;
 
 			// Handle allocation of the output
 			handleRecipeOutput(curNode, newInventory, tempFrames, useDescription, tempOutputsFulfilled, numOutputsFulfilled, recipe.output, viableItems);
@@ -845,11 +832,11 @@ void fulfillRecipes(BranchPath *curNode) {
  * Given input parameters, generate Cook structure
  -------------------------------------------------------------------*/
 void generateCook(MoveDescription *description, const ItemCombination combo, const Recipe recipe, const int *ingredientLoc, int swap) {
-	struct Cook *cook = malloc(sizeof(struct Cook));
+	Cook *cook = malloc(sizeof(Cook));
 
 	checkMallocFailed(cook);
 
-	description->action = Cook;
+	description->action = ECook;
 	cook->numItems = combo.numItems;
 	if (swap) {
 		cook->item1 = combo.item2;
@@ -910,13 +897,13 @@ int getInsertionIndex(const BranchPath *curNode, int frames) {
  -------------------------------------------------------------------*/
 int getSortFrames(enum Action action) {
 	switch (action) {
-		case Sort_Alpha_Asc:
+		case ESort_Alpha_Asc:
 			return ALPHA_SORT_FRAMES;
-		case Sort_Alpha_Des:
+		case ESort_Alpha_Des:
 			return REVERSE_ALPHA_SORT_FRAMES;
-		case Sort_Type_Asc:
+		case ESort_Type_Asc:
 			return TYPE_SORT_FRAMES;
-		case Sort_Type_Des:
+		case ESort_Type_Des:
 			return REVERSE_TYPE_SORT_FRAMES;
 		default:
 			// Critical error if we reach this point...
@@ -1115,7 +1102,7 @@ void handleChapter5LateSortEndItems(BranchPath *node, Inventory inventory, const
  * Then, call an EndItems function to finalize the CH5 evaluation.
  -------------------------------------------------------------------*/
 void handleChapter5Sorts(BranchPath *node, Inventory inventory, const outputCreatedArray_t outputsFulfilled, int numOutputsFulfilled, CH5_Eval eval) {
-	for (eval.sort = Sort_Alpha_Asc; eval.sort <= Sort_Type_Des; eval.sort++) {
+	for (eval.sort = ESort_Alpha_Asc; eval.sort <= ESort_Type_Des; eval.sort++) {
 		Inventory sorted_inventory = getSortedInventory(inventory, eval.sort);
 
 		// Only bother with further evaluation if the sort placed the Coconut in the latter half of the inventory
@@ -1262,7 +1249,7 @@ void handleDBCOAllocation2Nulls(BranchPath *curNode, Inventory tempInventory, co
 void handleRecipeOutput(BranchPath *curNode, Inventory tempInventory, int tempFrames, MoveDescription useDescription, const outputCreatedArray_t tempOutputsFulfilled, int numOutputsFulfilled, enum Type_Sort output, int viableItems) {
 	// Options vary by whether there are NULLs within the inventory
 	if (tempInventory.nulls >= 1) {
-		tempInventory = addItem(tempInventory, ((struct Cook*)useDescription.data)->output);
+		tempInventory = addItem(tempInventory, ((Cook*)useDescription.data)->output);
 
 		// Check to see if this state is viable
 		if(stateOK(tempInventory, tempOutputsFulfilled, recipeList)) {
@@ -1345,7 +1332,7 @@ void handleSorts(BranchPath *curNode) {
 	// Limit the number of sorts allowed in a roadmap
 	if (curNode->totalSorts < 10) {
 		// Perform the 4 different sorts
-		for (enum Action sort = Sort_Alpha_Asc; sort <= Sort_Type_Des; sort++) {
+		for (enum Action sort = ESort_Alpha_Asc; sort <= ESort_Type_Des; sort++) {
 			Inventory sorted_inventory = getSortedInventory(curNode->inventory, sort);
 
 			// Only add the legal move if the sort actually changes the inventory
@@ -1380,7 +1367,7 @@ ABSL_MUST_USE_RESULT BranchPath *initializeRoot() {
 
 	root->moves = 0;
 	root->inventory = getStartingInventory();
-	root->description.action = Begin;
+	root->description.action = EBegin;
 	root->description.data = NULL;
 	root->description.framesTaken = 0;
 	root->description.totalFramesTaken = 0;
@@ -1443,21 +1430,21 @@ BranchPath *copyAllNodes(BranchPath *newNode, const BranchPath *oldNode) {
 		newNode->inventory = oldNode->inventory;
 		newNode->description = oldNode->description;
 		switch (newNode->description.action) {
-			case (Begin) :
-			case (Sort_Alpha_Asc) :
-			case (Sort_Alpha_Des) :
-			case (Sort_Type_Asc) :
-			case (Sort_Type_Des) :
+			case EBegin:
+			case ESort_Alpha_Asc:
+			case ESort_Alpha_Des:
+			case ESort_Type_Asc:
+			case ESort_Type_Des:
 				newNode->description.data = NULL;
 				break;
-			case (Cook) :
-				newNode->description.data = malloc(sizeof(struct Cook));
+			case ECook:
+				newNode->description.data = malloc(sizeof(Cook));
 
 				checkMallocFailed(newNode->description.data);
 
-				*((struct Cook*) newNode->description.data) = *((struct Cook*) oldNode->description.data);
+				*((Cook*) newNode->description.data) = *((Cook*) oldNode->description.data);
 				break;
-			case (Ch5) :
+			case ECh5:
 				newNode->description.data = malloc(sizeof(CH5));
 
 				checkMallocFailed(newNode->description.data);
@@ -1472,7 +1459,7 @@ BranchPath *copyAllNodes(BranchPath *newNode, const BranchPath *oldNode) {
 				newData->indexThunderRage = oldData->indexThunderRage;
 				newData->lateSort = oldData->lateSort;
 				break;
-			default :
+			default:
 				break;
 		}
 
@@ -1509,7 +1496,7 @@ BranchPath *copyAllNodes(BranchPath *newNode, const BranchPath *oldNode) {
  * are placed in more efficient locations in the roadmap. This is effective
  * in shaving off upwards of 100 frames off of a roadmap.
  -------------------------------------------------------------------*/
-struct OptimizeResult optimizeRoadmap(const BranchPath *root) {
+OptimizeResult optimizeRoadmap(const BranchPath *root) {
 	// First copy all nodes to new memory locations so we can begin rearranging nodes
 	const BranchPath *curNode = root;
 	BranchPath *newRoot = malloc(sizeof(BranchPath));
@@ -1647,19 +1634,19 @@ void printCh5Data(const BranchPath *curNode, const MoveDescription desc, FILE *f
 void printCh5Sort(const CH5 *ch5Data, FILE *fp) {
 	fprintf(fp, "sort ");
 	switch (ch5Data->ch5Sort) {
-		case Sort_Alpha_Asc :
+		case ESort_Alpha_Asc:
 			fprintf(fp, "(Alpha), ");
 			break;
-		case Sort_Alpha_Des :
+		case ESort_Alpha_Des:
 			fprintf(fp, "(Reverse-Alpha), ");
 			break;
-		case Sort_Type_Asc :
+		case ESort_Type_Asc:
 			fprintf(fp, "(Type), ");
 			break;
-		case Sort_Type_Des :
+		case ESort_Type_Des:
 			fprintf(fp, "(Reverse-Type), ");
 			break;
-		default :
+		default:
 			fprintf(fp, "ERROR IN CH5SORT SWITCH CASE");
 	};
 }
@@ -1674,7 +1661,7 @@ void printCh5Sort(const CH5 *ch5Data, FILE *fp) {
  * which includes what items were used and what happens to the output.
  -------------------------------------------------------------------*/
 void printCookData(const BranchPath *curNode, const MoveDescription desc, FILE *fp) {
-	struct Cook *cookData = desc.data;
+	Cook *cookData = desc.data;
 	int nulls = curNode->prev->inventory.nulls;
 	fprintf(fp, "Use [%s] in slot %d ", getItemName(cookData->item1),
 		cookData->itemIndex1 - (cookData->itemIndex1 < 10 ? nulls : 0) + 1);
@@ -1700,7 +1687,7 @@ void printCookData(const BranchPath *curNode, const MoveDescription desc, FILE *
 	}
 
 	if (curNode->numOutputsCreated == NUM_RECIPES) {
-		if (((struct Cook *) curNode->description.data)->handleOutput == Autoplace) {
+		if (((Cook *) curNode->description.data)->handleOutput == Autoplace) {
 			fputs(" (No-Toss 5 Frame Penalty for Jump Storage)", fp);
 		}
 		else {
@@ -1778,13 +1765,13 @@ void printNodeDescription(const BranchPath * curNode, FILE * fp)
 	MoveDescription desc = curNode->description;
 	enum Action curNodeAction = desc.action;
 	switch (curNodeAction) {
-	case Cook:
+	case ECook:
 		printCookData(curNode, desc, fp);
 		break;
-	case Ch5:
+	case ECh5:
 		printCh5Data(curNode, desc, fp);
 		break;
-	case Begin:
+	case EBegin:
 		fputs("Begin", fp);
 		break;
 	default:
@@ -1848,19 +1835,19 @@ void printResults(const char *filename, const BranchPath *path) {
 void printSortData(FILE *fp, enum Action curNodeAction) {
 	fprintf(fp, "Sort - ");
 	switch (curNodeAction) {
-		case Sort_Alpha_Asc :
+		case ESort_Alpha_Asc:
 			fputs("Alphabetical", fp);
 			break;
-		case Sort_Alpha_Des :
+		case ESort_Alpha_Des:
 			fputs("Reverse Alphabetical", fp);
 			break;
-		case Sort_Type_Asc :
+		case ESort_Type_Asc:
 			fputs("Type", fp);
 			break;
-		case Sort_Type_Des :
+		case ESort_Type_Des:
 			fputs("Reverse Type", fp);
 			break;
-		default :
+		default:
 			fputs("ERROR IN HANDLING OF SORT", fp);
 	};
 }
@@ -1881,8 +1868,8 @@ void reallocateRecipes(BranchPath* newRoot, const enum Type_Sort* rearranged_rec
 		// Establish a default bound for the optimal place for this item
 		int record_frames = 9999;
 		BranchPath *record_placement_node = NULL;
-		struct Cook *record_description = NULL;
-		struct Cook temp_description = {0};
+		Cook *record_description = NULL;
+		Cook temp_description = {0};
 
 		// Evaluate all recipes and determine the optimal recipe and location
 		int recipe_index = getIndexOfRecipe(rearranged_recipes[recipe_offset]);
@@ -1968,7 +1955,7 @@ void reallocateRecipes(BranchPath* newRoot, const enum Type_Sort* rearranged_rec
 					record_placement_node = mutablePlacement;
 
 					if (record_description == NULL) {
-						record_description = malloc(sizeof(struct Cook));
+						record_description = malloc(sizeof(Cook));
 						checkMallocFailed(record_description);
 					}
 					*record_description = temp_description;
@@ -1997,7 +1984,7 @@ void reallocateRecipes(BranchPath* newRoot, const enum Type_Sort* rearranged_rec
 		// Initialize the new node
 		insertNode->moves = record_placement_node->moves + 1;
 		insertNode->inventory = record_placement_node->inventory;
-		insertNode->description.action = Cook;
+		insertNode->description.action = ECook;
 		insertNode->description.data = (void *)record_description;
 		insertNode->description.framesTaken = record_frames;
 		copyOutputsFulfilled(insertNode->outputCreated, record_placement_node->outputCreated);
@@ -2029,13 +2016,13 @@ int removeRecipesForReallocation(BranchPath* node, enum Type_Sort *rearranged_re
 	int num_rearranged_recipes = 0;
 	while (node->moves > 1) {
 		// Ignore sorts/CH5
-		if (node->description.action != Cook) {
+		if (node->description.action != ECook) {
 			node = node->prev;
 			continue;
 		}
 
 		// Ignore recipes which do not toss the output
-		struct Cook* cookData = (struct Cook*)node->description.data;
+		Cook* cookData = (Cook*)node->description.data;
 		if (cookData->handleOutput != Toss) {
 			node = node->prev;
 			continue;
@@ -2382,19 +2369,19 @@ Inventory getSortedInventory(Inventory inventory, enum Action sort) {
 
 	// Use qsort and execute sort function depending on sort type
 	switch(sort) {
-		case Sort_Alpha_Asc :
+		case ESort_Alpha_Asc:
 			qsort((void*)inventory.inventory, inventory.length, sizeof(enum Type_Sort), alpha_sort);
 			return inventory;
-		case Sort_Alpha_Des :
+		case ESort_Alpha_Des:
 			qsort((void*)inventory.inventory, inventory.length, sizeof(enum Type_Sort), alpha_sort_reverse);
 			return inventory;
-		case Sort_Type_Asc :
+		case ESort_Type_Asc:
 			qsort((void*)inventory.inventory, inventory.length, sizeof(enum Type_Sort), type_sort);
 			return inventory;
-		case Sort_Type_Des :
+		case ESort_Type_Des:
 			qsort((void*)inventory.inventory, inventory.length, sizeof(enum Type_Sort), type_sort_reverse);
 			return inventory;
-		default :
+		default:
 			printf("Error in sorting inventory.\n");
 			exit(2);
 	}
@@ -2530,7 +2517,7 @@ Result calculateOrder(const int ID) {
 
 				// Special handling of inventory sorting
 				// Avoid redundant searches
-				if (curNode->description.action == Begin || curNode->description.action == Cook || curNode->description.action == Ch5) {
+				if (curNode->description.action == EBegin || curNode->description.action == ECook || curNode->description.action == ECh5) {
 					handleSorts(curNode);
 				}
 
@@ -2542,7 +2529,7 @@ Result calculateOrder(const int ID) {
 				}
 
 				// Special filtering if we only had one recipe left to fulfill
-				if (curNode->numOutputsCreated == NUM_RECIPES-1 && curNode->numLegalMoves > 0 && curNode->legalMoves != NULL && curNode->legalMoves[0]->description.action == Cook) {
+				if (curNode->numOutputsCreated == NUM_RECIPES-1 && curNode->numLegalMoves > 0 && curNode->legalMoves != NULL && curNode->legalMoves[0]->description.action == ECook) {
 					// If there are any legal moves that satisfy this final recipe,
 					// strip out everything besides the fastest legal move
 					// This saves on recursing down pointless states

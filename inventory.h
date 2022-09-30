@@ -115,6 +115,7 @@ enum Alpha_Sort {
 	Jammin_Jelly_a,
 	Fresh_Pasta_a
 };
+typedef enum Alpha_Sort Alpha_Sort;
 
 enum Type_Sort {
 	Mushroom,
@@ -225,6 +226,7 @@ enum Type_Sort {
 	Zess_Dynamite,
 	Mistake
 };
+typedef enum Type_Sort Type_Sort;
 
 struct Inventory {
 	// The maximum value these should have is 20.
@@ -233,18 +235,21 @@ struct Inventory {
 	uint8_t length;
 	enum Type_Sort inventory[20];
 };
+typedef struct Inventory Inventory;
 
 struct ItemCombination {
 	int numItems; // If set to 1, ignore item2
 	enum Type_Sort item1;
 	enum Type_Sort item2;
 };
+typedef struct ItemCombination ItemCombination;
 
 struct Recipe {
 	enum Type_Sort output;
 	int countCombos;
 	struct ItemCombination *combos; // Where there are countCombos different ways to cook output
 };
+typedef struct Recipe Recipe;
 
 // Recipe functions
 int getIndexOfRecipe(enum Type_Sort item);
