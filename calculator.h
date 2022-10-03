@@ -181,6 +181,8 @@ BranchPath* initializeRoot();
 
 // Serial functions
 uint32_t 	insertSorted(Serial serial);
+uint32_t	indexToInsert(Serial serial, int low, int high);
+void		insertIntoCache(Serial serial, uint32_t index, uint32_t deletedChildren);
 uint32_t	deleteAndFreeChildSerials(Serial serial, uint32_t index);
 void 		shiftSerialArrayToFillFreedChildren(uint32_t index, uint32_t deletedChildren);
 void 		deleteChildSerials(Serial serial, uint32_t index);

@@ -39,7 +39,7 @@ int **invFrames;
 Recipe *recipeList;
 
 Serial *visitedBranches = NULL;
-int numVisitedBranches = 0;
+uint32_t numVisitedBranches = 0;
 
 // Used to uniquely identify a particular item combination for serialization purposes
 int recipeOffsetLookup[57] = {
@@ -116,10 +116,10 @@ uint8_t serializeCookNode(BranchPath *node, void **data)
 		memcpy(*data, parentSerial.data, parentSerial.length);
 	}
 
-	memset(*data + parentSerial.length, recipeIdx, 1);
+	memset((char*)*data + parentSerial.length, recipeIdx, 1);
 
 	if (!bAutoplace)
-		memset(*data + parentSerial.length + 1, (uint8_t) outputPlace, 1);
+		memset((char*)*data + parentSerial.length + 1, (uint8_t) outputPlace, 1);
 
 	return dataLen;
 }
@@ -141,7 +141,7 @@ uint8_t serializeSortNode(BranchPath *node, void **data)
 		memcpy(*data, parentSerial.data, parentSerial.length);
 	}
 
-	memset(*data + parentSerial.length, (node->description.action - 2) + recipeOffsetLookup[56], 1);
+	memset((char*)*data + parentSerial.length, (node->description.action - 2) + recipeOffsetLookup[56], 1);
 
 	return dataLen;
 }
@@ -203,12 +203,12 @@ uint8_t serializeCH5Node(BranchPath *node, void **data)
 	if (parentSerial.length > 0)	
 		memcpy(*data, parentSerial.data, parentSerial.length);
 
-	memset(*data + parentSerial.length, actionValue, 1);
+	memset((char*)*data + parentSerial.length, actionValue, 1);
 
 	if (dataLen >= 2)
-		memset(*data + parentSerial.length+1, optionalByte1, 1);
+		memset((char*)*data + parentSerial.length + 1, optionalByte1, 1);
 	if (dataLen == 3)
-		memset(*data + parentSerial.length+2, optionalByte2, 1);
+		memset((char*)*data + parentSerial.length+2, optionalByte2, 1);
 
 	return dataLen;
 }
@@ -302,7 +302,7 @@ uint32_t indexToInsert(Serial serial, int low, int high)
 	return indexToInsert(serial, low, mid-1);
 }
 
-void insertIntoCache(Serial serial, int index, int deletedChildren)
+void insertIntoCache(Serial serial, uint32_t index, uint32_t deletedChildren)
 {
 	// Handle the case where our array is empty
 	if (numVisitedBranches == 0)

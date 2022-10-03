@@ -45,6 +45,9 @@
     <ClCompile Include="..\shutdown.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\node_print.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\inventory.h">
@@ -78,6 +81,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\shutdown.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\node_print.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\absl\base\attributes.h">
