@@ -423,10 +423,6 @@ ABSL_ATTRIBUTE_ALWAYS_INLINE static inline bool checkShutdownOnIndex(int i) {
 	return i % CHECK_SHUTDOWN_INTERVAL == 0 && askedToShutdown();
 }
 
-ABSL_ATTRIBUTE_ALWAYS_INLINE static inline bool checkShutdownOnIndexLong(long i) {
-	return i % CHECK_SHUTDOWN_INTERVAL == 0 && askedToShutdown();
-}
-
 /*-------------------------------------------------------------------
  * Function 	: initializeInvFrames
  *
@@ -1459,14 +1455,7 @@ void handleSelectAndRandom(BranchPath *curNode, int select, int randomise) {
 	if (select && curNode->moves < 55 && curNode->numLegalMoves > 0) {
 		int nextMoveIndex = 0;
 		while (nextMoveIndex < curNode->numLegalMoves - 1 && rand() % 100 < 50) {
-			if (checkShutdownOnIndex(nextMoveIndex)) {
-				break;
-			}
 			nextMoveIndex++;
-		}
-
-		if (askedToShutdown()) {
-			return;
 		}
 
 		// Take the legal move at nextMoveIndex and move it to the front of the array
@@ -1479,9 +1468,6 @@ void handleSelectAndRandom(BranchPath *curNode, int select, int randomise) {
 	// When not doing the select methodology, and opting for randomize
 	// just shuffle the entire list of legal moves and pick the new first item
 	else if (randomise) {
-		if (askedToShutdown()) {
-			return;
-		}
 		shuffleLegalMoves(curNode);
 	}
 }
@@ -2109,9 +2095,6 @@ void softMin(BranchPath *node) {
 void shuffleLegalMoves(BranchPath *node) {
 	// Swap 2 legal moves a variable number of times
 	for (int i = 0; i < node->numLegalMoves; i++) {
-		if (checkShutdownOnIndex(i)) {
-			break;
-		}
 		int index1 = rand() % node->numLegalMoves;
 		int index2 = rand() % node->numLegalMoves;
 		BranchPath *temp = node->legalMoves[index1];
@@ -2339,6 +2322,7 @@ Result calculateOrder(const int ID) {
 			if (checkShutdownOnIndex(iterationCount)) {
 				break;
 			}
+			
 			// In the rare occassion that the root node runs out of legal moves due to "select",
 			// exit out of the while loop to restart
 			if (curNode == NULL) {
@@ -2373,7 +2357,7 @@ Result calculateOrder(const int ID) {
 							result_cache = (Result){ optimizeResult.last->description.totalFramesTaken, ID };
 
 							writePersonalBest(&result_cache);
-							
+
 							// Reset the iteration count so we continue to explore near this record
 							iterationLimit = iterationCount + ITERATION_LIMIT_INCREASE;
 						}
@@ -2542,7 +2526,7 @@ Result calculateOrder(const int ID) {
 		if (total_dives % 10000 == 0 && omp_get_thread_num() == 0) {
 			periodicGithubCheck();
 		}
-
+		
 		// For profiling
 		/*if (total_dives == 100) {
 			exit(1);
