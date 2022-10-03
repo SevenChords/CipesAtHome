@@ -194,5 +194,6 @@ uint8_t 	serializeCH5Node(BranchPath *node, void **data);
 // Other
 void periodicGithubCheck();
 Result calculateOrder(int ID);
+void writePersonalBest(Result *result);
 
 #endif

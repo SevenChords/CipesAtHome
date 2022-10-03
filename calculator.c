@@ -2372,6 +2372,8 @@ Result calculateOrder(const int ID) {
 							}
 							result_cache = (Result){ optimizeResult.last->description.totalFramesTaken, ID };
 
+							writePersonalBest(&result_cache);
+							
 							// Reset the iteration count so we continue to explore near this record
 							iterationLimit = iterationCount + ITERATION_LIMIT_INCREASE;
 						}
@@ -2528,58 +2530,9 @@ Result calculateOrder(const int ID) {
 		freeAllNodes(curNode);
 
 		// Check the cache to see if a result was generated
-		if (result_cache.frames > -1) {
-
-			// Enter critical section to prevent corrupted file
-			#pragma omp critical(pb)
-			{
-				// Prevent slower threads from overwriting a faster record in PB.txt
-				// by first checking the current record
-				FILE* fp = NULL;
-				if ((fp = fopen("results/PB.txt", "r+")) == NULL) {
-					// The file has not been created
-					fp = fopen("results/PB.txt", "w");
-				}
-				else {
-					// Verify that this new roadmap is faster than PB
-					int pb_record = 9999;
-					int num_assigned = fscanf(fp, "%d", &pb_record);
-					fclose(fp);
-					fp = NULL;
-					if (ABSL_PREDICT_FALSE(num_assigned < 1)) {
-						recipeLog(1, "Calculator", "Roadmap", "Error", "Unable to read current PB, overwriting.");
-					}
-					else if (ABSL_PREDICT_FALSE(pb_record < 0 || pb_record >= 9999)) {
-						recipeLog(1, "Calculator", "Roadmap", "Error", "Current PB file is corrupt, overwriting with new PB.");
-					}
-					if (result_cache.frames > pb_record) {
-						// This is a slower thread and a faster record was already found
-						result_cache = (Result) { -1, -1 };
-					}
-					else {
-						if (ABSL_PREDICT_TRUE(result_cache.frames > -1)) {
-							fp = fopen("results/PB.txt", "w");
-						}
-					}
-				}
-
-				// Modify PB.txt
-				if (fp != NULL) {
-					if (ABSL_PREDICT_FALSE(result_cache.frames < 0)) {
-						// Somehow got invalid number of frames.
-						// Fetch the current known max from the global.
-						int localRecord = getLocalRecord();
-						if (ABSL_PREDICT_FALSE(localRecord < 0)) {
-							recipeLog(1, "Calculator", "Roadmap", "Error", "Current cached local record is corrupt (less then 0 frames). Not writing invalid PB file but your PB may be lost.");
-						} else {
-							fprintf(fp, "%d", localRecord);
-						}
-					} else {
-						fprintf(fp, "%d", result_cache.frames);
-					}
-					fclose(fp);
-				}
-			}
+		if (result_cache.frames > -1)
+		{
+			writePersonalBest(&result_cache);
 
 			// Return the cached result
 			return result_cache;
@@ -2599,4 +2552,59 @@ Result calculateOrder(const int ID) {
 
 	// Unexpected break out of loop. Return the nothing results.
 	return (Result) { -1, -1 };
+}
+
+void writePersonalBest(Result *result)
+{
+	// Enter critical section to prevent corrupted file
+	#pragma omp critical(pb)
+	{
+		// Prevent slower threads from overwriting a faster record in PB.txt
+		// by first checking the current record
+		FILE* fp = NULL;
+		if ((fp = fopen("results/PB.txt", "r+")) == NULL) {
+			// The file has not been created
+			fp = fopen("results/PB.txt", "w");
+		}
+		else {
+			// Verify that this new roadmap is faster than PB
+			int pb_record = 9999;
+			int num_assigned = fscanf(fp, "%d", &pb_record);
+			fclose(fp);
+			fp = NULL;
+			if (ABSL_PREDICT_FALSE(num_assigned < 1)) {
+				recipeLog(1, "Calculator", "Roadmap", "Error", "Unable to read current PB, overwriting.");
+			}
+			else if (ABSL_PREDICT_FALSE(pb_record < 0 || pb_record >= 9999)) {
+				recipeLog(1, "Calculator", "Roadmap", "Error", "Current PB file is corrupt, overwriting with new PB.");
+			}
+			if (result->frames > pb_record) {
+				// This is a slower thread and a faster record was already found
+				*result = (Result) { -1, -1 };
+			}
+			else {
+				if (ABSL_PREDICT_TRUE(result->frames > -1)) {
+					fp = fopen("results/PB.txt", "w");
+				}
+			}
+		}
+
+		// Modify PB.txt
+		if (fp != NULL) {
+			if (ABSL_PREDICT_FALSE(result->frames < 0)) {
+				// Somehow got invalid number of frames.
+				// Fetch the current known max from the global.
+				int localRecord = getLocalRecord();
+				if (ABSL_PREDICT_FALSE(localRecord < 0)) {
+					recipeLog(1, "Calculator", "Roadmap", "Error", "Current cached local record is corrupt (less then 0 frames). Not writing invalid PB file but your PB may be lost.");
+				} else {
+					fprintf(fp, "%d", localRecord);
+				}
+			} else {
+				recipeLog(3, "Calculator", "Roadmap", "PB", "Wrote to PB.txt");
+				fprintf(fp, "%d", result->frames);
+			}
+			fclose(fp);
+		}
+	}
 }
