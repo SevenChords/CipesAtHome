@@ -176,11 +176,20 @@ void swapItems(int* ingredientLoc);
 
 // General node functions
 void freeAllNodes(BranchPath* node);
-void freeNode(BranchPath *node);
+void freeNode(BranchPath *node, bool cache);
 BranchPath* initializeRoot();
 
 // Serial functions
-void serializeNode(BranchPath *node);
+uint32_t 	insertSorted(Serial serial);
+uint32_t	deleteAndFreeChildSerials(Serial serial, uint32_t index);
+void 		shiftSerialArrayToFillFreedChildren(uint32_t index, uint32_t deletedChildren);
+void 		deleteChildSerials(Serial serial, uint32_t index);
+void 		cacheSerial(BranchPath *node);
+void 		serializeNode(BranchPath *node);
+uint8_t 	serializeCookNode(BranchPath *node, void **data);
+uint8_t 	serializeSortNode(BranchPath *node, void **data);
+uint8_t 	serializeCH5Node(BranchPath *node, void **data);
+
 
 // Other
 void periodicGithubCheck();
