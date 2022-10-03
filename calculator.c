@@ -106,12 +106,12 @@ uint8_t serializeCookNode(BranchPath *node, void **data)
 	{
 		// We have nothing to copy. Just malloc 3 bytes
 		*data = malloc(dataLen);
-		//checkMallocFailed(*data);
+		checkMallocFailed(*data);
 	}
 	else
 	{
 		*data = malloc(parentSerial.length + dataLen);
-		//checkMallocFailed(*data);
+		checkMallocFailed(*data);
 
 		memcpy(*data, parentSerial.data, parentSerial.length);
 	}
@@ -132,12 +132,12 @@ uint8_t serializeSortNode(BranchPath *node, void **data)
 	if (parentSerial.length == 0)
 	{
 		*data = malloc(dataLen);
-		//checkMallocFailed(*data);
+		checkMallocFailed(*data);
 	}
 	else
 	{
 		*data = malloc(parentSerial.length + dataLen);
-		//checkMallocFailed(*data);
+		checkMallocFailed(*data);
 		memcpy(*data, parentSerial.data, parentSerial.length);
 	}
 
@@ -199,7 +199,7 @@ uint8_t serializeCH5Node(BranchPath *node, void **data)
 	}
 	
 	*data = malloc(parentSerial.length + dataLen);
-	//checkMallocFailed(*data);
+	checkMallocFailed(*data);
 	if (parentSerial.length > 0)	
 		memcpy(*data, parentSerial.data, parentSerial.length);
 
@@ -284,6 +284,36 @@ uint32_t insertSorted(Serial serial)
 	
 	visitedBranches[i + 1] = serial;
 	return i + 1;
+}
+
+uint32_t indexToInsert(Serial serial, int low, int high)
+{
+	if (high <= low)
+		return (serialcmp(serial, visitedBranches[low]) > 0) ? low + 1 : low;
+	
+	int mid = (low + high) / 2;
+
+	int cmpMid = serialcmp(serial, visitedBranches[mid]);
+	if (cmpMid == 0)
+		return mid+1;
+	
+	if (cmpMid > 0)
+		return indexToInsert(serial, mid+1, high);
+	return indexToInsert(serial, low, mid-1);
+}
+
+void insertIntoCache(Serial serial, int index)
+{
+	// First add space
+	if (numVisitedBranches == 0)
+		visitedBranches = malloc(++numVisitedBranches * sizeof(Serial)); // numVisitedBranches should be 0 here
+	else
+		visitedBranches = realloc(visitedBranches, ++numVisitedBranches * sizeof(Serial));
+	
+	if (index < numVisitedBranches - 1)
+		memmove(&visitedBranches[index + 1], &visitedBranches[index], (numVisitedBranches - index - 1) * sizeof(Serial));
+
+	visitedBranches[index] = serial;
 }
 
 uint32_t deleteAndFreeChildSerials(Serial serial, uint32_t index)
@@ -372,12 +402,12 @@ void cacheSerial(BranchPath *node)
 
 		Serial cachedSerial = (Serial) {node->serial.length, cachedData};
 
-		// Now perform a binary search to find where we should insert this serial,
-		// keeping in mind if there are any nodes whose serial begins with this serial.
-		// In that scenario, that means we can trim the nodes in question
-		uint32_t index = insertSorted(cachedSerial);
+		uint32_t index = 0;
 
-		// Now check to see if we can remove any child serials after this point
+		if (numVisitedBranches > 0)
+			index = indexToInsert(cachedSerial, 0, numVisitedBranches-1);
+
+		insertIntoCache(cachedSerial, index);
 		deleteChildSerials(cachedSerial, index + 1);
 	}
 }
@@ -454,7 +484,7 @@ ABSL_ATTRIBUTE_ALWAYS_INLINE static inline void copyOutputsFulfilled(outputCreat
 ABSL_MUST_USE_RESULT CH5 *createChapter5Struct(CH5_Eval eval, int lateSort) {
 	CH5 *ch5 = malloc(sizeof(CH5));
 
-	//checkMallocFailed(ch5);
+	checkMallocFailed(ch5);
 
 	ch5->indexDriedBouquet = eval.DB_place_index;
 	ch5->indexCoconut = eval.CO_place_index;
@@ -627,7 +657,7 @@ void createCookDescription2Items(const BranchPath *node, Recipe recipe, ItemComb
 BranchPath *createLegalMove(BranchPath *node, Inventory inventory, MoveDescription description, const outputCreatedArray_t outputsFulfilled, int numOutputsFulfilled) {
 	BranchPath *newLegalMove = malloc(sizeof(BranchPath));
 
-	//checkMallocFailed(newLegalMove);
+	checkMallocFailed(newLegalMove);
 
 	newLegalMove->moves = node->moves + 1;
 	newLegalMove->inventory = inventory;
@@ -726,7 +756,7 @@ void finalizeLegalMove(BranchPath *node, int tempFrames, MoveDescription useDesc
 
 	Cook *cookNew = malloc(sizeof(Cook));
 
-	//checkMallocFailed(cookNew);
+	checkMallocFailed(cookNew);
 
 	*cookNew = *((Cook*)useDescription.data);
 	cookNew->handleOutput = tossType;
@@ -962,7 +992,7 @@ void fulfillRecipes(BranchPath *curNode) {
 void generateCook(MoveDescription *description, const ItemCombination combo, const Recipe recipe, const int *ingredientLoc, int swap) {
 	Cook *cook = malloc(sizeof(Cook));
 
-	//checkMallocFailed(cook);
+	checkMallocFailed(cook);
 
 	description->action = ECook;
 	cook->numItems = combo.numItems;
@@ -1491,7 +1521,7 @@ void handleSorts(BranchPath *curNode) {
 ABSL_MUST_USE_RESULT BranchPath *initializeRoot() {
 	BranchPath *root = malloc(sizeof(BranchPath));
 
-	//checkMallocFailed(root);
+	checkMallocFailed(root);
 
 	root->moves = 0;
 	root->inventory = getStartingInventory();
@@ -1526,7 +1556,7 @@ void insertIntoLegalMoves(int insertIndex, BranchPath *newLegalMove, BranchPath 
 	// Reallocate the legalMove array to make room for a new legal move
 	BranchPath **temp = realloc(curNode->legalMoves, sizeof(BranchPath*) * ((size_t)curNode->numLegalMoves + 1));
 
-	//checkMallocFailed(temp);
+	checkMallocFailed(temp);
 
 	curNode->legalMoves = temp;
 
@@ -1568,14 +1598,14 @@ BranchPath *copyAllNodes(BranchPath *newNode, const BranchPath *oldNode) {
 			case ECook:
 				newNode->description.data = malloc(sizeof(Cook));
 
-				//checkMallocFailed(newNode->description.data);
+				checkMallocFailed(newNode->description.data);
 
 				*((Cook*) newNode->description.data) = *((Cook*) oldNode->description.data);
 				break;
 			case ECh5:
 				newNode->description.data = malloc(sizeof(CH5));
 
-				//checkMallocFailed(newNode->description.data);
+				checkMallocFailed(newNode->description.data);
 
 				CH5 *newData = (CH5 *)newNode->description.data;
 				CH5 *oldData = (CH5 *)oldNode->description.data;
@@ -1599,7 +1629,7 @@ BranchPath *copyAllNodes(BranchPath *newNode, const BranchPath *oldNode) {
 		if (newNode->numOutputsCreated < NUM_RECIPES) {
 			newNode->next = malloc(sizeof(BranchPath));
 
-			//checkMallocFailed(newNode->next);
+			checkMallocFailed(newNode->next);
 
 			newNode->next->prev = newNode;
 			newNode = newNode->next;
@@ -1629,7 +1659,7 @@ OptimizeResult optimizeRoadmap(const BranchPath *root) {
 	const BranchPath *curNode = root;
 	BranchPath *newRoot = malloc(sizeof(BranchPath));
 
-	//checkMallocFailed(newRoot);
+	checkMallocFailed(newRoot);
 
 	newRoot->prev = NULL;
 
@@ -1805,7 +1835,7 @@ void reallocateRecipes(BranchPath* newRoot, const enum Type_Sort* rearranged_rec
 
 					if (record_description == NULL) {
 						record_description = malloc(sizeof(Cook));
-						//checkMallocFailed(record_description);
+						checkMallocFailed(record_description);
 					}
 					*record_description = temp_description;
 				}
@@ -1822,7 +1852,7 @@ void reallocateRecipes(BranchPath* newRoot, const enum Type_Sort* rearranged_rec
 		}
 
 		BranchPath *insertNode = malloc(sizeof(BranchPath));
-		//checkMallocFailed(insertNode);
+		checkMallocFailed(insertNode);
 
 		// Set pointers to and from surrounding structs
 		insertNode->prev = record_placement_node;
@@ -1892,7 +1922,7 @@ int removeRecipesForReallocation(BranchPath* node, enum Type_Sort *rearranged_re
 		}
 
 		// Now, get rid of this current node
-		//checkMallocFailed(node->next);
+		checkMallocFailed(node->next);
 		node->prev->next = node->next;
 		node->next->prev = node->prev;
 		newNode = node->prev;
@@ -2440,7 +2470,7 @@ Result calculateOrder(const int ID) {
 
 				// Once the list is generated choose the top-most path and iterate downward
 
-				//checkMallocFailed(curNode->legalMoves);
+				checkMallocFailed(curNode->legalMoves);
 
 				curNode->next = curNode->legalMoves[0];
 				curNode = curNode->next;
