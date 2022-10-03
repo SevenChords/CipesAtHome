@@ -96,6 +96,27 @@ void setSignalHandlers() {
 #endif
 }
 
+void printAsciiGreeting()
+{
+	FILE *fp = fopen("img.txt", "r");
+	char data[255];
+	char *status;
+
+	if (fp == NULL)
+		return;
+
+	status = fgets(data, sizeof(data), fp);
+	while (status)
+	{
+		printf("%s", data);
+		status = fgets(data, sizeof(data), fp);
+	}
+
+	printf("\n");
+
+	fclose(fp);
+}
+
 int main() {
 
 	int cycle_count = 1;
@@ -112,6 +133,7 @@ int main() {
 	curl_global_init(CURL_GLOBAL_DEFAULT);	// Initialize libcurl
 
 	// Greeting message to user
+	printAsciiGreeting();
 	printf("Welcome to Recipes@Home!\n");
 	printf("Leave this program running as long as you want to search for new recipe orders.\n");
 
