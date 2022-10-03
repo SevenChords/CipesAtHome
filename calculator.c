@@ -302,13 +302,34 @@ uint32_t indexToInsert(Serial serial, int low, int high)
 	return indexToInsert(serial, low, mid-1);
 }
 
-void insertIntoCache(Serial serial, int index)
+void insertIntoCache(Serial serial, int index, int deletedChildren)
 {
-	// First add space
+	// Handle the case where our array is empty
 	if (numVisitedBranches == 0)
-		visitedBranches = malloc(++numVisitedBranches * sizeof(Serial)); // numVisitedBranches should be 0 here
-	else
-		visitedBranches = realloc(visitedBranches, ++numVisitedBranches * sizeof(Serial));
+	{
+		visitedBranches = malloc((++numVisitedBranches) * sizeof(Serial)); // numVisitedBranches should be 0 here
+		visitedBranches[index] = serial;
+		return;
+	}
+
+	// Handle the case where we are deleting children
+	if (deletedChildren > 0)
+	{
+		visitedBranches[index] = serial;
+
+		// We're just replacing the child with the parent
+		if (deletedChildren == 1)
+			return;
+
+		// We will realloc with a smaller space, but we need to perform the memmove first
+		memmove(visitedBranches + index + 1, visitedBranches + index + deletedChildren, (numVisitedBranches - index - deletedChildren) * sizeof(Serial));
+		numVisitedBranches = numVisitedBranches - deletedChildren + 1;
+		visitedBranches = realloc(visitedBranches, numVisitedBranches * sizeof(Serial));
+		return;
+	}
+
+	// We are increasing the arr size
+	visitedBranches = realloc(visitedBranches, (++numVisitedBranches) * sizeof(Serial));
 	
 	if (index < numVisitedBranches - 1)
 		memmove(&visitedBranches[index + 1], &visitedBranches[index], (numVisitedBranches - index - 1) * sizeof(Serial));
@@ -371,21 +392,6 @@ void shiftSerialArrayToFillFreedChildren(uint32_t index, uint32_t deletedChildre
 	visitedBranches = realloc(visitedBranches, numVisitedBranches * sizeof(Serial));
 }
 
-void deleteChildSerials(Serial serial, uint32_t index)
-{
-	// Starting at visitedNodes[index]
-	// check for nodes which contain the entirety of serial.data
-	// If so, then we know that they are a child serial
-
-	// Free child memory and track how many children we free'd
-	uint32_t deletedChildren = deleteAndFreeChildSerials(serial, index);
-	if (deletedChildren == 0)
-		return;
-
-	// Shift array down to fill deleted children
-	shiftSerialArrayToFillFreedChildren(index, deletedChildren);
-}
-
 void cacheSerial(BranchPath *node)
 {
 	// ignore root node and Mistake
@@ -407,8 +413,9 @@ void cacheSerial(BranchPath *node)
 		if (numVisitedBranches > 0)
 			index = indexToInsert(cachedSerial, 0, numVisitedBranches-1);
 
-		insertIntoCache(cachedSerial, index);
-		deleteChildSerials(cachedSerial, index + 1);
+		// Free and note how many children we are freeing
+		int childrenFreed = deleteAndFreeChildSerials(cachedSerial, index);
+		insertIntoCache(cachedSerial, index, childrenFreed);
 	}
 }
 
