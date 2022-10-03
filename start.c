@@ -17,6 +17,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <signal.h>
+#include <string.h>
 #include "absl/base/port.h"
 
 #if _IS_WINDOWS
@@ -117,6 +118,14 @@ void printAsciiGreeting()
 	fclose(fp);
 }
 
+// Warn the user if their Username is set as "DefaultUser"
+void checkDefaultUsername()
+{
+	const char* username = getConfigStr("Username");
+	if (strncmp(username, "DefaultUser", 19) == 0)
+		printf("WARNING: You haven't set your username in config.txt. You will not be identifiable on the leaderboards.\n");
+}
+
 int main() {
 
 	int cycle_count = 1;
@@ -163,6 +172,8 @@ int main() {
 		awaitKeyFromUser();
 		return -1;
 	}
+
+	checkDefaultUsername();
 
 	// Verify that the results folder exists
 	// If not, create the directory
