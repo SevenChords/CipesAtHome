@@ -57,19 +57,19 @@ struct CH5 {
 // Information pertaining to the evaluation of Chapter 5 intermission moves
 typedef struct CH5_Eval CH5_Eval;
 struct CH5_Eval {
-	int frames_DB;
-	int frames_CO;
-	int frames_KM;
-	int frames_CS;
+	int frames_at_DB;
+	int frames_at_CO;
+	int frames_at_KM;
+	int frames_at_CS;
 	int DB_place_index;
 	int CO_place_index;
 	int KM_place_index;
 	int CS_place_index;
 	int TR_use_index;
-	int frames_HD;
-	int frames_MC;
-	int frames_TR;
-	int sort_frames;
+	int frames_at_HD;
+	int frames_at_MC;
+	int frames_at_TR;
+	int frames_at_sort;
 	enum Action sort;
 };
 
