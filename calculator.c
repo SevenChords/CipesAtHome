@@ -948,7 +948,7 @@ void handleChapter5EarlySortEndItems(BranchPath *node, Inventory inventory, cons
 			// obtained items
 			if (eval.CS_place_index == eval.KM_place_index
 				|| km_temp_inventory.inventory[eval.CS_place_index] == Thunder_Rage
-				|| inventory.inventory[eval.KM_place_index] == Dried_Bouquet) {
+				|| km_temp_inventory.inventory[eval.CS_place_index] == Dried_Bouquet) {
 				continue;
 			}
 
