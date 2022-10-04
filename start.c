@@ -208,6 +208,8 @@ int main() {
 	// persist through all parallel calls to calculator.c
 	initializeInvFrames();
 	initializeRecipeList();
+	initCacheWriteLock();
+	readVisitedNodesFromDisk();
 
 	setSignalHandlers();
 

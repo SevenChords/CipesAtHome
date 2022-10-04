@@ -153,6 +153,7 @@ CH5* createChapter5Struct(CH5_Eval eval, int lateSort);
 // Initialization functions
 void initializeInvFrames();
 void initializeRecipeList();
+void initCacheWriteLock();
 
 // Select and random methodology functions
 void handleSelectAndRandom(BranchPath* curNode, int select, int randomise);
@@ -197,5 +198,9 @@ uint8_t 	serializeCH5Node(BranchPath *node, void **data);
 void periodicGithubCheck();
 Result calculateOrder(int ID);
 void writePersonalBest(Result *result);
+void writeVisitedNodesToDisk();
+void readVisitedNodesFromDisk();
+uint32_t writeSerialsToDisk(FILE* fp);
+uint32_t readSerialsFromDisk(FILE* fp);
 
 #endif

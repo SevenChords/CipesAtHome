@@ -29,6 +29,7 @@
 #define INVENTORY_SIZE 20
 
 #define CHECK_SHUTDOWN_INTERVAL 30000
+#define SERIAL_CACHE_INTERVAL 200 // number of dives should elapse before writing the serials to disk
 static const int UNSET_INDEX_SIGNED = -99999;
 
 static const int INT_OUTPUT_ARRAY_SIZE_BYTES = sizeof(outputCreatedArray_t);
@@ -40,6 +41,7 @@ Recipe *recipeList;
 
 Serial *visitedBranches = NULL;
 uint32_t numVisitedBranches = 0;
+omp_lock_t cacheWriteLock;
 
 // Used to uniquely identify a particular item combination for serialization purposes
 int recipeOffsetLookup[57] = {
@@ -413,9 +415,14 @@ void cacheSerial(BranchPath *node)
 		if (numVisitedBranches > 0)
 			index = indexToInsert(cachedSerial, 0, numVisitedBranches-1);
 
+		// Prevent modifying the array while we are writing to file
+		omp_set_lock(&cacheWriteLock);
+
 		// Free and note how many children we are freeing
 		int childrenFreed = deleteAndFreeChildSerials(cachedSerial, index);
 		insertIntoCache(cachedSerial, index, childrenFreed);
+
+		omp_unset_lock(&cacheWriteLock);
 	}
 }
 
@@ -443,6 +450,16 @@ void initializeInvFrames() {
  -------------------------------------------------------------------*/
 void initializeRecipeList() {
 	recipeList = getRecipeList();
+}
+
+/*-------------------------------------------------------------------
+ * Function : void initCacheWriteLock() {
+ *
+ * Init the lock that prevents our program from modifying the serial
+ * cache at the same time as writing the cache to disk.
+ -------------------------------------------------------------------*/
+void initCacheWriteLock() {
+	omp_init_lock(&cacheWriteLock);
 }
 
 /*-------------------------------------------------------------------
@@ -2285,6 +2302,7 @@ Result calculateOrder(const int ID) {
 	int freeRunning = !debug && !randomise && !select;
 	int branchInterval = getConfigInt("branchLogInterval");
 	int total_dives = 0;
+	int serialCacheInterval = SERIAL_CACHE_INTERVAL;
 	BranchPath *curNode = NULL; // Deepest node at any particular point
 	BranchPath *root;
 
@@ -2314,6 +2332,12 @@ Result calculateOrder(const int ID) {
 			sprintf(temp1, "Call %d", ID);
 			sprintf(temp2, "Searching New Branch %d", total_dives);
 			recipeLog(3, "Calculator", "Info", temp1, temp2);
+		}
+
+		// Periodically write visited nodes to disk so we don't rely on a clean shutdown
+		// Only need to perform this on one thread
+		if (total_dives % serialCacheInterval == 0 && omp_get_thread_num() == 0) {
+			writeVisitedNodesToDisk();
 		}
 
 		// If the user is not exploring only one branch, reset when it is time
@@ -2591,4 +2615,136 @@ void writePersonalBest(Result *result)
 			fclose(fp);
 		}
 	}
+}
+
+/*-------------------------------------------------------------------
+ * Function : void writeSerialsToDisk
+ *
+ * Walk across visitedBranches and store the serial length and data
+ * to visitedNodes.dat. This assumes we've already written numVisitedBranches
+ -------------------------------------------------------------------*/
+uint32_t writeSerialsToDisk(FILE* fp) {
+	uint32_t i;
+	size_t ret;
+	for (i = 0; i < numVisitedBranches; i++) {
+		Serial serial = visitedBranches[i];
+		ret = fwrite(&serial.length, sizeof(uint8_t), 1, fp);
+		if (ret != 1)
+			break;
+		ret = fwrite(serial.data, sizeof(char), serial.length, fp);
+		if (ret != serial.length)
+			break;
+	}
+
+	return i;
+}
+
+/*-------------------------------------------------------------------
+ * Function : void writeVisitedNodesToDisk
+ *
+ * Create/overwrite visitedNodes.dat and populate with visitedBranches data
+ -------------------------------------------------------------------*/
+void writeVisitedNodesToDisk() {
+	recipeLog(3, "Serialization", "Cache", "Visited Nodes", "Saving visited nodes to disk... This may take a few seconds.");
+
+	FILE* fp = fopen("results/visitedNodes.dat", "wb");
+	if (fp == NULL) {
+		recipeLog(3, "Serialization", "Cache", "Visited Nodes", "Error opening results/visitedNodes.dat for writing.");
+		return;
+	}
+
+	// Prevent writing the file while we are modifying the array
+	omp_set_lock(&cacheWriteLock);
+
+	// First write the number of serials so we know how much memory to malloc when we read in the file
+	fwrite(&numVisitedBranches, sizeof(uint32_t), 1, fp);
+
+	uint32_t serialsWritten = writeSerialsToDisk(fp);
+	
+	fclose(fp);
+
+	omp_unset_lock(&cacheWriteLock);
+
+	char result[100];
+	if (serialsWritten == numVisitedBranches)
+		sprintf(result, "Successfully wrote %d serials to disk", serialsWritten);
+	else
+		sprintf(result, "Only able to write %d of %d serials to disk", serialsWritten, numVisitedBranches);
+	recipeLog(3, "Serialization", "Cache", "Visited Nodes", result);
+}
+
+/*-------------------------------------------------------------------
+ * Function : void readSerialsFromDisk
+ *
+ * Loop so long as we can continue reading bytes up to the expected
+ * numVisitedBranches serials in the binary file.
+ * CAUTION: This function assumes that fp seek position is at the
+ * first serial, i.e. we've already fread'd numVisitedBranches
+ -------------------------------------------------------------------*/
+uint32_t readSerialsFromDisk(FILE* fp) {
+	size_t ret = 0;
+	uint32_t i = 0;
+	for (i = 0; i < numVisitedBranches; i++) {
+		Serial serial = (Serial){ 0, NULL };
+		ret = fread(&serial.length, sizeof(uint8_t), 1, fp);
+		if (ret != 1)
+			break;
+
+		serial.data = malloc(serial.length * sizeof(char));
+		checkMallocFailed(serial.data);
+
+		ret = fread(serial.data, sizeof(char), serial.length, fp);
+		if (ret != serial.length) {
+			free(serial.data);
+			break;
+		}
+		visitedBranches[i] = serial;
+	}
+
+	return i;
+}
+
+/*-------------------------------------------------------------------
+ * Function : void readVisitedNodesFromDisk
+ *
+ * Check if results/visitedNodes.dat exists.
+ * If so, populate visitedBranches with the data
+ -------------------------------------------------------------------*/
+void readVisitedNodesFromDisk() {
+	recipeLog(2, "Startup", "Cache", "Visited Nodes", "Reading visited nodes from disk... This may take a few seconds.");
+
+	FILE* fp = fopen("results/visitedNodes.dat", "rb");
+	if (fp == NULL) {
+		recipeLog(2, "Startup", "Cache", "Visited Nodes", "No cached visited nodes on disk.");
+		return;
+	}
+
+	// The first 4 bytes represent the number of visited nodes to expect. malloc enough space to contain this
+	size_t ret = fread(&numVisitedBranches, sizeof(uint32_t), 1, fp);
+	if (ret != 1) {
+		recipeLog(2, "Startup", "Cache", "Visited Nodes", "There was an error reading the cache file. Size not recognized");
+		fclose(fp);
+		return;
+	}
+
+	visitedBranches = malloc(numVisitedBranches * sizeof(Serial));
+	checkMallocFailed(visitedBranches);
+
+	uint32_t serialsRead = readSerialsFromDisk(fp);
+
+	fclose(fp);
+
+	if (serialsRead < numVisitedBranches) {
+		// We reached EOF before expected. Keep what was read thus far
+		char result[100];
+		sprintf(result, "WARNING: Expected %d cached serials, only found %d", numVisitedBranches, serialsRead);
+		recipeLog(2, "Startup", "Cache", "Visited Nodes", result);
+		numVisitedBranches = serialsRead;
+		visitedBranches = realloc(visitedBranches, numVisitedBranches * sizeof(Serial));
+		return;
+	}
+
+	char result[100];
+	sprintf(result, "Found %d serials from disk", numVisitedBranches);
+	recipeLog(2, "Startup", "Cache", "Visited Nodes", result);
 }
