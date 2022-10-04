@@ -42,7 +42,7 @@ struct Cook {
 	int indexToss;
 };
 
-// Information pertaining to Chapter 5 evaluation
+// Information pertaining to the Chapter 5 intermission
 typedef struct CH5 CH5;
 struct CH5 {
 	int indexDriedBouquet;	// index of item we toss to make room for Dried Bouquet
@@ -54,6 +54,7 @@ struct CH5 {
 	int lateSort;			// 0 - sort after Coconut, 1 - sort after Keel Mango
 };
 
+// Information pertaining to the evaluation of Chapter 5 intermission moves
 typedef struct CH5_Eval CH5_Eval;
 struct CH5_Eval {
 	int frames_DB;
