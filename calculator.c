@@ -488,14 +488,10 @@ ABSL_ATTRIBUTE_ALWAYS_INLINE static inline void copyOutputsFulfilled(outputCreat
 }
 
 /*-------------------------------------------------------------------
- * Function 	: createChapter5Struct
- * Inputs	: int				DB_place_index
- *		  int				CO_place_index
- *		  int				KM_place_index
- *		  int				CS_place_index
- *		  int				TR_use_index
- *		  int				lateSort
- * Outputs	: CH5			*ch5
+ * Function: createChapter5Struct
+ * Inputs: CH5_Eval eval
+ *         int      lateSort
+ * Outputs: CH5 *ch5
  *
  * Compartmentalization of setting CH5 attributes
  * lateSort tracks whether we performed the sort before or after the
@@ -721,14 +717,13 @@ void filterOut2Ingredients(BranchPath *node) {
 }
 
 /*-------------------------------------------------------------------
- * Function 	: finalizeChapter5Eval
- * Inputs	: BranchPath		*node
- *		  enum Type_Sort		*inventory
- *		  enum Action			sort
- *		  CH5			*ch5Data
- *		  int 				temp_frame_sum
- *		  int				*outputsFulfilled
- *		  int				numOutputsFulfilled
+ * Function: finalizeChapter5Eval
+ * Inputs: BranchPath                 *node
+ *         Inventory                  inventory
+ *         CH5                        *ch5Data
+ *         int                        temp_frame_sum
+ *         const outputCreatedArray_t outputsFulfilled
+ *         int                        numOutputsFulfilled
  *
  * Given input parameters, construct a new legal move to represent CH5
  -------------------------------------------------------------------*/
@@ -886,11 +881,11 @@ void freeNode(BranchPath *node, bool cache) {
 }
 
 /*-------------------------------------------------------------------
- * Function 	: fulfillChapter5
- * Inputs	: BranchPath	*curNode
+ * Function: fulfillChapter5
+ * Inputs: BranchPath *curNode
  *
- * A preliminary step to determine Dried Bouquet and Coconut placement
- * before calling handleChapter5Eval
+ * Count up frames from Hot Dog and Mousse Cake, then determine how
+ * to continue evaluating Chapter 5 based on null count.
  -------------------------------------------------------------------*/
 void fulfillChapter5(BranchPath *curNode) {
 	// Create an outputs chart but with the Dried Bouquet collected
@@ -907,12 +902,13 @@ void fulfillChapter5(BranchPath *curNode) {
 	// Create the CH5 eval struct
 	CH5_Eval eval;
 
-	// Explicit int casts are to prevent intermediary underflows from the uint_8 math.
+	// Explicit int casts are to silence warnings.
 	int viableItems = (int)newInventory.length - newInventory.nulls - min((int)newInventory.length - 10, newInventory.nulls);
 
 	// Calculate frames it takes the navigate to the Mousse Cake and the Hot Dog for the trade
-	eval.frames_HD = 2 * invFrames[viableItems - 1][indexOfItemInInventory(newInventory, Hot_Dog) - newInventory.nulls];
-	eval.frames_MC = invFrames[viableItems - 1][mousse_cake_index - newInventory.nulls];
+	eval.frames_at_HD = 2 * invFrames[viableItems - 1][indexOfItemInInventory(newInventory, Hot_Dog) - newInventory.nulls];
+	eval.frames_at_MC = eval.frames_at_HD
+		+ invFrames[viableItems - 1][mousse_cake_index - newInventory.nulls];
 
 	// If the Mousse Cake is in the first 10 slots, change it to NULL
 	if (mousse_cake_index < 10) {
@@ -930,8 +926,6 @@ void fulfillChapter5(BranchPath *curNode) {
 		default :
 			handleDBCOAllocation2Nulls(curNode, newInventory, tempOutputsFulfilled, numOutputsFulfilled, eval);
 	}
-
-	// We know tempOutputsFulfilled does not escape this scope, so safe to be unallocated on return.
 }
 
 /*-------------------------------------------------------------------
@@ -1091,26 +1085,53 @@ int getSortFrames(enum Action action) {
 }
 
 /*-------------------------------------------------------------------
- * Function 	: handleChapter5EarlySortEndItems
- * Inputs	: BranchPath	*node
- *		  enum Type_Sort	*inventory
- *		  int			*outputsFulfilled
- *		  int			numOutputsFulfilled
- *		  int			sort_frames
- *		  enum Action		sort
- *		  int			frames_DB
- *		  int			frames_CO
- *		  int			DB_place_index
- *		  int			CO_place_index
+ * Function: outputOrderIsSlower
+ * Inputs: int location_1
+ *         int location_2
+ *         int inventoryLength
+ * Outputs: int (0 or 1)
  *
- * Evaluate Chapter 5 such that a sort occurs between grabbing the
- * Coconut and the Keel Mango. Place the Keel Mango and Courage Shell
- * in various inventory locations. Determine if the move is legal.
+ * In a case where an output is manually placed, if the item it
+ * replaces has not been used since the placement of a previous
+ * output, then the items the outputs replaced can be swapped.
+ * As outputs are placed at the beginning, the lower index would be
+ * changed by 1, so there can be a time difference of 2 frames.
+ * This function determines whether the current order is slower and
+ * the outputs should be swapped. If the orders take the same time
+ * (possible when the inventory length is even and less than 20),
+ * this will still return 1 for one order and 0 for the other.
+ -------------------------------------------------------------------*/
+int outputOrderIsSlower(int location_1, int location_2, int inventoryLength) {
+	int middle = inventoryLength / 2;
+	if (location_1 < middle) {
+		// The first location will be selected by going down, so we want
+		// to minimize its position.
+		return location_1 >= location_2;
+	}
+	if (location_2 > middle) {
+		// The second location will be selected by going up, so we want
+		// to maximize its position.
+		return location_2 > location_1;
+	}
+	return 1;
+}
+
+/*-------------------------------------------------------------------
+ * Function: handleChapter5EarlySortEndItems
+ * Inputs: BranchPath                 *node
+ *         Inventory                  inventory
+ *         const outputCreatedArray_t outputsFulfilled
+ *         int                        numOutputsFulfilled
+ *         CH5_Eval                   eval
+ *
+ * A sort already occurred right after placing the Coconut. Evaluate
+ * each combination of Keel Mango and Courage Shell placements,
+ * handle using the Thunder Rage, and if everything is valid, create
+ * the move and insert it.
  -------------------------------------------------------------------*/
 void handleChapter5EarlySortEndItems(BranchPath *node, Inventory inventory, const outputCreatedArray_t outputsFulfilled, int numOutputsFulfilled, CH5_Eval eval) {
 	for (eval.KM_place_index = 0; eval.KM_place_index < 10; eval.KM_place_index++) {
-		// Don't allow current move to remove Thunder Rage or previously
-		// obtained items
+		// Don't allow a move that will be invalid.
 		if (inventory.inventory[eval.KM_place_index] == Thunder_Rage
 			|| inventory.inventory[eval.KM_place_index] == Dried_Bouquet) {
 			continue;
@@ -1119,21 +1140,22 @@ void handleChapter5EarlySortEndItems(BranchPath *node, Inventory inventory, cons
 		// Replace the chosen item with the Keel Mango
 		Inventory km_temp_inventory = replaceItem(inventory, eval.KM_place_index, Keel_Mango);
 		// Calculate the frames for this action
-		eval.frames_KM = TOSS_FRAMES + invFrames[inventory.length][eval.KM_place_index + 1];
+		eval.frames_at_KM = eval.frames_at_sort + TOSS_FRAMES
+			+ invFrames[inventory.length][eval.KM_place_index + 1];
 
 		for (eval.CS_place_index = 1; eval.CS_place_index < 10; eval.CS_place_index++) {
-			// Don't allow current move to remove Thunder Rage or previously
-			// obtained items
-			if (eval.CS_place_index == eval.KM_place_index
-				|| km_temp_inventory.inventory[eval.CS_place_index] == Thunder_Rage
-				|| inventory.inventory[eval.KM_place_index] == Dried_Bouquet) {
+			// Don't allow a move that will be invalid or needlessly slower.
+			if (km_temp_inventory.inventory[eval.CS_place_index] == Thunder_Rage
+				|| km_temp_inventory.inventory[eval.CS_place_index] == Dried_Bouquet
+				|| outputOrderIsSlower(eval.KM_place_index, eval.CS_place_index, km_temp_inventory.length)) {
 				continue;
 			}
 
 			// Replace the chosen item with the Courage Shell
 			Inventory kmcs_temp_inventory = replaceItem(km_temp_inventory, eval.CS_place_index, Courage_Shell);
 			// Calculate the frames for this action
-			eval.frames_CS = TOSS_FRAMES + invFrames[kmcs_temp_inventory.length][eval.CS_place_index + 1];
+			eval.frames_at_CS = eval.frames_at_KM + TOSS_FRAMES
+				+ invFrames[kmcs_temp_inventory.length][eval.CS_place_index + 1];
 
 			// The next event is using the Thunder Rage item before resuming the 2nd session of recipe fulfillment
 			eval.TR_use_index = indexOfItemInInventory(kmcs_temp_inventory, Thunder_Rage);
@@ -1141,41 +1163,32 @@ void handleChapter5EarlySortEndItems(BranchPath *node, Inventory inventory, cons
 				kmcs_temp_inventory = removeItem(kmcs_temp_inventory, eval.TR_use_index);
 			}
 			// Calculate the frames for this action
-			eval.frames_TR = invFrames[kmcs_temp_inventory.length - 1][eval.TR_use_index];
-
-			// Calculate the frames of all actions done
-			int temp_frame_sum = eval.frames_DB + eval.frames_CO + eval.frames_KM + eval.frames_CS + eval.frames_TR + eval.frames_HD + eval.frames_MC + eval.sort_frames;
+			eval.frames_at_TR = eval.frames_at_CS
+				+ invFrames[kmcs_temp_inventory.length - 1][eval.TR_use_index];
 
 			// Determine if the remaining inventory is sufficient to fulfill all remaining recipes
 			if (stateOK(kmcs_temp_inventory, outputsFulfilled, recipeList)) {
 				CH5 *ch5Data = createChapter5Struct(eval, 0);
-				finalizeChapter5Eval(node, kmcs_temp_inventory, ch5Data, temp_frame_sum, outputsFulfilled, numOutputsFulfilled);
+				finalizeChapter5Eval(node, kmcs_temp_inventory, ch5Data, eval.frames_at_TR, outputsFulfilled, numOutputsFulfilled);
 			}
 		}
 	}
 }
 
 /*-------------------------------------------------------------------
- * Function 	: handleChapter5Eval
- * Inputs	: BranchPath	*node
- *		  enum Type_Sort	*inventory
- *		  int			*outputsFulfilled
- *		  int			numOutputsFulfilled
- *		  int			frames_DB
- *		  int			frames_CO
- *		  int			DB_place_index
- *		  int			CO_place_index
+ * Function: handleChapter5Eval
+ * Inputs: BranchPath                 *node
+ *         Inventory                  inventory
+ *         const outputCreatedArray_t outputsFulfilled
+ *         int                        numOutputsFulfilled
+ *         CH5_Eval                   eval
  *
- * Main Chapter 5 evaluation function. After allocating Dried Bouquet
- * and Coconut in the caller function, try performing a sort before
- * grabbing the Keel Mango and evaluate legal moves. Afterwards, try
- * placing the Keel Mango by tossing various inventory items and
- * evaluate legal moves.
+ * Branch into early and late sort scenarios. For late sort, handle
+ * Keel Mango placement here. Otherwise, defer to other functions.
  -------------------------------------------------------------------*/
 void handleChapter5Eval(BranchPath *node, Inventory inventory, const outputCreatedArray_t outputsFulfilled, int numOutputsFulfilled, CH5_Eval eval) {
 	// Evaluate sorting before the Keel Mango
 	// Use -1 to identify that we are not collecting the Keel Mango until after the sort
-	eval.frames_KM = -1;
 	eval.KM_place_index = -1;
 	handleChapter5Sorts(node, inventory, outputsFulfilled, numOutputsFulfilled, eval);
 
@@ -1183,7 +1196,7 @@ void handleChapter5Eval(BranchPath *node, Inventory inventory, const outputCreat
 	if (inventory.nulls >= 1) {
 		// Making a copy of the temp inventory for what it looks like after the allocation of the KM
 		Inventory km_temp_inventory = addItem(inventory, Keel_Mango);
-		eval.frames_KM = 0;
+		eval.frames_at_KM = eval.frames_at_CO;
 		eval.KM_place_index = 0;
 
 		// Perform all sorts
@@ -1193,7 +1206,7 @@ void handleChapter5Eval(BranchPath *node, Inventory inventory, const outputCreat
 	else {
 		// Place the Keel Mango starting after the other placed items.
 		for (eval.KM_place_index = 2; eval.KM_place_index < 10; eval.KM_place_index++) {
-			// Don't allow current move to remove Thunder Rage
+			// Don't allow a move that will be invalid.
 			if (inventory.inventory[eval.KM_place_index] == Thunder_Rage) {
 				continue;
 			}
@@ -1201,7 +1214,8 @@ void handleChapter5Eval(BranchPath *node, Inventory inventory, const outputCreat
 			// Making a copy of the temp inventory for what it looks like after the allocation of the KM
 			Inventory km_temp_inventory = replaceItem(inventory, eval.KM_place_index, Keel_Mango);
 			// Calculate the frames for this action
-			eval.frames_KM = TOSS_FRAMES + invFrames[inventory.length][eval.KM_place_index + 1];
+			eval.frames_at_KM = eval.frames_at_CO + TOSS_FRAMES
+				+ invFrames[inventory.length][eval.KM_place_index + 1];
 
 			// Perform all sorts
 			handleChapter5Sorts(node, km_temp_inventory, outputsFulfilled, numOutputsFulfilled, eval);
@@ -1210,74 +1224,61 @@ void handleChapter5Eval(BranchPath *node, Inventory inventory, const outputCreat
 }
 
 /*-------------------------------------------------------------------
- * Function 	: handleChapter5LateSortEndItems
- * Inputs	: BranchPath	*node
- *		  enum Type_Sort	*inventory
- *		  int			*outputsFulfilled
- *		  int			numOutputsFulfilled
- *		  int			sort_frames
- *		  enum Action		sort
- *		  int			frames_DB
- *		  int			frames_CO
- *		  int			frames_KM
- *		  int			DB_place_index
- *		  int			CO_place_index
- *		  int			KM_place_index
+ * Function: handleChapter5LateSortEndItems
+ * Inputs: BranchPath                 *node
+ *         Inventory                  inventory
+ *         const outputCreatedArray_t outputsFulfilled
+ *         int                        numOutputsFulfilled
+ *         CH5_Eval                   eval
  *
- * Evaluate Chapter 5 such that a sort occurs after grabbing the
- * Keel Mango. Place the Courage Shell in various inventory locations.
- * Determine if a move is legal.
+ * A sort already occurred right after placing the Keel Mango.
+ * Evaluate each Courage Shell placement, handle using the Thunder
+ * Rage, and if everything is valid, create the move and insert it.
  -------------------------------------------------------------------*/
 void handleChapter5LateSortEndItems(BranchPath *node, Inventory inventory, const outputCreatedArray_t outputsFulfilled, int numOutputsFulfilled, CH5_Eval eval) {
 	// Place the Courage Shell
 	for (eval.CS_place_index = 0; eval.CS_place_index < 10; eval.CS_place_index++) {
-		// Don't allow current move to remove Thunder Rage
-		if (inventory.inventory[eval.CS_place_index] == Thunder_Rage) {
+		// Don't allow a move that will be invalid.
+		if (inventory.inventory[eval.CS_place_index] == Dried_Bouquet
+			|| inventory.inventory[eval.CS_place_index] == Keel_Mango
+			|| inventory.inventory[eval.CS_place_index] == Thunder_Rage) {
 			continue;
 		}
 
 		// Replace the chosen item with the Courage Shell
 		Inventory cs_temp_inventory = replaceItem(inventory, eval.CS_place_index, Courage_Shell);
 		// Calculate the frames for this action
-		eval.frames_CS = TOSS_FRAMES + invFrames[cs_temp_inventory.length][eval.CS_place_index + 1];
+		eval.frames_at_CS = eval.frames_at_sort + TOSS_FRAMES
+			+ invFrames[cs_temp_inventory.length][eval.CS_place_index + 1];
 
 		// The next event is using the Thunder Rage
 		eval.TR_use_index = indexOfItemInInventory(cs_temp_inventory, Thunder_Rage);
-		// Using the Thunder Rage in slots 1-10 will cause a NULL to appear in that slot
+		// Using the Thunder Rage in slots 1-10 will remove it
 		if (eval.TR_use_index < 10) {
 			cs_temp_inventory = removeItem(cs_temp_inventory, eval.TR_use_index);
 		}
 		// Calculate the frames for this action
-		eval.frames_TR = invFrames[cs_temp_inventory.length - 1][eval.TR_use_index];
-
-		// Calculate the frames of all actions done
-		int temp_frame_sum = eval.frames_DB + eval.frames_CO + eval.frames_KM + eval.frames_CS + eval.frames_TR + eval.frames_HD + eval.frames_MC + eval.sort_frames;
+		eval.frames_at_TR = eval.frames_at_CS
+			+ invFrames[cs_temp_inventory.length - 1][eval.TR_use_index];
 
 		if (stateOK(cs_temp_inventory, outputsFulfilled, recipeList)) {
 			CH5 *ch5Data = createChapter5Struct(eval, 1);
-			finalizeChapter5Eval(node, cs_temp_inventory, ch5Data, temp_frame_sum, outputsFulfilled, numOutputsFulfilled);
+			finalizeChapter5Eval(node, cs_temp_inventory, ch5Data, eval.frames_at_TR, outputsFulfilled, numOutputsFulfilled);
 		}
 	}
 }
 
 /*-------------------------------------------------------------------
- * Function 	: handleChapter5Sorts
- * Inputs	: BranchPath	*node
- *		  enum Type_Sort	*inventory
- *		  int			*outputsFulfilled
- *		  int			numOutputsFulfilled
- *		  int			sort_frames
- *		  enum Action		sort
- *		  int			frames_DB
- *		  int			frames_CO
- *		  int			frames_KM
- *		  int			DB_place_index
- *		  int			CO_place_index
- *		  int			KM_place_index
+ * Function: handleChapter5Sorts
+ * Inputs: BranchPath                 *node
+ *         Inventory                  inventory
+ *         const outputCreatedArray_t outputsFulfilled
+ *         int                        numOutputsFulfilled
+ *         CH5_Eval                   eval
  *
- * Perform various sorts on the inventory during Chapter 5 evaluation.
- * Only continue if a sort places the Coconut in slots 11-20.
- * Then, call an EndItems function to finalize the CH5 evaluation.
+ * Evaluate each sorting method to make sure Coconut will be
+ * duplicated, and then branch to the appropriate end items function
+ * based on whether Keel Mango has already been placed or not.
  -------------------------------------------------------------------*/
 void handleChapter5Sorts(BranchPath *node, Inventory inventory, const outputCreatedArray_t outputsFulfilled, int numOutputsFulfilled, CH5_Eval eval) {
 	for (eval.sort = ESort_Alpha_Asc; eval.sort <= ESort_Type_Des; eval.sort++) {
@@ -1289,37 +1290,37 @@ void handleChapter5Sorts(BranchPath *node, Inventory inventory, const outputCrea
 			continue;
 		}
 
-		// Handle all placements of the Keel Mango, Courage Shell, and usage of the Thunder Rage
-		eval.sort_frames = getSortFrames(eval.sort);
+		// Count the frames this sort takes.
+		int sort_frames = getSortFrames(eval.sort);
 
-		if (eval.frames_KM == -1) {
+		// Evaluate final items, including Keel Mango if necessary.
+		if (eval.KM_place_index == -1) {
+			eval.frames_at_sort = eval.frames_at_CO + sort_frames;
 			handleChapter5EarlySortEndItems(node, sorted_inventory, outputsFulfilled, numOutputsFulfilled, eval);
 			continue;
 		}
 
+		eval.frames_at_sort = eval.frames_at_KM + sort_frames;
 		handleChapter5LateSortEndItems(node, sorted_inventory, outputsFulfilled, numOutputsFulfilled, eval);
 	}
 }
 
 /*-------------------------------------------------------------------
- * Function 	: handleDBCOAllocation0Nulls
- * Inputs	: BranchPath	*curNode
- *		  enum Type_Sort	*tempInventory
- *		  int			*outputsFulfilled
- *		  int			numOutputsFulfilled
- *		  int			viableItems
+ * Function: handleDBCOAllocation0Nulls
+ * Inputs: BranchPath                 *curNode
+ *         Inventory                  tempInventory
+ *         const outputCreatedArray_t tempOutputsFulfilled
+ *         int                        numOutputsFulfilled
+ *         CH5_Eval                   eval
  *
- * Preliminary function to allocate Dried Bouquet and Coconut before
- * evaluating the rest of Chapter 5. There are no nulls in the inventory.
+ * There are no nulls, so neither Dried Bouquet nor Coconut will be
+ * autoplaced. Evaluate each combination of placements for them, and
+ * then proceed to the early/late sort decision.
  -------------------------------------------------------------------*/
 void handleDBCOAllocation0Nulls(BranchPath *curNode, Inventory tempInventory, const outputCreatedArray_t tempOutputsFulfilled, int numOutputsFulfilled, CH5_Eval eval) {
-	// No nulls to utilize for Chapter 5 intermission
-	// Both the DB and CO can only replace items in the first 10 slots
-	// The remaining items always slide down to fill the vacancy
-	// The DB will eventually end up in slot #2 and
-	// the CO will eventually end up in slot #1
+	// Place the Dried Bouquet.
 	for (eval.DB_place_index = 0; eval.DB_place_index < 10; eval.DB_place_index++) {
-		// Don't allow current move to remove Thunder Rage
+		// Don't allow a move that will be invalid.
 		if (tempInventory.inventory[eval.DB_place_index] == Thunder_Rage) {
 			continue;
 		}
@@ -1327,12 +1328,14 @@ void handleDBCOAllocation0Nulls(BranchPath *curNode, Inventory tempInventory, co
 		// Replace the chosen item with the Dried Bouquet
 		Inventory db_temp_inventory = replaceItem(tempInventory, eval.DB_place_index, Dried_Bouquet);
 		// Calculate the frames for this action
-		eval.frames_DB = TOSS_FRAMES + invFrames[tempInventory.length][eval.DB_place_index + 1];
+		eval.frames_at_DB = eval.frames_at_MC + TOSS_FRAMES
+			+ invFrames[tempInventory.length][eval.DB_place_index + 1];
 
+		// Place the Coconut after the Dried Bouquet.
 		for (eval.CO_place_index = 1; eval.CO_place_index < 10; eval.CO_place_index++) {
-			// Don't allow current move to remove needed items
-			if (eval.CO_place_index == eval.DB_place_index
-				|| db_temp_inventory.inventory[eval.CO_place_index] == Thunder_Rage) {
+			// Don't allow a move that will be invalid or needlessly slower.
+			if (db_temp_inventory.inventory[eval.CO_place_index] == Thunder_Rage
+				|| outputOrderIsSlower(eval.DB_place_index, eval.CO_place_index, db_temp_inventory.length)) {
 				continue;
 			}
 
@@ -1340,7 +1343,8 @@ void handleDBCOAllocation0Nulls(BranchPath *curNode, Inventory tempInventory, co
 			Inventory dbco_temp_inventory = replaceItem(db_temp_inventory, eval.CO_place_index, Coconut);
 
 			// Calculate the frames of this action
-			eval.frames_CO = TOSS_FRAMES + invFrames[tempInventory.length][eval.CO_place_index + 1];
+			eval.frames_at_CO = eval.frames_at_DB + TOSS_FRAMES
+				+ invFrames[tempInventory.length][eval.CO_place_index + 1];
 
 			// Handle the allocation of the Coconut sort, Keel Mango, and Courage Shell
 			handleChapter5Eval(curNode, dbco_temp_inventory, tempOutputsFulfilled, numOutputsFulfilled, eval);
@@ -1349,26 +1353,27 @@ void handleDBCOAllocation0Nulls(BranchPath *curNode, Inventory tempInventory, co
 }
 
 /*-------------------------------------------------------------------
- * Function 	: handleDBCOAllocation1Null
- * Inputs	: BranchPath	*curNode
- *		  enum Type_Sort		*tempInventory
- *		  int			*outputsFulfilled
- *		  int			numOutputsFulfilled
- *		  int			viableItems
+ * Function: handleDBCOAllocation1Null
+ * Inputs: BranchPath                 *curNode
+ *         Inventory                  tempInventory
+ *         const outputCreatedArray_t tempOutputsFulfilled
+ *         int                        numOutputsFulfilled
+ *         CH5_Eval                   eval
  *
- * Preliminary function to allocate Dried Bouquet and Coconut before
- * evaluating the rest of Chapter 5. There is 1 null in the inventory.
+ * There is 1 null, so Dried Bouquet will be autoplaced. Evaluate
+ * each Coconut placement, and then proceed to the early/late sort
+ * decision.
  -------------------------------------------------------------------*/
 void handleDBCOAllocation1Null(BranchPath *curNode, Inventory tempInventory, const outputCreatedArray_t tempOutputsFulfilled, int numOutputsFulfilled, CH5_Eval eval) {
 	// The Dried Bouquet gets auto-placed in the 1st slot,
 	// and everything else gets shifted down one to fill the first NULL
 	tempInventory = addItem(tempInventory, Dried_Bouquet);
 	eval.DB_place_index = 0;
-	eval.frames_DB = 0;
+	eval.frames_at_DB = eval.frames_at_MC;
 
 	// Dried Bouquet will always be in the first slot
 	for (eval.CO_place_index = 1; eval.CO_place_index < 10; eval.CO_place_index++) {
-		// Don't waste time replacing the Thunder Rage with the Coconut
+		// Don't allow a move that will be invalid.
 		if (tempInventory.inventory[eval.CO_place_index] == Thunder_Rage) {
 			continue;
 		}
@@ -1376,7 +1381,8 @@ void handleDBCOAllocation1Null(BranchPath *curNode, Inventory tempInventory, con
 		// Replace the item with the Coconut
 		Inventory co_temp_inventory = replaceItem(tempInventory, eval.CO_place_index, Coconut);
 		// Calculate the number of frames needed to pick this slot for replacement
-		eval.frames_CO = TOSS_FRAMES + invFrames[tempInventory.length][eval.CO_place_index + 1];
+		eval.frames_at_CO = eval.frames_at_DB + TOSS_FRAMES
+			+ invFrames[tempInventory.length][eval.CO_place_index + 1];
 
 		// Handle the allocation of the Coconut sort, Keel Mango, and Courage Shell
 		handleChapter5Eval(curNode, co_temp_inventory, tempOutputsFulfilled, numOutputsFulfilled, eval);
@@ -1384,26 +1390,26 @@ void handleDBCOAllocation1Null(BranchPath *curNode, Inventory tempInventory, con
 }
 
 /*-------------------------------------------------------------------
- * Function 	: handleDBCOAllocation2Nulls
- * Inputs	: BranchPath	*curNode
- *		  enum Type_Sort	*tempInventory
- *		  int			*outputsFulfilled
- *		  int			numOutputsFulfilled
- *		  int			viableItems
+ * Function: handleDBCOAllocation2Nulls
+ * Inputs: BranchPath                 *curNode
+ *         Inventory                  tempInventory
+ *         const outputCreatedArray_t tempOutputsFulfilled
+ *         int                        numOutputsFulfilled
+ *         CH5_Eval                   eval
  *
- * Preliminary function to allocate Dried Bouquet and Coconut before
- * evaluating the rest of Chapter 5. There are >=2 nulls in the inventory.
+ * There are at least 2 nulls, so both Dried Bouquet and Coconut
+ * will be autoplaced. Proceed to the early/late sort decision.
  -------------------------------------------------------------------*/
 void handleDBCOAllocation2Nulls(BranchPath *curNode, Inventory tempInventory, const outputCreatedArray_t tempOutputsFulfilled, int numOutputsFulfilled, CH5_Eval eval) {
 	// The Dried Bouquet gets auto-placed due to having nulls
 	tempInventory = addItem(tempInventory, Dried_Bouquet);
 	eval.DB_place_index = 0;
-	eval.frames_DB = 0;
+	eval.frames_at_DB = eval.frames_at_MC;
 
 	// The Coconut gets auto-placed due to having nulls
 	tempInventory = addItem(tempInventory, Coconut);
 	eval.CO_place_index = 0;
-	eval.frames_CO = 0;
+	eval.frames_at_CO = eval.frames_at_DB;
 
 	// Handle the allocation of the Coconut, Sort, Keel Mango, and Courage Shell
 	handleChapter5Eval(curNode, tempInventory, tempOutputsFulfilled, numOutputsFulfilled, eval);

@@ -42,7 +42,7 @@ struct Cook {
 	int indexToss;
 };
 
-// Information pertaining to Chapter 5 evaluation
+// Information pertaining to the Chapter 5 intermission
 typedef struct CH5 CH5;
 struct CH5 {
 	int indexDriedBouquet;	// index of item we toss to make room for Dried Bouquet
@@ -54,21 +54,22 @@ struct CH5 {
 	int lateSort;			// 0 - sort after Coconut, 1 - sort after Keel Mango
 };
 
+// Information pertaining to the evaluation of Chapter 5 intermission moves
 typedef struct CH5_Eval CH5_Eval;
 struct CH5_Eval {
-	int frames_DB;
-	int frames_CO;
-	int frames_KM;
-	int frames_CS;
+	int frames_at_DB;
+	int frames_at_CO;
+	int frames_at_KM;
+	int frames_at_CS;
 	int DB_place_index;
 	int CO_place_index;
 	int KM_place_index;
 	int CS_place_index;
 	int TR_use_index;
-	int frames_HD;
-	int frames_MC;
-	int frames_TR;
-	int sort_frames;
+	int frames_at_HD;
+	int frames_at_MC;
+	int frames_at_TR;
+	int frames_at_sort;
 	enum Action sort;
 };
 
@@ -172,6 +173,7 @@ int type_sort_reverse(const void* elem1, const void* elem2);
 // Frame calculation and optimization functions
 void applyJumpStorageFramePenalty(BranchPath *node);
 void generateFramesTaken(MoveDescription* description, const BranchPath* node, int framesTaken);
+int outputOrderIsSlower(int location_1, int location_2, int inventoryLength);
 int selectSecondItemFirst(const int* ingredientLoc, int nulls, int viableItems);
 void swapItems(int* ingredientLoc);
 
