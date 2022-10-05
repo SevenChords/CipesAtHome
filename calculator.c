@@ -907,6 +907,38 @@ int getSortFrames(enum Action action) {
 }
 
 /*-------------------------------------------------------------------
+ * Function: outputOrderIsSlower
+ * Inputs: int location_1
+ *         int location_2
+ *         int inventoryLength
+ * Outputs: int (0 or 1)
+ *
+ * In a case where an output is manually placed, if the item it
+ * replaces has not been used since the placement of a previous
+ * output, then the items the outputs replaced can be swapped.
+ * As outputs are placed at the beginning, the lower index would be
+ * changed by 1, so there can be a time difference of 2 frames.
+ * This function determines whether the current order is slower and
+ * the outputs should be swapped. If the orders take the same time
+ * (possible when the inventory length is even and less than 20),
+ * this will still return 1 for one order and 0 for the other.
+ -------------------------------------------------------------------*/
+int outputOrderIsSlower(int location_1, int location_2, int inventoryLength) {
+	int middle = inventoryLength / 2;
+	if (location_1 < middle) {
+		// The first location will be selected by going down, so we want
+		// to minimize its position.
+		return location_1 >= location_2;
+	}
+	if (location_2 > middle) {
+		// The second location will be selected by going up, so we want
+		// to maximize its position.
+		return location_2 > location_1;
+	}
+	return 1;
+}
+
+/*-------------------------------------------------------------------
  * Function: handleChapter5EarlySortEndItems
  * Inputs: BranchPath                 *node
  *         Inventory                  inventory
@@ -935,9 +967,9 @@ void handleChapter5EarlySortEndItems(BranchPath *node, Inventory inventory, cons
 
 		for (eval.CS_place_index = 1; eval.CS_place_index < 10; eval.CS_place_index++) {
 			// Don't allow a move that will be invalid or needlessly slower.
-			if (eval.CS_place_index == eval.KM_place_index
-				|| km_temp_inventory.inventory[eval.CS_place_index] == Thunder_Rage
-				|| km_temp_inventory.inventory[eval.CS_place_index] == Dried_Bouquet) {
+			if (km_temp_inventory.inventory[eval.CS_place_index] == Thunder_Rage
+				|| km_temp_inventory.inventory[eval.CS_place_index] == Dried_Bouquet
+				|| outputOrderIsSlower(eval.KM_place_index, eval.CS_place_index, km_temp_inventory.length)) {
 				continue;
 			}
 
@@ -1122,8 +1154,8 @@ void handleDBCOAllocation0Nulls(BranchPath *curNode, Inventory tempInventory, co
 		// Place the Coconut after the Dried Bouquet.
 		for (eval.CO_place_index = 1; eval.CO_place_index < 10; eval.CO_place_index++) {
 			// Don't allow a move that will be invalid or needlessly slower.
-			if (eval.CO_place_index == eval.DB_place_index
-				|| db_temp_inventory.inventory[eval.CO_place_index] == Thunder_Rage) {
+			if (db_temp_inventory.inventory[eval.CO_place_index] == Thunder_Rage
+				|| outputOrderIsSlower(eval.DB_place_index, eval.CO_place_index, db_temp_inventory.length)) {
 				continue;
 			}
 

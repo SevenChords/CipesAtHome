@@ -183,6 +183,7 @@ int type_sort_reverse(const void* elem1, const void* elem2);
 // Frame calculation and optimization functions
 void applyJumpStorageFramePenalty(BranchPath *node);
 void generateFramesTaken(MoveDescription* description, const BranchPath* node, int framesTaken);
+int outputOrderIsSlower(int location_1, int location_2, int inventoryLength);
 int selectSecondItemFirst(const int* ingredientLoc, int nulls, int viableItems);
 void swapItems(int* ingredientLoc);
 
