@@ -1061,7 +1061,9 @@ void handleChapter5LateSortEndItems(BranchPath *node, Inventory inventory, const
 	// Place the Courage Shell
 	for (eval.CS_place_index = 0; eval.CS_place_index < 10; eval.CS_place_index++) {
 		// Don't allow a move that will be invalid.
-		if (inventory.inventory[eval.CS_place_index] == Thunder_Rage) {
+		if (inventory.inventory[eval.CS_place_index] == Dried_Bouquet
+			|| inventory.inventory[eval.CS_place_index] == Keel_Mango
+			|| inventory.inventory[eval.CS_place_index] == Thunder_Rage) {
 			continue;
 		}
 
