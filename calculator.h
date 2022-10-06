@@ -123,7 +123,7 @@ BranchPath* createLegalMove(BranchPath* node, Inventory inventory, MoveDescripti
 void filterOut2Ingredients(BranchPath* node);
 void finalizeChapter5Eval(BranchPath* node, Inventory inventory, CH5* ch5Data, int temp_frame_sum, const outputCreatedArray_t outputsFulfilled, int numOutputsFulfilled);
 void finalizeLegalMove(BranchPath* node, int tempFrames, MoveDescription useDescription, Inventory tempInventory, const outputCreatedArray_t tempOutputsFulfilled, int numOutputsFulfilled, enum HandleOutput tossType, enum Type_Sort toss, int tossIndex);
-void freeLegalMove(BranchPath* node, int index);
+void freeLegalMove(BranchPath* node, int index, bool cache);
 int getInsertionIndex(const BranchPath* node, int frames);
 void insertIntoLegalMoves(int insertIndex, BranchPath* newLegalMove, BranchPath* curNode);
 void popAllButFirstLegalMove(BranchPath* node);
@@ -186,23 +186,23 @@ BranchPath* initializeRoot();
 uint32_t 	insertSorted(Serial serial);
 uint32_t	indexToInsert(Serial serial, int low, int high);
 void		insertIntoCache(Serial serial, uint32_t index, uint32_t deletedChildren);
-uint32_t	deleteAndFreeChildSerials(Serial serial, uint32_t index);
+int			searchVisitedNodes(Serial serial, int low, int high);
 void 		shiftSerialArrayToFillFreedChildren(uint32_t index, uint32_t deletedChildren);
-void 		deleteChildSerials(Serial serial, uint32_t index);
 void 		cacheSerial(BranchPath *node);
 void 		serializeNode(BranchPath *node);
 uint8_t 	serializeCookNode(BranchPath *node, void **data);
 uint8_t 	serializeSortNode(BranchPath *node, void **data);
 uint8_t 	serializeCH5Node(BranchPath *node, void **data);
+bool		legalMoveHasBeenTraversed(BranchPath* newLegalMove);
+void		writeVisitedNodesToDisk();
+void		readVisitedNodesFromDisk();
+uint32_t	writeSerialsToDisk(FILE* fp);
+uint32_t	readSerialsFromDisk(FILE* fp);
 
 
 // Other
 void periodicGithubCheck();
 Result calculateOrder(int ID);
 void writePersonalBest(Result *result);
-void writeVisitedNodesToDisk();
-void readVisitedNodesFromDisk();
-uint32_t writeSerialsToDisk(FILE* fp);
-uint32_t readSerialsFromDisk(FILE* fp);
 
 #endif

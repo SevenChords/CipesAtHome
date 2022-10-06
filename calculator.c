@@ -143,7 +143,8 @@ uint8_t serializeSortNode(BranchPath *node, void **data)
 		memcpy(*data, parentSerial.data, parentSerial.length);
 	}
 
-	memset((char*)*data + parentSerial.length, (node->description.action - 2) + recipeOffsetLookup[56], 1);
+	uint8_t actionValue = (node->description.action - 2) + recipeOffsetLookup[56];
+	memset((char*)*data + parentSerial.length, actionValue, 1);
 
 	return dataLen;
 }
@@ -254,7 +255,10 @@ void serializeNode(BranchPath *node)
 		exit(1);
 	}
 
-	node->serial = (Serial) {parentSerial.length + dataLen, data};
+	if (dataLen == 0)
+		node->serial = (Serial){ 0, NULL };
+	else
+		node->serial = (Serial) {parentSerial.length + dataLen, data};
 }
 
 ABSL_ATTRIBUTE_ALWAYS_INLINE
@@ -264,10 +268,13 @@ inline int serialcmp(Serial s1, Serial s2)
 
 	// if the prefix is identical, then we are dealing with a parent-child
 	// in this case, we want to keep moving left if s2 is larger
-	if (diff == 0)
-		return s1.length > s2.length ? 1 : -1;
+	if (diff != 0)
+		return diff;
 
-	return diff;
+	if (s1.length != s2.length)
+		return (s1.length > s2.length) ? 1 : -1;
+
+	return 0;
 }
 
 // returns the index the serial was inserted at
@@ -302,6 +309,24 @@ uint32_t indexToInsert(Serial serial, int low, int high)
 	if (cmpMid > 0)
 		return indexToInsert(serial, mid+1, high);
 	return indexToInsert(serial, low, mid-1);
+}
+
+int searchVisitedNodes(Serial serial, int low, int high)
+{
+	if (high < low)
+		return -1;
+
+	int mid = low + (high - low) / 2;
+	Serial arrSerial = visitedBranches[mid];
+	
+	bool bLengthEqual = (arrSerial.length == serial.length);
+	int cmpRet = serialcmp(arrSerial, serial);
+	if (bLengthEqual && cmpRet == 0)
+		return mid;
+
+	if (cmpRet > 0)
+		return searchVisitedNodes(serial, low, mid - 1);
+	return searchVisitedNodes(serial, mid + 1, high);
 }
 
 void insertIntoCache(Serial serial, uint32_t index, uint32_t deletedChildren)
@@ -399,6 +424,21 @@ void cacheSerial(BranchPath *node)
 	// ignore root node and Mistake
 	if (node->serial.length == 0 || node->serial.data == NULL)
 		return;
+
+	if (node->description.action == ECook)
+	{
+		char res[150];
+		Cook* pCook = (Cook*)node->description.data;
+		if (pCook->numItems == 1)
+		{
+			sprintf(res, "Caching: Moves %d | [%s -> %s] | HandleOutput: %d", node->moves, getItemName(pCook->item1), getItemName(pCook->output), pCook->handleOutput);
+		}
+		else
+		{
+			sprintf(res, "Caching: Moves %d | [%s + %s -> %s] | HandleOutput: %d", node->moves, getItemName(pCook->item1), getItemName(pCook->item2), getItemName(pCook->output), pCook->handleOutput);
+		}
+		//recipeLog(3, "Cache", "Insert", "Cached Node", res);
+	}
 
 	#pragma omp critical
 	{
@@ -709,7 +749,7 @@ void filterOut2Ingredients(BranchPath *node) {
 		if (node->legalMoves[i]->description.action == ECook) {
 			Cook *cook = node->legalMoves[i]->description.data;
 			if (cook->numItems == 2) {
-				freeLegalMove(node, i);
+				freeLegalMove(node, i, true);
 				i--; // Update i so we don't skip over the newly moved legalMoves
 			}
 		}
@@ -826,8 +866,8 @@ void freeAllNodes(BranchPath *node) {
  * caller can assure such consistency is not needed (For example,
  * freeing the last legal move or freeing all legal moves).
  -------------------------------------------------------------------*/
-static void freeLegalMoveOnly(BranchPath *node, int index) {
-	freeNode(node->legalMoves[index], true);
+static void freeLegalMoveOnly(BranchPath *node, int index, bool cache) {
+	freeNode(node->legalMoves[index], cache);
 	node->legalMoves[index] = NULL;
 	node->numLegalMoves--;
 	node->next = NULL;
@@ -842,8 +882,8 @@ static void freeLegalMoveOnly(BranchPath *node, int index) {
  * And shift the existing legal moves after the index to fill the gap.
  -------------------------------------------------------------------*/
 
-void freeLegalMove(BranchPath *node, int index) {
-	freeLegalMoveOnly(node, index);
+void freeLegalMove(BranchPath *node, int index, bool cache) {
+	freeLegalMoveOnly(node, index, cache);
 
 	// Shift up the rest of the legal moves
 	shiftUpLegalMoves(node, index + 1);
@@ -856,6 +896,9 @@ void freeLegalMove(BranchPath *node, int index) {
  * Free the current node and all legal moves within the node
  -------------------------------------------------------------------*/
 void freeNode(BranchPath *node, bool cache) {
+	if (cache)
+		cacheSerial(node);
+
 	if (node->description.data != NULL) {
 		free(node->description.data);
 	}
@@ -866,13 +909,10 @@ void freeNode(BranchPath *node, bool cache) {
 			// Don't need to worry about shifting up when we do this.
 			// Or resetting slots to NULL.
 			// We are blowing it all away anyways.
-			freeLegalMoveOnly(node, i++);
+			freeLegalMoveOnly(node, i++, cache);
 		}
 		free(node->legalMoves);
 	}
-
-	if (cache)
-		cacheSerial(node);
 
 	if (node->serial.length > 0)
 		free(node->serial.data);
@@ -1557,6 +1597,19 @@ ABSL_MUST_USE_RESULT BranchPath *initializeRoot() {
 	return root;
 }
 
+bool legalMoveHasBeenTraversed(BranchPath* newLegalMove)
+{
+	// Handle the Mistake case
+	if (newLegalMove->serial.data == NULL)
+		return false;
+
+	omp_set_lock(&cacheWriteLock);
+	int index = searchVisitedNodes(newLegalMove->serial, 0, numVisitedBranches-1);
+	omp_unset_lock(&cacheWriteLock);
+
+	return (index >= 0);
+}
+
 /*-------------------------------------------------------------------
  * Function 	: insertIntoLegalMoves
  * Inputs	: int			insertIndex
@@ -1569,6 +1622,14 @@ ABSL_MUST_USE_RESULT BranchPath *initializeRoot() {
  * it takes to complete the legal move.
  -------------------------------------------------------------------*/
 void insertIntoLegalMoves(int insertIndex, BranchPath *newLegalMove, BranchPath *curNode) {
+	// Determine if the move has been fully traversed before, in which case we don't want to add it
+	if (legalMoveHasBeenTraversed(newLegalMove))
+	{
+		recipeLog(7, "Serialization", "Cache", "Visited Nodes", "Skipping over a node we've already visited");
+		freeNode(newLegalMove, false);
+		return;
+	}
+	
 	// Reallocate the legalMove array to make room for a new legal move
 	BranchPath **temp = realloc(curNode->legalMoves, sizeof(BranchPath*) * ((size_t)curNode->numLegalMoves + 1));
 
@@ -1740,10 +1801,10 @@ void popAllButFirstLegalMove(struct BranchPath *node) {
 	// First case, we may need to set the final slot to NULL (the one _after_ the last element)
 	// Which is handled by the full freeLegalMoves (in the shiftUpLegalMoves inner call).
 	int i = node->numLegalMoves - 1;
-	freeLegalMove(node, i--);
+	freeLegalMove(node, i--, true);
 	for (; i > 0 ; --i) {
 		// Now we don't need to check final slot.
-		freeLegalMoveOnly(node, i);
+		freeLegalMoveOnly(node, i, true);
 	}
 }
 
@@ -2398,7 +2459,7 @@ Result calculateOrder(const int ID) {
 
 				// Regardless of record status, it's time to go back up and find new endstates
 				curNode = curNode->prev;
-				freeLegalMove(curNode, 0);
+				freeLegalMove(curNode, 0, true);
 				curNode->next = NULL;
 				stepIndex--;
 				continue;
@@ -2457,7 +2518,7 @@ Result calculateOrder(const int ID) {
 					}
 
 					curNode = curNode->prev;
-					freeLegalMove(curNode, 0);
+					freeLegalMove(curNode, 0, true);
 					curNode->next = NULL;
 					stepIndex--;
 					continue;
@@ -2512,7 +2573,7 @@ Result calculateOrder(const int ID) {
 					}
 
 					curNode = curNode->prev;
-					freeLegalMove(curNode, 0);
+					freeLegalMove(curNode, 0, true);
 					curNode->next = NULL;
 					stepIndex--;
 					continue;
@@ -2532,6 +2593,9 @@ Result calculateOrder(const int ID) {
 				if (iterationCount % (branchInterval * DEFAULT_ITERATION_LIMIT) == 0
 					&& (freeRunning || iterationLimit != DEFAULT_ITERATION_LIMIT)) {
 					logIterations(ID, stepIndex, curNode, iterationCount, 3);
+					FILE* fp = fopen("results/visitedNodes.dat", "wb");
+					writeSerialsToDisk(fp);
+					fclose(fp);
 				}
 				else if (iterationCount % 10000 == 0) {
 					logIterations(ID, stepIndex, curNode, iterationCount, 6);
