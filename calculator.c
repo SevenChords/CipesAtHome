@@ -2007,10 +2007,12 @@ void tryTossInventoryItem(BranchPath *curNode, Inventory tempInventory, MoveDesc
 		int tossFrames = invFrames[viableItems][tossedIndex + 1];
 		int replacedFrames = tempFrames + tossFrames;
 
-		useDescription.framesTaken += tossFrames;
-		useDescription.totalFramesTaken += tossFrames;
+		MoveDescription tempUseDescription = useDescription;
 
-		finalizeLegalMove(curNode, replacedFrames, useDescription, replacedInventory, tempOutputsFulfilled, numOutputsFulfilled, TossOther, tossedItem, tossedIndex);
+		tempUseDescription.framesTaken += tossFrames;
+		tempUseDescription.totalFramesTaken += tossFrames;
+
+		finalizeLegalMove(curNode, replacedFrames, tempUseDescription, replacedInventory, tempOutputsFulfilled, numOutputsFulfilled, TossOther, tossedItem, tossedIndex);
 	}
 }
 
