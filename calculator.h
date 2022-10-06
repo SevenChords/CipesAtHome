@@ -123,7 +123,7 @@ BranchPath* createLegalMove(BranchPath* node, Inventory inventory, MoveDescripti
 void filterOut2Ingredients(BranchPath* node);
 void finalizeChapter5Eval(BranchPath* node, Inventory inventory, CH5* ch5Data, int temp_frame_sum, const outputCreatedArray_t outputsFulfilled, int numOutputsFulfilled);
 void finalizeLegalMove(BranchPath* node, int tempFrames, MoveDescription useDescription, Inventory tempInventory, const outputCreatedArray_t tempOutputsFulfilled, int numOutputsFulfilled, enum HandleOutput tossType, enum Type_Sort toss, int tossIndex);
-void freeLegalMove(BranchPath* node, int index, bool cache);
+void freeAndShiftLegalMove(BranchPath* node, int index, bool cache);
 int getInsertionIndex(const BranchPath* node, int frames);
 void insertIntoLegalMoves(int insertIndex, BranchPath* newLegalMove, BranchPath* curNode);
 void popAllButFirstLegalMove(BranchPath* node);
@@ -159,7 +159,6 @@ void initCacheWriteLock();
 // Select and random methodology functions
 void handleSelectAndRandom(BranchPath* curNode, int select, int randomise);
 void shuffleLegalMoves(BranchPath* node);
-void softMin(BranchPath *node);
 
 // Sorting functions
 int alpha_sort(const void* elem1, const void* elem2);
@@ -183,11 +182,9 @@ void freeNode(BranchPath *node, bool cache);
 BranchPath* initializeRoot();
 
 // Serial functions
-uint32_t 	insertSorted(Serial serial);
 uint32_t	indexToInsert(Serial serial, int low, int high);
 void		insertIntoCache(Serial serial, uint32_t index, uint32_t deletedChildren);
 int			searchVisitedNodes(Serial serial, int low, int high);
-void 		shiftSerialArrayToFillFreedChildren(uint32_t index, uint32_t deletedChildren);
 void 		cacheSerial(BranchPath *node);
 void 		serializeNode(BranchPath *node);
 uint8_t 	serializeCookNode(BranchPath *node, void **data);

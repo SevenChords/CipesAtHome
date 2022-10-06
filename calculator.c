@@ -1,57 +1,147 @@
+#include "calculator.h"
+
+#include <libconfig.h>
+#include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "calculator.h"
+#include <string.h>
+#include <stdbool.h>
+#include <time.h>
+#include "absl/base/port.h"
 #include "base.h"
 #include "FTPManagement.h"
+#include "logger.h"
 #include "node_print.h"
 #include "recipes.h"
 #include "start.h"
 #include "shutdown.h"
-#include <libconfig.h>
-#include "logger.h"
-#include <time.h>
-#include <string.h>
-#include <stdbool.h>
-#include <omp.h>
-#include "absl/base/port.h"
 
+// Constants
 #define NUM_RECIPES 58 			// Including Chapter 5 representation
-#define CHOOSE_2ND_INGREDIENT_FRAMES 56 	// Penalty for choosing a 2nd item
-#define TOSS_FRAMES 32				// Penalty for having to toss an item
-#define ALPHA_SORT_FRAMES 38			// Penalty to perform alphabetical ascending sort
-#define REVERSE_ALPHA_SORT_FRAMES 40		// Penalty to perform alphabetical descending sort
-#define TYPE_SORT_FRAMES 39			// Penalty to perform type ascending sort
-#define REVERSE_TYPE_SORT_FRAMES 41		// Penalty to perform type descending sort
-#define JUMP_STORAGE_NO_TOSS_FRAMES 5		// Penalty for not tossing the last item (because we need to get Jump Storage)
-#define BUFFER_SEARCH_FRAMES 150		// Threshold to try optimizing a roadmap to attempt to beat the current record
-#define DEFAULT_ITERATION_LIMIT 100000 // Cutoff for iterations explored before resetting
-#define ITERATION_LIMIT_INCREASE 100000000 // Amount to increase the iteration limit by when finding a new record
 #define INVENTORY_SIZE 20
 
+// Frame penalty for a particular action
+#define CHOOSE_2ND_INGREDIENT_FRAMES 56
+#define TOSS_FRAMES 32
+#define ALPHA_ASC_SORT_FRAMES 38
+#define ALPHA_DESC_SORT_FRAMES 40
+#define TYPE_ASC_SORT_FRAMES 39
+#define TYPE_DESC_SORT_FRAMES 41
+#define JUMP_STORAGE_NO_TOSS_FRAMES 5		// Penalty for not tossing the last item (because we need to get Jump Storage)
+
+// algorithm parameters
+#define BUFFER_SEARCH_FRAMES 150 // Threshold to try optimizing a roadmap to attempt to beat the current record
+#define DEFAULT_ITERATION_LIMIT 100000 // Cutoff for iterations explored before resetting
+#define ITERATION_LIMIT_INCREASE 100000000 // Amount to increase the iteration limit by when finding a new record
 #define CHECK_SHUTDOWN_INTERVAL 30000
 #define SERIAL_CACHE_INTERVAL 200 // number of dives should elapse before writing the serials to disk
-static const int UNSET_INDEX_SIGNED = -99999;
 
 static const int INT_OUTPUT_ARRAY_SIZE_BYTES = sizeof(outputCreatedArray_t);
 static const outputCreatedArray_t EMPTY_RECIPES = {0};
 static const Cook EMPTY_COOK = {0};
 
+// globals
 int **invFrames;
 Recipe *recipeList;
-
 Serial *visitedBranches = NULL;
 uint32_t numVisitedBranches = 0;
-omp_lock_t cacheWriteLock;
+omp_lock_t cacheWriteLock; // protect multi-threaded reads/writes to visitedBranches
 
 // Used to uniquely identify a particular item combination for serialization purposes
-int recipeOffsetLookup[57] = {
+static int recipeOffsetLookup[57] = {
 	0, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15, 16, 17, 18, 23, 24, 25,
 	26, 28, 31, 35, 37, 39, 40, 41, 44, 45, 46, 48, 50, 52,
 	59, 60, 61, 62, 63, 64, 66, 68, 71, 77, 82, 83, 85, 86,
 	87, 88, 89, 90, 92, 147, 148, 149, 152, 153, 154, 155};
 
-// Uniquely identify a particular item combination
-// Utilize the hard-coded offset lookup to reduce time complexity a bit
+/*-------------------------------------------------------------------
+ * Function 	: checkShutdownOnIndex
+ *
+ * Called periodically to check for shutdown. Performs modulo operation
+ * before the function call to reduce overhead cost from repeated checks.
+ -------------------------------------------------------------------*/
+ABSL_ATTRIBUTE_ALWAYS_INLINE static inline bool checkShutdownOnIndex(int i) {
+	return i % CHECK_SHUTDOWN_INTERVAL == 0 && askedToShutdown();
+}
+
+/*-------------------------------------------------------------------
+ * Function 	: copyOutputsFulfilled
+ *
+ * A simple memcpy to duplicate srcOutputsFulfilled into destOutputsFulfilled
+ -------------------------------------------------------------------*/
+ABSL_ATTRIBUTE_ALWAYS_INLINE static inline void copyOutputsFulfilled(outputCreatedArray_t dest, const outputCreatedArray_t src) {
+	memcpy((void*)dest, (const void*)src, INT_OUTPUT_ARRAY_SIZE_BYTES);
+}
+
+/*-------------------------------------------------------------------
+ * Function 	: initializeInvFrames
+ *
+ * Initializes global invFrames, which is used to calculate
+ * the number of frames it takes to navigate to an item in the menu.
+ -------------------------------------------------------------------*/
+void initializeInvFrames() {
+	invFrames = getInventoryFrames();
+}
+
+/*-------------------------------------------------------------------
+ * Function 	: initializeRecipeList
+ *
+ * Initializes global variable recipeList, which stores data pertaining
+ * to each of the 57 recipes, plus a representation of Chapter 5. This
+ * data consists of recipe outputs, number of different ways to cook the
+ * recipe, and the items required for each recipe combination.
+ -------------------------------------------------------------------*/
+void initializeRecipeList() {
+	recipeList = getRecipeList();
+}
+
+/*-------------------------------------------------------------------
+ * Function : void initCacheWriteLock() {
+ *
+ * Init the lock that prevents our program from modifying the serial
+ * cache at the same time as writing the cache to disk.
+ -------------------------------------------------------------------*/
+void initCacheWriteLock() {
+	omp_init_lock(&cacheWriteLock);
+}
+
+/*-------------------------------------------------------------------
+ * Function : initializeRoot
+ *
+ * Generate the root of the tree graph
+ -------------------------------------------------------------------*/
+ABSL_MUST_USE_RESULT BranchPath* initializeRoot() {
+	BranchPath* root = malloc(sizeof(BranchPath));
+
+	checkMallocFailed(root);
+
+	root->moves = 0;
+	root->inventory = getStartingInventory();
+	root->description.action = EBegin;
+	root->description.data = NULL;
+	root->description.framesTaken = 0;
+	root->description.totalFramesTaken = 0;
+	root->prev = NULL;
+	root->next = NULL;
+	// This will also 0 out all the other elements
+	copyOutputsFulfilled(root->outputCreated, EMPTY_RECIPES);
+	root->numOutputsCreated = 0;
+	root->legalMoves = NULL;
+	root->numLegalMoves = 0;
+	root->totalSorts = 0;
+	serializeNode(root);
+	return root;
+}
+
+/*-------------------------------------------------------------------
+ * Function : getRecipeIndex
+ *
+ * Finds a unique identifier for a particular recipe combination.
+ * For a particular recipe combination, sum all of the combinations
+ * of cooking lower-index outputs, then add all earlier combinations
+ * of cooking the output in question. This utilizes recipeOffSetLookup
+ * to prevent complex lookup times.
+ -------------------------------------------------------------------*/
 uint8_t getRecipeIndex(Cook *pCook)
 {
 	int i = getIndexOfRecipe(pCook->output);
@@ -74,7 +164,14 @@ uint8_t getRecipeIndex(Cook *pCook)
 	return UINT8_MAX;
 }
 
-// returns the number of bytes used to serialize the node
+/*-------------------------------------------------------------------
+ * Function : serializeCookNode
+ *
+ * Generates a unique set of bytes to represent the cook action performed.
+ * Returns the length of bytes required to represent the action.
+ * Note that we skip representing the Mistake, as it's always the last recipe,
+ * and the Dried Bouquet, as the that is considered part of the CH5 sequence.
+ -------------------------------------------------------------------*/
 uint8_t serializeCookNode(BranchPath *node, void **data)
 {
 	uint8_t dataLen = 0;
@@ -126,6 +223,12 @@ uint8_t serializeCookNode(BranchPath *node, void **data)
 	return dataLen;
 }
 
+/*-------------------------------------------------------------------
+ * Function : serializeSortNode
+ *
+ * Generates a unique set of bytes to represent the sort performed.
+ * Returns the length of bytes required to represent the action.
+ -------------------------------------------------------------------*/
 uint8_t serializeSortNode(BranchPath *node, void **data)
 {
 	uint8_t dataLen = 1;
@@ -149,6 +252,12 @@ uint8_t serializeSortNode(BranchPath *node, void **data)
 	return dataLen;
 }
 
+/*-------------------------------------------------------------------
+ * Function : serializeCH5Node
+ *
+ * Generates a unique set of bytes to represent the CH5 sequence.
+ * Returns the length of bytes required to represent the action.
+ -------------------------------------------------------------------*/
 uint8_t serializeCH5Node(BranchPath *node, void **data)
 {
 	uint8_t actionValue = recipeOffsetLookup[56] + 4;
@@ -216,12 +325,12 @@ uint8_t serializeCH5Node(BranchPath *node, void **data)
 	return dataLen;
 }
 
-// To serialize nodes, we need to represent the following actions as a number:
-// 0-154: all possible recipe combinations
-// 155-158: all four sorts
-// 159-238: all possible CH5 actions
-// Additionally, we need to tack on extra bits if a recipe output is not auto-placed
-// and tack on extra bits if any CH5 items are not auto-placed
+/*-------------------------------------------------------------------
+ * Function : serializeNode
+ *
+ * Observes the action taken in this node, generates unique bytes to
+ * represent it, and saves it within the node struct to be referenced later.
+ -------------------------------------------------------------------*/
 void serializeNode(BranchPath *node)
 {
 	if (node->moves == 0)
@@ -261,6 +370,12 @@ void serializeNode(BranchPath *node)
 		node->serial = (Serial) {parentSerial.length + dataLen, data};
 }
 
+/*-------------------------------------------------------------------
+ * Function : serialcmp
+ *
+ * Perform a memcmp between two serials, with care taken to observe
+ * difference in serial length.
+ -------------------------------------------------------------------*/
 ABSL_ATTRIBUTE_ALWAYS_INLINE
 inline int serialcmp(Serial s1, Serial s2)
 {
@@ -277,24 +392,12 @@ inline int serialcmp(Serial s1, Serial s2)
 	return 0;
 }
 
-// returns the index the serial was inserted at
-uint32_t insertSorted(Serial serial)
-{
-	// First add space
-	if (numVisitedBranches == 0)
-		visitedBranches = malloc(++numVisitedBranches * sizeof(Serial)); // numVisitedBranches should be 0 here
-	else
-		visitedBranches = realloc(visitedBranches, ++numVisitedBranches * sizeof(Serial));
-
-	// Last serial data is empty from realloc, so walk backwards from second-to-last
-	int i = 0;
-	for (i = numVisitedBranches-2; i >= 0 && serialcmp(visitedBranches[i], serial) > 0; i--)
-		visitedBranches[i + 1] = visitedBranches[i];
-	
-	visitedBranches[i + 1] = serial;
-	return i + 1;
-}
-
+/*-------------------------------------------------------------------
+ * Function : indexToInsert
+ *
+ * Perform a binary search to determine
+ * where we should insert the given serial.
+ -------------------------------------------------------------------*/
 uint32_t indexToInsert(Serial serial, int low, int high)
 {
 	if (high <= low)
@@ -311,6 +414,14 @@ uint32_t indexToInsert(Serial serial, int low, int high)
 	return indexToInsert(serial, low, mid-1);
 }
 
+/*-------------------------------------------------------------------
+ * Function : searchVisitedNodes
+ *
+ * Perform a binary search to determine
+ * if the provided serial exists in the global array.
+ * If it exists, this means we have already visited the node
+ * that owns the provided serial.
+ -------------------------------------------------------------------*/
 int searchVisitedNodes(Serial serial, int low, int high)
 {
 	if (high < low)
@@ -329,6 +440,12 @@ int searchVisitedNodes(Serial serial, int low, int high)
 	return searchVisitedNodes(serial, mid + 1, high);
 }
 
+/*-------------------------------------------------------------------
+ * Function : insertIntoCache
+ *
+ * Insert the given serial into the global array at index provided,
+ * while factoring in how many children we have free'd via deleteAndFreeChildSerials
+ -------------------------------------------------------------------*/
 void insertIntoCache(Serial serial, uint32_t index, uint32_t deletedChildren)
 {
 	// Handle the case where our array is empty
@@ -364,6 +481,14 @@ void insertIntoCache(Serial serial, uint32_t index, uint32_t deletedChildren)
 	visitedBranches[index] = serial;
 }
 
+/*-------------------------------------------------------------------
+ * Function : deleteAndFreeChildSerials
+ *
+ * If we are caching a serial, then this means we have visited all child nodes.
+ * Observe if there are any cached child node serials and free them.
+ * Returns the number of free'd child serials. Global array is shifted
+ * on insert to avoid an additional realloc call.
+ -------------------------------------------------------------------*/
 uint32_t deleteAndFreeChildSerials(Serial serial, uint32_t index)
 {
 	uint32_t deletedChildren = 0;
@@ -397,48 +522,16 @@ uint32_t deleteAndFreeChildSerials(Serial serial, uint32_t index)
 	return deletedChildren;
 }
 
-void shiftSerialArrayToFillFreedChildren(uint32_t index, uint32_t deletedChildren)
-{
-	// We want to move bytes:
-	// FROM 		index+deletedChildren
-	// TO 			index
-	// CONTAINING	numVisitedBranches - index - deletedChildren indices
-	// i.e. if index = 5, deleted 2 children, and have 10 total serials (before realloc), then we want to move serials 7-9 to indices 5-7
-
-	uint32_t fromIdx = index + deletedChildren;
-	Serial *fromPtr = visitedBranches + fromIdx;
-	Serial *toPtr 	= visitedBranches + index;
-	uint32_t numIndicesToCopy = numVisitedBranches - index - deletedChildren;
-	uint32_t numBytesToCopy = numIndicesToCopy * sizeof(Serial);
-
-	if (fromIdx < numVisitedBranches)
-		memmove(toPtr, fromPtr, numBytesToCopy);
-
-	// Now that we've shifted the array around, realloc to the new numVisitedBranches
-	numVisitedBranches -= deletedChildren;
-	visitedBranches = realloc(visitedBranches, numVisitedBranches * sizeof(Serial));
-}
-
+/*-------------------------------------------------------------------
+ * Function : cacheSerial
+ *
+ * Insert the given node's serial into the global sorted array.
+ -------------------------------------------------------------------*/
 void cacheSerial(BranchPath *node)
 {
 	// ignore root node and Mistake
 	if (node->serial.length == 0 || node->serial.data == NULL)
 		return;
-
-	if (node->description.action == ECook)
-	{
-		char res[150];
-		Cook* pCook = (Cook*)node->description.data;
-		if (pCook->numItems == 1)
-		{
-			sprintf(res, "Caching: Moves %d | [%s -> %s] | HandleOutput: %d", node->moves, getItemName(pCook->item1), getItemName(pCook->output), pCook->handleOutput);
-		}
-		else
-		{
-			sprintf(res, "Caching: Moves %d | [%s + %s -> %s] | HandleOutput: %d", node->moves, getItemName(pCook->item1), getItemName(pCook->item2), getItemName(pCook->output), pCook->handleOutput);
-		}
-		//recipeLog(3, "Cache", "Insert", "Cached Node", res);
-	}
 
 	#pragma omp critical
 	{
@@ -466,72 +559,23 @@ void cacheSerial(BranchPath *node)
 	}
 }
 
-ABSL_ATTRIBUTE_ALWAYS_INLINE static inline bool checkShutdownOnIndex(int i) {
-	return i % CHECK_SHUTDOWN_INTERVAL == 0 && askedToShutdown();
-}
-
 /*-------------------------------------------------------------------
- * Function 	: initializeInvFrames
- *
- * Initializes global variable invFrames, which is used to calculate
- * the number of frames it takes to navigate to an item in the menu.
- -------------------------------------------------------------------*/
-void initializeInvFrames() {
-	invFrames = getInventoryFrames();
-}
-
-/*-------------------------------------------------------------------
- * Function 	: initializeRecipeList
- *
- * Initializes global variable recipeList, which stores data pertaining
- * to each of the 57 recipes, plus a representation of Chapter 5. This
- * data consists of recipe outputs, number of different ways to cook the
- * recipe, and the items required for each recipe combination.
- -------------------------------------------------------------------*/
-void initializeRecipeList() {
-	recipeList = getRecipeList();
-}
-
-/*-------------------------------------------------------------------
- * Function : void initCacheWriteLock() {
- *
- * Init the lock that prevents our program from modifying the serial
- * cache at the same time as writing the cache to disk.
- -------------------------------------------------------------------*/
-void initCacheWriteLock() {
-	omp_init_lock(&cacheWriteLock);
-}
-
-/*-------------------------------------------------------------------
- * Function 	: applyJumpStorageFramePenalty
- * Inputs	: BranchPath *node
+ * Function : applyJumpStorageFramePenalty
  *
  * Looks at the node's Cook data. If the item is autoplaced, then add
  * a penalty for not tossing the item. Adjust framesTaken and
  * totalFramesTaken to reflect this change.
  -------------------------------------------------------------------*/
 void applyJumpStorageFramePenalty(BranchPath *node) {
-	if (((Cook *) node->description.data)->handleOutput == Autoplace) {
+	Cook* pCook = (Cook*)node->description.data;
+	if (pCook->handleOutput == Autoplace) {
 		node->description.framesTaken += JUMP_STORAGE_NO_TOSS_FRAMES;
 		node->description.totalFramesTaken += JUMP_STORAGE_NO_TOSS_FRAMES;
 	}
 }
 
 /*-------------------------------------------------------------------
- * Function 	: copyOutputsFulfilled
- * Inputs	: int *destOutputsFulfilled, int *srcOutputsFulfilled
- * Outputs	:
- * A simple memcpy to duplicate srcOutputsFulfilled into destOutputsFulfilled
- -------------------------------------------------------------------*/
-ABSL_ATTRIBUTE_ALWAYS_INLINE static inline void copyOutputsFulfilled(outputCreatedArray_t destOutputsFulfilled, const outputCreatedArray_t srcOutputsFulfilled) {
-	memcpy((void *)destOutputsFulfilled, (const void *)srcOutputsFulfilled, INT_OUTPUT_ARRAY_SIZE_BYTES);
-}
-
-/*-------------------------------------------------------------------
- * Function: createChapter5Struct
- * Inputs: CH5_Eval eval
- *         int      lateSort
- * Outputs: CH5 *ch5
+ * Function : createChapter5Struct
  *
  * Compartmentalization of setting CH5 attributes
  * lateSort tracks whether we performed the sort before or after the
@@ -553,17 +597,10 @@ ABSL_MUST_USE_RESULT CH5 *createChapter5Struct(CH5_Eval eval, int lateSort) {
 }
 
 /*-------------------------------------------------------------------
- * Function 	: createCookDescription
- * Inputs	: BranchPath 	  *node
- *		  Recipe 	  recipe
- *		  ItemCombination combo
- *		  enum Type_Sort	  *tempInventory
- *		  int 			  *tempFrames
- *		  int 			  viableItems
- * Outputs	: MoveDescription useDescription
+ * Function : createCookDescription
  *
  * Compartmentalization of generating a MoveDescription struct
- * based on various parameters dependent on what recip we're cooking
+ * based on various parameters dependent on what recipe we're cooking
  -------------------------------------------------------------------*/
 MoveDescription createCookDescription(const BranchPath *node, Recipe recipe, ItemCombination combo, Inventory *tempInventory, int *tempFrames, int viableItems) {
 	MoveDescription useDescription;
@@ -586,16 +623,7 @@ MoveDescription createCookDescription(const BranchPath *node, Recipe recipe, Ite
 }
 
 /*-------------------------------------------------------------------
- * Function 	: createCookDescription1Item
- * Inputs	: BranchPath 		*node
- *		  Recipe 		recipe
- *		  ItemCombination 	combo
- *		  enum Type_Sort		*tempInventory
- *		  int 				*ingredientLoc
- *		  int 				*ingredientOffset
- *		  int 				*tempFrames
- *		  int 				viableItems
- 		  MoveDescription	*useDescription
+ * Function : createCookDescription1Item
  *
  * Handles inventory management and frame calculation for recipes of
  * length 1. Generates Cook structure and points to this structure
@@ -617,16 +645,7 @@ void createCookDescription1Item(const BranchPath *node, Recipe recipe, ItemCombi
 }
 
 /*-------------------------------------------------------------------
- * Function 	: createCookDescription2Items
- * Inputs	: BranchPath 		*node
- *		  Recipe 		recipe
- *		  ItemCombination 	combo
- *		  enum Type_Sort		*tempInventory
- *		  int 				*ingredientLoc
- *		  int 				*ingredientOffset
- *		  int 				*tempFrames
- *		  int 				viableItems
- 		  MoveDescription	*useDescription
+ * Function : createCookDescription2Items
  *
  * Handles inventory management and frame calculation for recipes of
  * length 2. Swaps items if it's faster to choose the second item first.
@@ -700,15 +719,10 @@ void createCookDescription2Items(const BranchPath *node, Recipe recipe, ItemComb
 }
 
 /*-------------------------------------------------------------------
- * Function 	: createLegalMove
- * Inputs	: BranchPath		*node
- *		  enum Type_Sort		*inventory
- *		  MoveDescription	description
- *		  int				*outputsFulfilled
- *		  int				numOutputsFulfilled
- * Outputs	: BranchPath		*newLegalMove
+ * Function : createLegalMove
  *
- * Given the input parameters, allocate and set attributes for a legalMove node
+ * Given the input parameters, allocate and set attributes for a
+ * legalMove node, as well as add it to the parent's list of legal moves.
  -------------------------------------------------------------------*/
 BranchPath *createLegalMove(BranchPath *node, Inventory inventory, MoveDescription description, const outputCreatedArray_t outputsFulfilled, int numOutputsFulfilled) {
 	BranchPath *newLegalMove = malloc(sizeof(BranchPath));
@@ -737,8 +751,7 @@ BranchPath *createLegalMove(BranchPath *node, Inventory inventory, MoveDescripti
 }
 
 /*-------------------------------------------------------------------
- * Function 	: filterOut2Ingredients
- * Inputs	: BranchPath		*node
+ * Function : filterOut2Ingredients
  *
  * For the first node's legal moves, we cannot cook a recipe which
  * contains two items. Thus, we need to remove any legal moves
@@ -748,22 +761,14 @@ void filterOut2Ingredients(BranchPath *node) {
 	for (int i = 0; i < node->numLegalMoves; i++) {
 		if (node->legalMoves[i]->description.action == ECook) {
 			Cook *cook = node->legalMoves[i]->description.data;
-			if (cook->numItems == 2) {
-				freeLegalMove(node, i, true);
-				i--; // Update i so we don't skip over the newly moved legalMoves
-			}
+			if (cook->numItems == 2)
+				freeAndShiftLegalMove(node, i--, true);
 		}
 	}
 }
 
 /*-------------------------------------------------------------------
- * Function: finalizeChapter5Eval
- * Inputs: BranchPath                 *node
- *         Inventory                  inventory
- *         CH5                        *ch5Data
- *         int                        temp_frame_sum
- *         const outputCreatedArray_t outputsFulfilled
- *         int                        numOutputsFulfilled
+ * Function : finalizeChapter5Eval
  *
  * Given input parameters, construct a new legal move to represent CH5
  -------------------------------------------------------------------*/
@@ -785,16 +790,7 @@ void finalizeChapter5Eval(BranchPath *node, Inventory inventory, CH5 *ch5Data, i
 }
 
 /*-------------------------------------------------------------------
- * Function 	: finalizeLegalMove
- * Inputs	: BranchPath		*node
- *		  int				tempFrames
- *		  MoveDescription	useDescription
- *		  enum Type_Sort		*tempInventory
- *		  int				*tempOutputsFulfilled
- *		  int				numOutputsFulfilled
- *		  enum HandleOutput		tossType
- *		  enum Type_Sort		toss
- *		  int				tossIndex
+ * Function : finalizeLegalMove
  *
  * Given input parameters, construct a new legal move to represent
  * a valid recipe move. Also checks to see if the legal move exceeds
@@ -802,15 +798,13 @@ void finalizeChapter5Eval(BranchPath *node, Inventory inventory, CH5 *ch5Data, i
  -------------------------------------------------------------------*/
 void finalizeLegalMove(BranchPath *node, int tempFrames, MoveDescription useDescription, Inventory tempInventory, const outputCreatedArray_t tempOutputsFulfilled, int numOutputsFulfilled, enum HandleOutput tossType, enum Type_Sort toss, int tossIndex) {
 	// Determine if the legal move exceeds the frame limit. If so, return out
-	if (useDescription.totalFramesTaken > getLocalRecord() + BUFFER_SEARCH_FRAMES) {
+	if (useDescription.totalFramesTaken > getLocalRecord() + BUFFER_SEARCH_FRAMES)
 		return;
-	}
 
 	// Determine where to insert this legal move into the list of legal moves (sorted by frames taken)
 	int insertIndex = getInsertionIndex(node, tempFrames);
 
 	Cook *cookNew = malloc(sizeof(Cook));
-
 	checkMallocFailed(cookNew);
 
 	*cookNew = *((Cook*)useDescription.data);
@@ -827,12 +821,12 @@ void finalizeLegalMove(BranchPath *node, int tempFrames, MoveDescription useDesc
 }
 
 /*-------------------------------------------------------------------
- * Function 	: freeAllNodes
- * Inputs	: BranchPath	*node
+ * Function : freeAllNodes
  *
  * We've reached the iteration limit, so free all nodes in the roadmap
  * We additionally need to delete node from the previous node's list of
- * legalMoves to prevent a double-free
+ * legalMoves to prevent a double-free. Don't cache serials, as we haven't
+ * traversed all legal moves.
  -------------------------------------------------------------------*/
 void freeAllNodes(BranchPath *node) {
 	BranchPath *prevNode = NULL;
@@ -840,7 +834,6 @@ void freeAllNodes(BranchPath *node) {
 	do {
 		prevNode = node->prev;
 
-		// don't cache serials, as we haven't necessarily traversed all legal moves off of this node
 		freeNode(node, false);
 
 		// Delete node in nextNode's list of legal moves to prevent a double free
@@ -856,17 +849,15 @@ void freeAllNodes(BranchPath *node) {
 }
 
 /*-------------------------------------------------------------------
- * Function 	: freeLegalMoveOnly
- * Inputs	: BranchPath	*node
- *		  int			index
+ * Function : freeLegalMove
  *
  * Free the legal move at index in the node's array of legal moves,
- * but unlike freeLegalMove(), this does NOT shift the existing legal
- * moves to fill the gap. This is useful in cases where where the
+ * but unlike freeAndShiftLegalMove(), this does NOT shift the existing
+ * legal moves to fill the gap. This is useful in cases where the
  * caller can assure such consistency is not needed (For example,
  * freeing the last legal move or freeing all legal moves).
  -------------------------------------------------------------------*/
-static void freeLegalMoveOnly(BranchPath *node, int index, bool cache) {
+static void freeLegalMove(BranchPath *node, int index, bool cache) {
 	freeNode(node->legalMoves[index], cache);
 	node->legalMoves[index] = NULL;
 	node->numLegalMoves--;
@@ -874,24 +865,19 @@ static void freeLegalMoveOnly(BranchPath *node, int index, bool cache) {
 }
 
 /*-------------------------------------------------------------------
- * Function 	: freeLegalMove
- * Inputs	: BranchPath	*node
- *		  int			index
+ * Function : freeAndShiftLegalMove
  *
  * Free the legal move at index in the node's array of legal moves,
- * And shift the existing legal moves after the index to fill the gap.
+ * and shift the existing legal moves after the index to fill the gap.
  -------------------------------------------------------------------*/
 
-void freeLegalMove(BranchPath *node, int index, bool cache) {
-	freeLegalMoveOnly(node, index, cache);
-
-	// Shift up the rest of the legal moves
+void freeAndShiftLegalMove(BranchPath *node, int index, bool cache) {
+	freeLegalMove(node, index, cache);
 	shiftUpLegalMoves(node, index + 1);
 }
 
 /*-------------------------------------------------------------------
- * Function 	: freeNode
- * Inputs	: BranchPath	*node
+ * Function : freeNode
  *
  * Free the current node and all legal moves within the node
  -------------------------------------------------------------------*/
@@ -909,7 +895,7 @@ void freeNode(BranchPath *node, bool cache) {
 			// Don't need to worry about shifting up when we do this.
 			// Or resetting slots to NULL.
 			// We are blowing it all away anyways.
-			freeLegalMoveOnly(node, i++, cache);
+			freeLegalMove(node, i++, cache);
 		}
 		free(node->legalMoves);
 	}
@@ -921,8 +907,7 @@ void freeNode(BranchPath *node, bool cache) {
 }
 
 /*-------------------------------------------------------------------
- * Function: fulfillChapter5
- * Inputs: BranchPath *curNode
+ * Function : fulfillChapter5
  *
  * Count up frames from Hot Dog and Mousse Cake, then determine how
  * to continue evaluating Chapter 5 based on null count.
@@ -969,9 +954,7 @@ void fulfillChapter5(BranchPath *curNode) {
 }
 
 /*-------------------------------------------------------------------
- * Function 	: fulfillRecipes
- * Inputs	: BranchPath	*curNode
- * 		  int			recipeIndex
+ * Function : fulfillRecipes
  *
  * Iterate through all possible combinations of cooking different
  * recipes and create legal moves for them
@@ -1034,14 +1017,10 @@ void fulfillRecipes(BranchPath *curNode) {
 }
 
 /*-------------------------------------------------------------------
- * Function 	: generateCook
- * Inputs	: MoveDescription	*description
- * 		  ItemCombination	combo
- *		  Recipe		recipe
- *		  int				*ingredientLoc
- *		  int				swap
+ * Function : generateCook
  *
- * Given input parameters, generate Cook structure
+ * Given input parameters, generate Cook structure to represent
+ * what was cooked and how.
  -------------------------------------------------------------------*/
 void generateCook(MoveDescription *description, const ItemCombination combo, const Recipe recipe, const int *ingredientLoc, int swap) {
 	Cook *cook = malloc(sizeof(Cook));
@@ -1066,10 +1045,7 @@ void generateCook(MoveDescription *description, const ItemCombination combo, con
 }
 
 /*-------------------------------------------------------------------
- * Function 	: generateFramesTaken
- * Inputs	: MoveDescription	*description
- * 		  BranchPath		*node
- *		  int				framesTaken
+ * Function : generateFramesTaken
  *
  * Assign frame duration to description structure and reference the
  * previous node to find the total frame duration for the roadmap thus far
@@ -1080,9 +1056,7 @@ void generateFramesTaken(MoveDescription *description, const BranchPath *node, i
 }
 
 /*-------------------------------------------------------------------
- * Function 	: getInsertionIndex
- * Inputs	: BranchPath	*curNode
- *		  int			frames
+ * Function : getInsertionIndex
  *
  * Based on the frames it takes to complete a new legal move, find out
  * where to insert it in the current node's array of legal moves, which
@@ -1102,21 +1076,19 @@ int getInsertionIndex(const BranchPath *curNode, int frames) {
 
 /*-------------------------------------------------------------------
  * Function : getSortFrames
- * Inputs	: enum Action action
- * Outputs	: int frames
  *
  * Depending on the type of sort, return the corresponding frame cost.
  -------------------------------------------------------------------*/
 int getSortFrames(enum Action action) {
 	switch (action) {
 		case ESort_Alpha_Asc:
-			return ALPHA_SORT_FRAMES;
+			return ALPHA_ASC_SORT_FRAMES;
 		case ESort_Alpha_Des:
-			return REVERSE_ALPHA_SORT_FRAMES;
+			return ALPHA_DESC_SORT_FRAMES;
 		case ESort_Type_Asc:
-			return TYPE_SORT_FRAMES;
+			return TYPE_ASC_SORT_FRAMES;
 		case ESort_Type_Des:
-			return REVERSE_TYPE_SORT_FRAMES;
+			return TYPE_DESC_SORT_FRAMES;
 		default:
 			// Critical error if we reach this point...
 			// action should be some type of sort
@@ -1125,11 +1097,7 @@ int getSortFrames(enum Action action) {
 }
 
 /*-------------------------------------------------------------------
- * Function: outputOrderIsSlower
- * Inputs: int location_1
- *         int location_2
- *         int inventoryLength
- * Outputs: int (0 or 1)
+ * Function : outputOrderIsSlower
  *
  * In a case where an output is manually placed, if the item it
  * replaces has not been used since the placement of a previous
@@ -1157,17 +1125,12 @@ int outputOrderIsSlower(int location_1, int location_2, int inventoryLength) {
 }
 
 /*-------------------------------------------------------------------
- * Function: handleChapter5EarlySortEndItems
- * Inputs: BranchPath                 *node
- *         Inventory                  inventory
- *         const outputCreatedArray_t outputsFulfilled
- *         int                        numOutputsFulfilled
- *         CH5_Eval                   eval
+ * Function : handleChapter5EarlySortEndItems
  *
  * A sort already occurred right after placing the Coconut. Evaluate
  * each combination of Keel Mango and Courage Shell placements,
- * handle using the Thunder Rage, and if everything is valid, create
- * the move and insert it.
+ * handle using the Thunder Rage on Smorg,, and if everything is valid,
+ * create the move and insert it.
  -------------------------------------------------------------------*/
 void handleChapter5EarlySortEndItems(BranchPath *node, Inventory inventory, const outputCreatedArray_t outputsFulfilled, int numOutputsFulfilled, CH5_Eval eval) {
 	for (eval.KM_place_index = 0; eval.KM_place_index < 10; eval.KM_place_index++) {
@@ -1216,12 +1179,7 @@ void handleChapter5EarlySortEndItems(BranchPath *node, Inventory inventory, cons
 }
 
 /*-------------------------------------------------------------------
- * Function: handleChapter5Eval
- * Inputs: BranchPath                 *node
- *         Inventory                  inventory
- *         const outputCreatedArray_t outputsFulfilled
- *         int                        numOutputsFulfilled
- *         CH5_Eval                   eval
+ * Function : handleChapter5Eval
  *
  * Branch into early and late sort scenarios. For late sort, handle
  * Keel Mango placement here. Otherwise, defer to other functions.
@@ -1264,12 +1222,7 @@ void handleChapter5Eval(BranchPath *node, Inventory inventory, const outputCreat
 }
 
 /*-------------------------------------------------------------------
- * Function: handleChapter5LateSortEndItems
- * Inputs: BranchPath                 *node
- *         Inventory                  inventory
- *         const outputCreatedArray_t outputsFulfilled
- *         int                        numOutputsFulfilled
- *         CH5_Eval                   eval
+ * Function : handleChapter5LateSortEndItems
  *
  * A sort already occurred right after placing the Keel Mango.
  * Evaluate each Courage Shell placement, handle using the Thunder
@@ -1309,12 +1262,7 @@ void handleChapter5LateSortEndItems(BranchPath *node, Inventory inventory, const
 }
 
 /*-------------------------------------------------------------------
- * Function: handleChapter5Sorts
- * Inputs: BranchPath                 *node
- *         Inventory                  inventory
- *         const outputCreatedArray_t outputsFulfilled
- *         int                        numOutputsFulfilled
- *         CH5_Eval                   eval
+ * Function : handleChapter5Sorts
  *
  * Evaluate each sorting method to make sure Coconut will be
  * duplicated, and then branch to the appropriate end items function
@@ -1346,12 +1294,7 @@ void handleChapter5Sorts(BranchPath *node, Inventory inventory, const outputCrea
 }
 
 /*-------------------------------------------------------------------
- * Function: handleDBCOAllocation0Nulls
- * Inputs: BranchPath                 *curNode
- *         Inventory                  tempInventory
- *         const outputCreatedArray_t tempOutputsFulfilled
- *         int                        numOutputsFulfilled
- *         CH5_Eval                   eval
+ * Function : handleDBCOAllocation0Nulls
  *
  * There are no nulls, so neither Dried Bouquet nor Coconut will be
  * autoplaced. Evaluate each combination of placements for them, and
@@ -1393,12 +1336,7 @@ void handleDBCOAllocation0Nulls(BranchPath *curNode, Inventory tempInventory, co
 }
 
 /*-------------------------------------------------------------------
- * Function: handleDBCOAllocation1Null
- * Inputs: BranchPath                 *curNode
- *         Inventory                  tempInventory
- *         const outputCreatedArray_t tempOutputsFulfilled
- *         int                        numOutputsFulfilled
- *         CH5_Eval                   eval
+ * Function : handleDBCOAllocation1Null
  *
  * There is 1 null, so Dried Bouquet will be autoplaced. Evaluate
  * each Coconut placement, and then proceed to the early/late sort
@@ -1430,12 +1368,7 @@ void handleDBCOAllocation1Null(BranchPath *curNode, Inventory tempInventory, con
 }
 
 /*-------------------------------------------------------------------
- * Function: handleDBCOAllocation2Nulls
- * Inputs: BranchPath                 *curNode
- *         Inventory                  tempInventory
- *         const outputCreatedArray_t tempOutputsFulfilled
- *         int                        numOutputsFulfilled
- *         CH5_Eval                   eval
+ * Function : handleDBCOAllocation2Nulls
  *
  * There are at least 2 nulls, so both Dried Bouquet and Coconut
  * will be autoplaced. Proceed to the early/late sort decision.
@@ -1456,15 +1389,7 @@ void handleDBCOAllocation2Nulls(BranchPath *curNode, Inventory tempInventory, co
 }
 
 /*-------------------------------------------------------------------
- * Function 	: handleRecipeOutput
- * Inputs	: BranchPath		*curNode
- *		  enum Type_Sort		*tempInventory
- *		  int				tempFrames
- *		  MoveDescription	useDescription
- *		  int				*tempOutputsFulfilled
- *		  int				numOutputsFulfilled
- *		  enum Type_Sortf		output
- *		  int				viableItems
+ * Function : handleRecipeOutput
  *
  * After detecting that a recipe can be satisfied, see how we can handle
  * the output (either tossing the output, auto-placing it if there is a
@@ -1499,19 +1424,12 @@ void handleRecipeOutput(BranchPath *curNode, Inventory tempInventory, int tempFr
 }
 
 /*-------------------------------------------------------------------
- * Function 	: handleSelectAndRandom
- * Inputs	: BranchPath	*curNode
- *		  int 			select
- *		  int 			randomise
+ * Function : handleSelectAndRandom
  *
  * Based on configuration parameters select and randomise within config.txt,
  * manage the array of legal moves based on the designated behavior of the parameters.
  -------------------------------------------------------------------*/
 void handleSelectAndRandom(BranchPath *curNode, int select, int randomise) {
-	/*if (select && curNode->moves < 55 && curNode->numLegalMoves > 0) {
-		softMin(curNode);
-	}*/
-
 	// Old method of handling select
 	// Somewhat random process of picking the quicker moves to recurse down
 	// Arbitrarily skip over the fastest legal move with a given probability
@@ -1536,8 +1454,7 @@ void handleSelectAndRandom(BranchPath *curNode, int select, int randomise) {
 }
 
 /*-------------------------------------------------------------------
- * Function 	: handleSorts
- * Inputs	: BranchPath	*curNode
+ * Function : handleSorts
  *
  * Perform the 4 different sorts, determine if they changed the inventory,
  * and if so, generate a legal move to represent the sort.
@@ -1568,35 +1485,11 @@ void handleSorts(BranchPath *curNode) {
 }
 
 /*-------------------------------------------------------------------
- * Function 	: initializeRoot
- * Inputs	: struct Job		job
- * Outputs	: BranchPath	*root
+ * Function : legalMoveHasBeenTraversed
  *
- * Generate the root of the tree graph
+ * Perform a binary search on the global visitedBranches array,
+ * and observe if the provided node's serial is present.
  -------------------------------------------------------------------*/
-ABSL_MUST_USE_RESULT BranchPath *initializeRoot() {
-	BranchPath *root = malloc(sizeof(BranchPath));
-
-	checkMallocFailed(root);
-
-	root->moves = 0;
-	root->inventory = getStartingInventory();
-	root->description.action = EBegin;
-	root->description.data = NULL;
-	root->description.framesTaken = 0;
-	root->description.totalFramesTaken = 0;
-	root->prev = NULL;
-	root->next = NULL;
-	// This will also 0 out all the other elements
-	copyOutputsFulfilled(root->outputCreated, EMPTY_RECIPES);
-	root->numOutputsCreated = 0;
-	root->legalMoves = NULL;
-	root->numLegalMoves = 0;
-	root->totalSorts = 0;
-	serializeNode(root);
-	return root;
-}
-
 bool legalMoveHasBeenTraversed(BranchPath* newLegalMove)
 {
 	// Handle the Mistake case
@@ -1611,10 +1504,7 @@ bool legalMoveHasBeenTraversed(BranchPath* newLegalMove)
 }
 
 /*-------------------------------------------------------------------
- * Function 	: insertIntoLegalMoves
- * Inputs	: int			insertIndex
- *		  BranchPath	*newLegalMove
- *		  BranchPath	*curNode
+ * Function : insertIntoLegalMoves
  *
  * Determine where in curNode's legalmove array the new legal move should
  * be inserted. This is necessary because our current implementation
@@ -1651,10 +1541,7 @@ void insertIntoLegalMoves(int insertIndex, BranchPath *newLegalMove, BranchPath 
 }
 
 /*-------------------------------------------------------------------
- * Function 	: copyAllNodes
- * Inputs	: BranchPath	*newNode
- *		  BranchPath	*oldNode
- * Outputs	: BranchPath	*newNode
+ * Function : copyAllNodes
  *
  * Duplicate all the contents of a roadmap to a new memory region.
  * This is used for optimizeRoadmap.
@@ -1723,9 +1610,7 @@ BranchPath *copyAllNodes(BranchPath *newNode, const BranchPath *oldNode) {
 }
 
 /*-------------------------------------------------------------------
- * Function 	: optimizeRoadmap
- * Inputs	: BranchPath		*root
- * Outputs	: struct OptimizeResult	result
+ * Function : optimizeRoadmap
  *
  * Given a complete roadmap, attempt to rearrange recipes such that they
  * are placed in more efficient locations in the roadmap. This is effective
@@ -1735,7 +1620,6 @@ OptimizeResult optimizeRoadmap(const BranchPath *root) {
 	// First copy all nodes to new memory locations so we can begin rearranging nodes
 	const BranchPath *curNode = root;
 	BranchPath *newRoot = malloc(sizeof(BranchPath));
-
 	checkMallocFailed(newRoot);
 
 	newRoot->prev = NULL;
@@ -1769,30 +1653,7 @@ OptimizeResult optimizeRoadmap(const BranchPath *root) {
 }
 
 /*-------------------------------------------------------------------
- * Function : periodicGithubCheck
- * Inputs	:
- *
- * Check for the most recent Github repository release version. If there
- * is a newer version, alert the user.
- -------------------------------------------------------------------*/
-void periodicGithubCheck() {
-	// Double check the latest release on Github
-	int update = checkForUpdates(getLocalVersion());
-	if (update == -1) {
-		printf("Could not check version on Github. Please check your internet connection.\n");
-		printf("Otherwise, completed roadmaps may be inaccurate!\n");
-	}
-	else if (update == 1) {
-		printf("Please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!\n");
-		printf("Press ENTER to exit the program.\n");
-		awaitKeyFromUser();
-		exit(1);
-	}
-}
-
-/*-------------------------------------------------------------------
- * Function 	: popAllButFirstLegalMove
- * Inputs	: BranchPath	*node
+ * Function : popAllButFirstLegalMove
  *
  * In the event we are within the last few nodes of the roadmap, get rid
  * of all but the fastest legal move.
@@ -1801,18 +1662,15 @@ void popAllButFirstLegalMove(struct BranchPath *node) {
 	// First case, we may need to set the final slot to NULL (the one _after_ the last element)
 	// Which is handled by the full freeLegalMoves (in the shiftUpLegalMoves inner call).
 	int i = node->numLegalMoves - 1;
-	freeLegalMove(node, i--, true);
+	freeAndShiftLegalMove(node, i--, true);
 	for (; i > 0 ; --i) {
 		// Now we don't need to check final slot.
-		freeLegalMoveOnly(node, i, true);
+		freeLegalMove(node, i, true);
 	}
 }
 
 /*-------------------------------------------------------------------
  * Function : reallocateRecipes
- * Inputs	: BranchPath	*newRoot
- *			  enum Type_Sort	*rearranged_recipes
- *			  int				num_rearranged_recipes
  *
  * Given a set of recipes, find alternative places in the roadmap to
  * cook these recipes such that we minimize the frame cost.
@@ -1846,7 +1704,7 @@ void reallocateRecipes(BranchPath* newRoot, const enum Type_Sort* rearranged_rec
 
 				// Only want recipes where all ingredients are in the last 10 slots of the evaluated inventory
 				int indexItem1 = indexOfItemInInventory(placement->inventory, combo.item1);
-				int indexItem2 = UNSET_INDEX_SIGNED;
+				int indexItem2 = -1;
 				if (indexItem1 < 10) {
 					continue;
 				}
@@ -1961,8 +1819,6 @@ void reallocateRecipes(BranchPath* newRoot, const enum Type_Sort* rearranged_rec
 
 /*-------------------------------------------------------------------
  * Function : removeRecipesForReallocation
- * Inputs	: BranchPath	*node
- *			  enum Type_Sort	*rearranged_recipes
  *
  * Look through a completed roadmap to find recipes which can be
  * performed elsewhere in the roadmap without affecting the inventory.
@@ -2011,17 +1867,11 @@ int removeRecipesForReallocation(BranchPath* node, enum Type_Sort *rearranged_re
 }
 
 /*-------------------------------------------------------------------
- * Function 	: selectSecondItemFirst
- * Inputs	: BranchPath 		*node
- *		  ItemCombination 	combo
- *		  int 				*ingredientLoc
- *		  int 				nulls
- *		  int 				viableItems
- * Outputs	: int (0 or 1)
+ * Function : selectSecondItemFirst
  *
  * Determines whether it is either required or faster to select the
  * second item before the first item originally listed in the recipe
- * combo.
+ * combo. Returns 1 if we should swap, returns 0 otherwise.
  -------------------------------------------------------------------*/
 int selectSecondItemFirst(const int *ingredientLoc, int nulls, int viableItems) {
 	int visibleLoc0 = ingredientLoc[0] - nulls;
@@ -2058,10 +1908,7 @@ int selectSecondItemFirst(const int *ingredientLoc, int nulls, int viableItems) 
 }
 
 /*-------------------------------------------------------------------
- * Function 	: shiftDownLegalMoves
- * Inputs	: BranchPath	*node
- *		  int			lowerBound
- *		  int			upperBound
+ * Function : shiftDownLegalMoves
  *
  * If this function is called, we want to make room in the legal moves
  * array to place a new legal move. Shift all legal moves starting at
@@ -2075,16 +1922,13 @@ void shiftDownLegalMoves(struct BranchPath *node, int lowerBound, int upperBound
  	for (int i = uppderBound - 1; i >= lowerBound; i--) {
  		legalMoves[i+1] = legalMoves[i];
  	}*/
-
 }
 
 /*-------------------------------------------------------------------
- * Function 	: shiftUpLegalMoves
- * Inputs	: BranchPath	*node
- *		  int			index
+ * Function : shiftUpLegalMoves
  *
  * There is a NULL in the array of legal moves. The first valid legal
- * move AFTER the null is index. Iterate starting at the index of the
+ * move AFTER the null is startIndex. Iterate starting at the index of the
  * NULL legal moves and shift all subsequent legal moves towards the
  * front of the array.
  * WARNING: node->numLegalMove MUST already be decremented before
@@ -2111,67 +1955,7 @@ void shiftUpLegalMoves(struct BranchPath *node, int startIndex) {
 }
 
 /*-------------------------------------------------------------------
- * Function 	: softMin
- * Inputs	: BranchPath	*node
- *
- * This is an experimental function which may substitute the original
- * "select" methodology when determining what next node to explore.
- * This is a variation of the Softmax function. Essentially, the
- * original methodology uses an arbitrary distribution when determining
- * which legal move to take. softMin uses the framecount of each legal
- * move to construct a distribution for which a given node will have a
- * higher probability than subsequent nodes depending on how much faster
- * the given node is compared to the subsequent nodes.
- * For more information on Softmax: https://en.wikipedia.org/wiki/Softmax_function
- -------------------------------------------------------------------*/
-void softMin(BranchPath *node) {
-	// If numLegalMoves is 0 or 1, we will get an error when trying to do x % 0
-	if (node->numLegalMoves < 2) {
-		return;
-	}
-
-	// Calculate the sum of framecount for all legalMoves
-	int frameCountSum = 0;
-	for (int i = 0; i < node->numLegalMoves; i++) {
-		frameCountSum += node->legalMoves[i]->description.framesTaken;
-	}
-
-	// Do some janky shit to recalculate the sum such that the node with the
-	// lowest framecount has a higher "value"
-	int weightSum = 0;
-	for (int i = 0; i < node->numLegalMoves; i++) {
-		weightSum += (frameCountSum - node->legalMoves[i]->description.framesTaken);
-	}
-
-	// Generate a random number between 0 and weightSum
-	int modSum = rand() % weightSum;
-
-	// Find the legal move that corresponds to the modSum
-	int index;
-	weightSum = 0;
-	for (index = 0; index < node->numLegalMoves; index++) {
-		weightSum += (frameCountSum - node->legalMoves[index]->description.framesTaken);
-		if (modSum < weightSum) {
-			// We have found the corresponding legal move
-			break;
-		}
-	}
-
-	// Move the indexth legal move to the front of the array
-	// First store the indexth legal move in a separate pointer
-	BranchPath *softMinNode = node->legalMoves[index];
-	node->legalMoves[index] = NULL;
-
-	// Make room at the beginning of the legal moves array for the softMinNode
-	shiftDownLegalMoves(node, 0, index);
-
-	// Set first index in array to the softMinNode
-	node->legalMoves[0] = softMinNode;
-}
-
-/*-------------------------------------------------------------------
- * Function 	: shuffleLegalMoves
- * Inputs	: BranchPath	*node
+ * Function : shuffleLegalMoves
  *
  * Randomize the order of legal moves by switching two legal moves
  * numlegalMoves times.
@@ -2188,9 +1972,7 @@ void shuffleLegalMoves(BranchPath *node) {
 }
 
 /*-------------------------------------------------------------------
- * Function 	: swapItems
- * Inputs	: int	*ingredientLoc
- *		  int 	*ingredientOffset
+ * Function : swapItems
  *
  * After determining that it is faster to pick the second item before
  * the first for a given recipe (based on the state of our inventory),
@@ -2206,15 +1988,6 @@ void swapItems(int *ingredientLoc) {
 
 /*-------------------------------------------------------------------
  * Function 	: tryTossInventoryItem
- * Inputs	: BranchPath 	  *curNode
- *		  enum Type_Sort	  *tempInventory
- *		  MoveDescription useDescription
- *		  int 			  *tempOutputsFulfilled
- *		  int 			  numOutputsFulfilled
- *		  int 			  tossedIndex
- *		  enum Type_Sort	  output
- *		  int 			  tempFrames
- *		  int 			  viableItems
  *
  * For the given recipe, try to toss items in the inventory in order
  * to make room for the recipe output.
@@ -2242,10 +2015,7 @@ void tryTossInventoryItem(BranchPath *curNode, Inventory tempInventory, MoveDesc
 }
 
 /*-------------------------------------------------------------------
- * Function 	: alpha_sort
- * Inputs	: const void	*elem1
- *		  const void	*elem2
- * Outputs	: int		comparisonValue
+ * Function : alpha_sort
  *
  * Evaluate an alphabetical ascending sort. This is a comparator function
  * called by stdlib's qsort.
@@ -2259,9 +2029,6 @@ int alpha_sort(const void *elem1, const void *elem2) {
 
 /*-------------------------------------------------------------------
  * Function 	: alpha_sort_reverse
- * Inputs	: const void	*elem1
- *		  const void	*elem2
- * Outputs	: int		comparisonValue
  *
  * Evaluate an alphabetical descending sort. This is a comparator function
  * called by stdlib's qsort.
@@ -2275,9 +2042,6 @@ int alpha_sort_reverse(const void *elem1, const void *elem2) {
 
 /*-------------------------------------------------------------------
  * Function 	: type_sort
- * Inputs	: const void	*elem1
- *		  const void	*elem2
- * Outputs	: int		comparisonValue
  *
  * Evaluate an type ascending sort. This is a comparator function
  * called by stdlib's qsort.
@@ -2291,9 +2055,6 @@ int type_sort(const void *elem1, const void *elem2) {
 
 /*-------------------------------------------------------------------
  * Function 	: type_sort_reverse
- * Inputs	: const void	*elem1
- *		  const void	*elem2
- * Outputs	: int		comparisonValue
  *
  * Evaluate an type descending sort. This is a comparator function
  * called by stdlib's qsort.
@@ -2307,9 +2068,6 @@ int type_sort_reverse(const void *elem1, const void *elem2) {
 
 /*-------------------------------------------------------------------
  * Function 	: getSortedInventory
- * Inputs	: enum Type_Sort *inventory
- *		  enum Action 	  sort
- * Outputs	: enum Type_Sort *sorted_inventory
  *
  * Given the type of sort, use qsort to create a new sorted inventory.
  -------------------------------------------------------------------*/
@@ -2321,25 +2079,35 @@ Inventory getSortedInventory(Inventory inventory, enum Action sort) {
 	inventory.nulls = 0;
 
 	// Use qsort and execute sort function depending on sort type
+	int (*cmpfunc)(const void*, const void*) = NULL;
 	switch(sort) {
 		case ESort_Alpha_Asc:
-			qsort((void*)inventory.inventory, inventory.length, sizeof(enum Type_Sort), alpha_sort);
-			return inventory;
+			cmpfunc = &alpha_sort;
+			break;
 		case ESort_Alpha_Des:
-			qsort((void*)inventory.inventory, inventory.length, sizeof(enum Type_Sort), alpha_sort_reverse);
-			return inventory;
+			cmpfunc = &alpha_sort_reverse;
+			break;
 		case ESort_Type_Asc:
-			qsort((void*)inventory.inventory, inventory.length, sizeof(enum Type_Sort), type_sort);
-			return inventory;
+			cmpfunc = &type_sort;
+			break;
 		case ESort_Type_Des:
-			qsort((void*)inventory.inventory, inventory.length, sizeof(enum Type_Sort), type_sort_reverse);
-			return inventory;
+			cmpfunc = &type_sort_reverse;
+			break;
 		default:
 			printf("Error in sorting inventory.\n");
 			exit(2);
 	}
+
+	qsort((void*)inventory.inventory, inventory.length, sizeof(Type_Sort), cmpfunc);
+	return inventory;
 }
 
+/*-------------------------------------------------------------------
+ * Function 	: logIterations
+ *
+ * Print out information to the user about how deep we are and
+ * the frame cost at this point after a certain number of iterations.
+ -------------------------------------------------------------------*/
 void logIterations(int ID, int stepIndex, const BranchPath * curNode, int iterationCount, int level)
 {
 	char callString[30];
@@ -2352,8 +2120,6 @@ void logIterations(int ID, int stepIndex, const BranchPath * curNode, int iterat
 
 /*-------------------------------------------------------------------
  * Function 	: calculateOrder
- * Inputs	: int ID
- * Outputs	: Result	result
  *
  * This is the main roadmap evaluation function. This calls various
  * child functions to generate a sequence of legal moves. It then
@@ -2459,7 +2225,7 @@ Result calculateOrder(const int ID) {
 
 				// Regardless of record status, it's time to go back up and find new endstates
 				curNode = curNode->prev;
-				freeLegalMove(curNode, 0, true);
+				freeAndShiftLegalMove(curNode, 0, true);
 				curNode->next = NULL;
 				stepIndex--;
 				continue;
@@ -2518,7 +2284,7 @@ Result calculateOrder(const int ID) {
 					}
 
 					curNode = curNode->prev;
-					freeLegalMove(curNode, 0, true);
+					freeAndShiftLegalMove(curNode, 0, true);
 					curNode->next = NULL;
 					stepIndex--;
 					continue;
@@ -2573,7 +2339,7 @@ Result calculateOrder(const int ID) {
 					}
 
 					curNode = curNode->prev;
-					freeLegalMove(curNode, 0, true);
+					freeAndShiftLegalMove(curNode, 0, true);
 					curNode->next = NULL;
 					stepIndex--;
 					continue;
@@ -2632,6 +2398,11 @@ Result calculateOrder(const int ID) {
 	return (Result) { -1, -1 };
 }
 
+/*-------------------------------------------------------------------
+ * Function 	: writePersonalBest
+ *
+ * Write the user's current best roadmap time to PB.txt.
+ -------------------------------------------------------------------*/
 void writePersonalBest(Result *result)
 {
 	// Enter critical section to prevent corrupted file
@@ -2817,4 +2588,25 @@ void readVisitedNodesFromDisk() {
 	char result[100];
 	sprintf(result, "Found %d serials from disk", numVisitedBranches);
 	recipeLog(2, "Startup", "Cache", "Visited Nodes", result);
+}
+
+/*-------------------------------------------------------------------
+ * Function : periodicGithubCheck
+ *
+ * Check for the most recent Github repository release version. If there
+ * is a newer version, alert the user.
+ -------------------------------------------------------------------*/
+void periodicGithubCheck() {
+	// Double check the latest release on Github
+	int update = checkForUpdates(getLocalVersion());
+	if (update == -1) {
+		printf("Could not check version on Github. Please check your internet connection.\n");
+		printf("Otherwise, completed roadmaps may be inaccurate!\n");
+	}
+	else if (update == 1) {
+		printf("Please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!\n");
+		printf("Press ENTER to exit the program.\n");
+		awaitKeyFromUser();
+		exit(1);
+	}
 }
