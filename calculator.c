@@ -34,7 +34,7 @@
 #define DEFAULT_ITERATION_LIMIT 100000 // Cutoff for iterations explored before resetting
 #define ITERATION_LIMIT_INCREASE 100000000 // Amount to increase the iteration limit by when finding a new record
 #define CHECK_SHUTDOWN_INTERVAL 30000
-#define SERIAL_CACHE_INTERVAL 200 // number of dives should elapse before writing the serials to disk
+#define SERIAL_CACHE_INTERVAL 20 // number of dives should elapse before writing the serials to disk
 
 static const int INT_OUTPUT_ARRAY_SIZE_BYTES = sizeof(outputCreatedArray_t);
 static const outputCreatedArray_t EMPTY_RECIPES = {0};
@@ -400,18 +400,21 @@ inline int serialcmp(Serial s1, Serial s2)
  -------------------------------------------------------------------*/
 uint32_t indexToInsert(Serial serial, int low, int high)
 {
-	if (high <= low)
-		return (serialcmp(serial, visitedBranches[low]) > 0) ? low + 1 : low;
-	
-	int mid = (low + high) / 2;
+	while (high > low)
+	{
+		int mid = (low + high) / 2;
 
-	int cmpMid = serialcmp(serial, visitedBranches[mid]);
-	if (cmpMid == 0)
-		return mid+1;
-	
-	if (cmpMid > 0)
-		return indexToInsert(serial, mid+1, high);
-	return indexToInsert(serial, low, mid-1);
+		int cmpMid = serialcmp(serial, visitedBranches[mid]);
+		if (cmpMid == 0)
+			return mid + 1;
+
+		if (cmpMid > 0)
+			low = mid + 1;
+		else
+			high = mid - 1;
+	}
+
+	return (serialcmp(serial, visitedBranches[low]) > 0) ? low + 1 : low;
 }
 
 /*-------------------------------------------------------------------
@@ -533,30 +536,27 @@ void cacheSerial(BranchPath *node)
 	if (node->serial.length == 0 || node->serial.data == NULL)
 		return;
 
-	#pragma omp critical
-	{
-		if (node->serial.data == NULL)
-			exit(2);
+	if (node->serial.data == NULL)
+		exit(2);
 
-		void *cachedData = malloc(node->serial.length);
-		memcpy(cachedData, node->serial.data, node->serial.length);
+	void *cachedData = malloc(node->serial.length);
+	memcpy(cachedData, node->serial.data, node->serial.length);
 
-		Serial cachedSerial = (Serial) {node->serial.length, cachedData};
+	Serial cachedSerial = (Serial) {node->serial.length, cachedData};
 
-		uint32_t index = 0;
+	uint32_t index = 0;
 
-		if (numVisitedBranches > 0)
-			index = indexToInsert(cachedSerial, 0, numVisitedBranches-1);
+	// Prevent modifying the array while we are writing to file
+	omp_set_lock(&cacheWriteLock);
 
-		// Prevent modifying the array while we are writing to file
-		omp_set_lock(&cacheWriteLock);
+	if (numVisitedBranches > 0)
+		index = indexToInsert(cachedSerial, 0, numVisitedBranches - 1);
 
-		// Free and note how many children we are freeing
-		int childrenFreed = deleteAndFreeChildSerials(cachedSerial, index);
-		insertIntoCache(cachedSerial, index, childrenFreed);
+	// Free and note how many children we are freeing
+	int childrenFreed = deleteAndFreeChildSerials(cachedSerial, index);
+	insertIntoCache(cachedSerial, index, childrenFreed);
 
-		omp_unset_lock(&cacheWriteLock);
-	}
+	omp_unset_lock(&cacheWriteLock);
 }
 
 /*-------------------------------------------------------------------
