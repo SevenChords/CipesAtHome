@@ -45,7 +45,6 @@ int **invFrames;
 Recipe *recipeList;
 Serial *visitedBranches = NULL;
 uint32_t numVisitedBranches = 0;
-omp_lock_t cacheWriteLock; // protect multi-threaded reads/writes to visitedBranches
 
 // Used to uniquely identify a particular item combination for serialization purposes
 static int recipeOffsetLookup[57] = {
@@ -93,16 +92,6 @@ void initializeInvFrames() {
  -------------------------------------------------------------------*/
 void initializeRecipeList() {
 	recipeList = getRecipeList();
-}
-
-/*-------------------------------------------------------------------
- * Function : void initCacheWriteLock() {
- *
- * Init the lock that prevents our program from modifying the serial
- * cache at the same time as writing the cache to disk.
- -------------------------------------------------------------------*/
-void initCacheWriteLock() {
-	omp_init_lock(&cacheWriteLock);
 }
 
 /*-------------------------------------------------------------------
@@ -546,17 +535,15 @@ void cacheSerial(BranchPath *node)
 
 	uint32_t index = 0;
 
-	// Prevent modifying the array while we are writing to file
-	omp_set_lock(&cacheWriteLock);
+	#pragma omp critical(serial_cache)
+	{
+		if (numVisitedBranches > 0)
+			index = indexToInsert(cachedSerial, 0, numVisitedBranches - 1);
 
-	if (numVisitedBranches > 0)
-		index = indexToInsert(cachedSerial, 0, numVisitedBranches - 1);
-
-	// Free and note how many children we are freeing
-	int childrenFreed = deleteAndFreeChildSerials(cachedSerial, index);
-	insertIntoCache(cachedSerial, index, childrenFreed);
-
-	omp_unset_lock(&cacheWriteLock);
+		// Free and note how many children we are freeing
+		int childrenFreed = deleteAndFreeChildSerials(cachedSerial, index);
+		insertIntoCache(cachedSerial, index, childrenFreed);
+	}
 }
 
 /*-------------------------------------------------------------------
@@ -1496,9 +1483,11 @@ bool legalMoveHasBeenTraversed(BranchPath* newLegalMove)
 	if (newLegalMove->serial.data == NULL)
 		return false;
 
-	omp_set_lock(&cacheWriteLock);
-	int index = searchVisitedNodes(newLegalMove->serial, 0, numVisitedBranches-1);
-	omp_unset_lock(&cacheWriteLock);
+	int index = 0;
+	#pragma omp critical(serial_cache)
+	{
+		index = searchVisitedNodes(newLegalMove->serial, 0, numVisitedBranches - 1);
+	}
 
 	return (index >= 0);
 }
@@ -2137,7 +2126,6 @@ Result calculateOrder(const int ID) {
 	int freeRunning = !debug && !randomise && !select;
 	int branchInterval = getConfigInt("branchLogInterval");
 	int total_dives = 0;
-	int serialCacheInterval = SERIAL_CACHE_INTERVAL;
 	BranchPath *curNode = NULL; // Deepest node at any particular point
 	BranchPath *root;
 
@@ -2167,12 +2155,6 @@ Result calculateOrder(const int ID) {
 			sprintf(temp1, "Call %d", ID);
 			sprintf(temp2, "Searching New Branch %d", total_dives);
 			recipeLog(3, "Calculator", "Info", temp1, temp2);
-		}
-
-		// Periodically write visited nodes to disk so we don't rely on a clean shutdown
-		// Only need to perform this on one thread
-		if (total_dives % serialCacheInterval == 0 && omp_get_thread_num() == 0) {
-			writeVisitedNodesToDisk();
 		}
 
 		// If the user is not exploring only one branch, reset when it is time
@@ -2361,9 +2343,6 @@ Result calculateOrder(const int ID) {
 				if (iterationCount % (branchInterval * DEFAULT_ITERATION_LIMIT) == 0
 					&& (freeRunning || iterationLimit != DEFAULT_ITERATION_LIMIT)) {
 					logIterations(ID, stepIndex, curNode, iterationCount, 3);
-					FILE* fp = fopen("results/visitedNodes.dat", "wb");
-					writeSerialsToDisk(fp);
-					fclose(fp);
 				}
 				else if (iterationCount % 10000 == 0) {
 					logIterations(ID, stepIndex, curNode, iterationCount, 6);
@@ -2388,6 +2367,11 @@ Result calculateOrder(const int ID) {
 		if (total_dives % 10000 == 0 && omp_get_thread_num() == 0) {
 			periodicGithubCheck();
 		}
+
+		// Periodically write visited nodes to disk so we don't rely on a clean shutdown
+		// Only need to perform this on one thread
+		if (total_dives % SERIAL_CACHE_INTERVAL == 0 && omp_get_thread_num() == 0)
+			writeVisitedNodesToDisk();
 		
 		// For profiling
 		/*if (total_dives == 100) {
@@ -2496,24 +2480,25 @@ void writeVisitedNodesToDisk() {
 		return;
 	}
 
+	uint32_t serialsWritten = 0;
+
 	// Prevent writing the file while we are modifying the array
-	omp_set_lock(&cacheWriteLock);
+	#pragma omp critical(serial_cache)
+	{
+		// First write the number of serials so we know how much memory to malloc when we read in the file
+		fwrite(&numVisitedBranches, sizeof(uint32_t), 1, fp);
 
-	// First write the number of serials so we know how much memory to malloc when we read in the file
-	fwrite(&numVisitedBranches, sizeof(uint32_t), 1, fp);
+		serialsWritten = writeSerialsToDisk(fp);
 
-	uint32_t serialsWritten = writeSerialsToDisk(fp);
+		char result[100];
+		if (serialsWritten == numVisitedBranches)
+			sprintf(result, "Successfully wrote %d serials to disk", serialsWritten);
+		else
+			sprintf(result, "Only able to write %d of %d serials to disk", serialsWritten, numVisitedBranches);
+		recipeLog(3, "Serialization", "Cache", "Visited Nodes", result);
+	}
 	
 	fclose(fp);
-
-	omp_unset_lock(&cacheWriteLock);
-
-	char result[100];
-	if (serialsWritten == numVisitedBranches)
-		sprintf(result, "Successfully wrote %d serials to disk", serialsWritten);
-	else
-		sprintf(result, "Only able to write %d of %d serials to disk", serialsWritten, numVisitedBranches);
-	recipeLog(3, "Serialization", "Cache", "Visited Nodes", result);
 }
 
 /*-------------------------------------------------------------------
