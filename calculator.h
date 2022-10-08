@@ -138,7 +138,7 @@ BranchPath* initializeRoot();
 
 // Other
 void periodicGithubCheck();
-Result calculateOrder(int ID);
+Result calculateOrder(const int ID);
 void writePersonalBest(Result *result);
 
 #endif
