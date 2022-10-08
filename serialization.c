@@ -36,8 +36,8 @@ inline int serialcmp(Serial s1, Serial s2)
 /*-------------------------------------------------------------------
  * Function : void writeSerialsToDisk
  *
- * Walk across visitedBranches and store the serial length and data
- * to visitedNodes.dat. This assumes we've already written numVisitedBranches
+ * Walk across a given thread's visitedBranches and store the serial
+ * length and data to file. This assumes we've already written numVisitedBranches
  -------------------------------------------------------------------*/
 uint32_t writeSerialsToDisk(FILE* fp, int threadID) {
 	uint32_t i;
@@ -58,7 +58,7 @@ uint32_t writeSerialsToDisk(FILE* fp, int threadID) {
 /*-------------------------------------------------------------------
  * Function : void writeVisitedNodesToDisk
  *
- * Create/overwrite visitedNodes.dat and populate with visitedBranches data
+ * Create/overwrite thread-specific cache file and populate with visitedBranches data
  -------------------------------------------------------------------*/
 void writeVisitedNodesToDisk(int threadID) {
 
@@ -122,6 +122,11 @@ uint32_t readSerialsFromDisk(FILE* fp, Serial* arr, uint32_t numVisited) {
 	return i;
 }
 
+/*-------------------------------------------------------------------
+ * Function : deepCopy
+ *
+ * Copy src to dest, using a new heap ptr for the serial data.
+ -------------------------------------------------------------------*/
 Serial* deepCopy(Serial* src, uint32_t len)
 {
 	Serial* dest = malloc(len * sizeof(Serial));
@@ -138,6 +143,15 @@ Serial* deepCopy(Serial* src, uint32_t len)
 	return dest;
 }
 
+/*-------------------------------------------------------------------
+ * Function : initializeVisitedNodes
+ *
+ * This is the top-level function that is called during start-up.
+ * Allocates arrays for each thread, and attempts to read cache file
+ * for each thread. Afterwards, merges all serials from disk into one
+ * in-memory array, which is then deep-copied so that all threads
+ * start with the conjoined list of visited nodes.
+ -------------------------------------------------------------------*/
 void initializeVisitedNodes(int workerCount)
 {
 	recipeLog(2, "Startup", "Cache", "Visited Nodes", "Reading visited nodes from disk... This may take a few seconds.");
@@ -164,7 +178,6 @@ void initializeVisitedNodes(int workerCount)
 		}
 	}
 
-	// TODO: When a serial is skipped over, we did not necessarily add threadVisited serials
 	// TODO: Can children accidentally exist in this merged array? Does it really matter?
 
 	// Now that all thread files have been consolidated to one in-memory array,
@@ -228,6 +241,11 @@ uint32_t readVisitedNodesFromDisk(int threadID, Serial** arr) {
 	return serialsRead;
 }
 
+/*-------------------------------------------------------------------
+ * Function : void mergeThreadSerials
+ *
+ * Walk along both arrays and determine where to insert all thread serials.
+ -------------------------------------------------------------------*/
 uint32_t mergeThreadSerials(Serial** combined, uint32_t combinedLen, Serial* threadSerials, uint32_t threadLen)
 {
 	// If this is the first array we're "combining" then there's nothing to do
@@ -287,6 +305,8 @@ uint32_t mergeThreadSerials(Serial** combined, uint32_t combinedLen, Serial* thr
  *
  * Perform a binary search to determine
  * where we should insert the given serial.
+ * Used an iterative approach because of concerns over stack overflow
+ * with a sufficiently large enough array.
  -------------------------------------------------------------------*/
 uint32_t indexToInsert(Serial serial, int low, int high, int threadID)
 {

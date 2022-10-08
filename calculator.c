@@ -35,7 +35,7 @@
 #define DEFAULT_ITERATION_LIMIT 100000 // Cutoff for iterations explored before resetting
 #define ITERATION_LIMIT_INCREASE 100000000 // Amount to increase the iteration limit by when finding a new record
 #define CHECK_SHUTDOWN_INTERVAL 30000
-#define SERIAL_CACHE_INTERVAL 20 // number of dives should elapse before writing the serials to disk
+#define SERIAL_CACHE_INTERVAL 200 // number of dives should elapse before writing the serials to disk
 
 static const int INT_OUTPUT_ARRAY_SIZE_BYTES = sizeof(outputCreatedArray_t);
 static const outputCreatedArray_t EMPTY_RECIPES = {0};
