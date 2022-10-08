@@ -77,7 +77,7 @@ ABSL_MUST_USE_RESULT  // Output is newly allocated and needs to be freed at some
 BranchPath* createLegalMove(BranchPath* node, Inventory inventory, MoveDescription description, const outputCreatedArray_t outputsFulfilled, int numOutputsFulfilled);
 void filterOut2Ingredients(BranchPath* node);
 void finalizeChapter5Eval(BranchPath* node, Inventory inventory, CH5* ch5Data, int temp_frame_sum, const outputCreatedArray_t outputsFulfilled, int numOutputsFulfilled);
-void finalizeLegalMove(BranchPath* node, int tempFrames, MoveDescription useDescription, Inventory tempInventory, const outputCreatedArray_t tempOutputsFulfilled, int numOutputsFulfilled, enum HandleOutput tossType, enum Type_Sort toss, int tossIndex);
+void finalizeLegalMove(BranchPath* node, MoveDescription useDescription, Inventory tempInventory, const outputCreatedArray_t tempOutputsFulfilled, int numOutputsFulfilled, enum HandleOutput tossType, enum Type_Sort toss, int tossIndex);
 void freeAndShiftLegalMove(BranchPath* node, int index, bool cache);
 int getInsertionIndex(const BranchPath* node, int frames);
 void insertIntoLegalMoves(int insertIndex, BranchPath* newLegalMove, BranchPath* curNode);
@@ -87,13 +87,13 @@ void shiftUpLegalMoves(BranchPath* node, int startIndex);
 
 // Cooking functions
 
-void createCookDescription2Items(const BranchPath* node, Recipe recipe, ItemCombination combo, Inventory* tempInventory, int* ingredientLoc, int* tempFrames, int viableItems, MoveDescription* useDescription);
-void createCookDescription1Item(const BranchPath* node, Recipe recipe, ItemCombination combo, Inventory* tempInventory, int* ingredientLoc, int* tempFrames, int viableItems, MoveDescription* useDescription);
-MoveDescription createCookDescription(const BranchPath* node, Recipe recipe, ItemCombination combo, Inventory *tempInventory, int* tempFrames, int viableItems);
+void createCookDescription2Items(const BranchPath* node, Recipe recipe, ItemCombination combo, Inventory* tempInventory, int* ingredientLoc, int viableItems, MoveDescription* useDescription);
+void createCookDescription1Item(const BranchPath* node, Recipe recipe, ItemCombination combo, Inventory* tempInventory, int* ingredientLoc, int viableItems, MoveDescription* useDescription);
+MoveDescription createCookDescription(const BranchPath* node, Recipe recipe, ItemCombination combo, Inventory *tempInventory, int viableItems);
 void fulfillRecipes(BranchPath* curNode);
 void generateCook(MoveDescription* description, const ItemCombination combo, const Recipe recipe, const int* ingredientLoc, int swap);
-void handleRecipeOutput(BranchPath* curNode, Inventory tempInventory, int tempFrames, MoveDescription useDescription, const outputCreatedArray_t tempOutputsFulfilled, int numOutputsFulfilled, enum Type_Sort output, int viableItems);
-void tryTossInventoryItem(BranchPath* curNode, Inventory tempInventory, MoveDescription useDescription, const outputCreatedArray_t tempOutputsFulfilled, int numOutputsFulfilled, enum Type_Sort output, int tempFrames, int viableItems);
+void handleRecipeOutput(BranchPath* curNode, Inventory tempInventory, MoveDescription useDescription, const outputCreatedArray_t tempOutputsFulfilled, int numOutputsFulfilled, enum Type_Sort output, int viableItems);
+void tryTossInventoryItem(BranchPath* curNode, Inventory tempInventory, MoveDescription useDescription, const outputCreatedArray_t tempOutputsFulfilled, int numOutputsFulfilled, enum Type_Sort output, int viableItems);
 
 // Chapter 5 functions
 void fulfillChapter5(BranchPath* curNode);

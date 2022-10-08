@@ -401,7 +401,7 @@ ABSL_MUST_USE_RESULT CH5 *createChapter5Struct(CH5_Eval eval, int lateSort) {
  * Compartmentalization of generating a MoveDescription struct
  * based on various parameters dependent on what recipe we're cooking
  -------------------------------------------------------------------*/
-MoveDescription createCookDescription(const BranchPath *node, Recipe recipe, ItemCombination combo, Inventory *tempInventory, int *tempFrames, int viableItems) {
+MoveDescription createCookDescription(const BranchPath *node, Recipe recipe, ItemCombination combo, Inventory *tempInventory, int viableItems) {
 	MoveDescription useDescription;
 	useDescription.action = ECook;
 
@@ -411,11 +411,11 @@ MoveDescription createCookDescription(const BranchPath *node, Recipe recipe, Ite
 	ingredientLoc[0] = indexOfItemInInventory(*tempInventory, combo.item1);
 
 	if (combo.numItems == 1) {
-		createCookDescription1Item(node, recipe, combo, tempInventory, ingredientLoc, tempFrames, viableItems, &useDescription);
+		createCookDescription1Item(node, recipe, combo, tempInventory, ingredientLoc, viableItems, &useDescription);
 	}
 	else {
 		ingredientLoc[1] = indexOfItemInInventory(*tempInventory, combo.item2);
-		createCookDescription2Items(node, recipe, combo, tempInventory, ingredientLoc, tempFrames, viableItems, &useDescription);
+		createCookDescription2Items(node, recipe, combo, tempInventory, ingredientLoc, viableItems, &useDescription);
 	}
 
 	return useDescription;
@@ -428,10 +428,10 @@ MoveDescription createCookDescription(const BranchPath *node, Recipe recipe, Ite
  * length 1. Generates Cook structure and points to this structure
  * in useDescription.
  -------------------------------------------------------------------*/
-void createCookDescription1Item(const BranchPath *node, Recipe recipe, ItemCombination combo, Inventory *tempInventory, int *ingredientLoc, int *tempFrames, int viableItems, MoveDescription *useDescription) {
+void createCookDescription1Item(const BranchPath *node, Recipe recipe, ItemCombination combo, Inventory *tempInventory, int *ingredientLoc, int viableItems, MoveDescription *useDescription) {
 	// This is a potentially viable recipe with 1 ingredient
 	// Determine how many frames will be needed to select that item
-	*tempFrames = invFrames[viableItems - 1][ingredientLoc[0] - tempInventory->nulls];
+	int framesTaken = invFrames[viableItems - 1][ingredientLoc[0] - tempInventory->nulls];
 
 	// Modify the inventory if the ingredient was in the first 10 slots
 	if (ingredientLoc[0] < 10) {
@@ -440,7 +440,7 @@ void createCookDescription1Item(const BranchPath *node, Recipe recipe, ItemCombi
 	}
 
 	generateCook(useDescription, combo, recipe, ingredientLoc, 0);
-	generateFramesTaken(useDescription, node, *tempFrames);
+	generateFramesTaken(useDescription, node, framesTaken);
 }
 
 /*-------------------------------------------------------------------
@@ -450,10 +450,10 @@ void createCookDescription1Item(const BranchPath *node, Recipe recipe, ItemCombi
  * length 2. Swaps items if it's faster to choose the second item first.
  * Generates Cook structure and points to this structure in useDescription.
  -------------------------------------------------------------------*/
-void createCookDescription2Items(const BranchPath *node, Recipe recipe, ItemCombination combo, Inventory *tempInventory, int *ingredientLoc, int *tempFrames, int viableItems, MoveDescription *useDescription) {
+void createCookDescription2Items(const BranchPath *node, Recipe recipe, ItemCombination combo, Inventory *tempInventory, int *ingredientLoc, int viableItems, MoveDescription *useDescription) {
 	// This is a potentially viable recipe with 2 ingredients
 	//Baseline frames based on how many times we need to access the menu
-	*tempFrames = CHOOSE_2ND_INGREDIENT_FRAMES;
+	int framesTaken = CHOOSE_2ND_INGREDIENT_FRAMES;
 
 	// Swap ingredient order if necessary. There are some configurations where
 	// it is 2 frames faster to pick the ingredients in the reverse order or
@@ -468,7 +468,7 @@ void createCookDescription2Items(const BranchPath *node, Recipe recipe, ItemComb
 	int visibleLoc1 = ingredientLoc[1] - tempInventory->nulls;
 
 	// Add the frames to choose the first ingredient.
-	*tempFrames += invFrames[viableItems - 1][visibleLoc0];
+	framesTaken += invFrames[viableItems - 1][visibleLoc0];
 
 	// Depending on the first ingredient's position and the state of the
 	// inventory, it or another item could be hidden during the second
@@ -491,7 +491,7 @@ void createCookDescription2Items(const BranchPath *node, Recipe recipe, ItemComb
 		}
 	}
 	// Add the frames to choose the second ingredient.
-	*tempFrames += invFrames[viableItems - 1][visibleLoc1];
+	framesTaken += invFrames[viableItems - 1][visibleLoc1];
 
 	// Set each inventory index to null if the item was in the first 10 slots
 	// To reduce complexity, remove the items in ascending order of index
@@ -514,7 +514,7 @@ void createCookDescription2Items(const BranchPath *node, Recipe recipe, ItemComb
 
 	// Describe what items were used
 	generateCook(useDescription, combo, recipe, ingredientLoc, swap);
-	generateFramesTaken(useDescription, node, *tempFrames);
+	generateFramesTaken(useDescription, node, framesTaken);
 }
 
 /*-------------------------------------------------------------------
@@ -595,13 +595,13 @@ void finalizeChapter5Eval(BranchPath *node, Inventory inventory, CH5 *ch5Data, i
  * a valid recipe move. Also checks to see if the legal move exceeds
  * the frame limit
  -------------------------------------------------------------------*/
-void finalizeLegalMove(BranchPath *node, int tempFrames, MoveDescription useDescription, Inventory tempInventory, const outputCreatedArray_t tempOutputsFulfilled, int numOutputsFulfilled, enum HandleOutput tossType, enum Type_Sort toss, int tossIndex) {
+void finalizeLegalMove(BranchPath *node, MoveDescription useDescription, Inventory tempInventory, const outputCreatedArray_t tempOutputsFulfilled, int numOutputsFulfilled, enum HandleOutput tossType, enum Type_Sort toss, int tossIndex) {
 	// Determine if the legal move exceeds the frame limit. If so, return out
 	if (useDescription.totalFramesTaken > getLocalRecord() + BUFFER_SEARCH_FRAMES)
 		return;
 
 	// Determine where to insert this legal move into the list of legal moves (sorted by frames taken)
-	int insertIndex = getInsertionIndex(node, tempFrames);
+	int insertIndex = getInsertionIndex(node, useDescription.framesTaken);
 
 	Cook *cookNew = malloc(sizeof(Cook));
 	checkMallocFailed(cookNew);
@@ -799,15 +799,13 @@ void fulfillRecipes(BranchPath *curNode) {
 			// How many items there are to choose from (Not NULL or hidden)
 			int viableItems = newInventory.length - newInventory.nulls - min(newInventory.length - 10, newInventory.nulls);
 
-			int tempFrames;
-
-			MoveDescription useDescription = createCookDescription(curNode, recipe, combo, &newInventory, &tempFrames, viableItems);
+			MoveDescription useDescription = createCookDescription(curNode, recipe, combo, &newInventory, viableItems);
 
 			// Store the base useDescription's cook pointer to be freed later
 			Cook *cookBase = (Cook *)useDescription.data;
 
 			// Handle allocation of the output
-			handleRecipeOutput(curNode, newInventory, tempFrames, useDescription, tempOutputsFulfilled, numOutputsFulfilled, recipe.output, viableItems);
+			handleRecipeOutput(curNode, newInventory, useDescription, tempOutputsFulfilled, numOutputsFulfilled, recipe.output, viableItems);
 
 			free(cookBase);
 			// We know tempOutputsFulfilled does not escape this scope, so safe to be unallocated on return.
@@ -1194,30 +1192,29 @@ void handleDBCOAllocation2Nulls(BranchPath *curNode, Inventory tempInventory, co
  * the output (either tossing the output, auto-placing it if there is a
  * null slot, or tossing a different item in the inventory)
  -------------------------------------------------------------------*/
-void handleRecipeOutput(BranchPath *curNode, Inventory tempInventory, int tempFrames, MoveDescription useDescription, const outputCreatedArray_t tempOutputsFulfilled, int numOutputsFulfilled, enum Type_Sort output, int viableItems) {
+void handleRecipeOutput(BranchPath *curNode, Inventory tempInventory, MoveDescription useDescription, const outputCreatedArray_t tempOutputsFulfilled, int numOutputsFulfilled, enum Type_Sort output, int viableItems) {
 	// Options vary by whether there are NULLs within the inventory
 	if (tempInventory.nulls >= 1) {
 		tempInventory = addItem(tempInventory, ((Cook*)useDescription.data)->output);
 
 		// Check to see if this state is viable
 		if(stateOK(tempInventory, tempOutputsFulfilled, recipeList)) {
-			finalizeLegalMove(curNode, tempFrames, useDescription, tempInventory, tempOutputsFulfilled, numOutputsFulfilled, Autoplace, -1, -1);
+			finalizeLegalMove(curNode, useDescription, tempInventory, tempOutputsFulfilled, numOutputsFulfilled, Autoplace, -1, -1);
 		}
 	}
 	else {
 		// There are no NULLs in the inventory. Something must be tossed
 		// Total number of frames increased by forcing to toss something
-		tempFrames += TOSS_FRAMES;
 		useDescription.framesTaken += TOSS_FRAMES;
 		useDescription.totalFramesTaken += TOSS_FRAMES;
 
 		// Evaluate the viability of tossing all current inventory items
 		// Assumed that it is impossible to toss and replace any items in the last 10 positions
-		tryTossInventoryItem(curNode, tempInventory, useDescription, tempOutputsFulfilled, numOutputsFulfilled, output, tempFrames, viableItems);
+		tryTossInventoryItem(curNode, tempInventory, useDescription, tempOutputsFulfilled, numOutputsFulfilled, output, viableItems);
 
 		// Evaluate viability of tossing the output item itself
 		if (stateOK(tempInventory, tempOutputsFulfilled, recipeList)) {
-			finalizeLegalMove(curNode, tempFrames, useDescription, tempInventory, tempOutputsFulfilled, numOutputsFulfilled, Toss, output, -1);
+			finalizeLegalMove(curNode, useDescription, tempInventory, tempOutputsFulfilled, numOutputsFulfilled, Toss, output, -1);
 		}
 	}
 }
@@ -1772,7 +1769,7 @@ void swapItems(int *ingredientLoc) {
  * For the given recipe, try to toss items in the inventory in order
  * to make room for the recipe output.
  -------------------------------------------------------------------*/
-void tryTossInventoryItem(BranchPath *curNode, Inventory tempInventory, MoveDescription useDescription, const outputCreatedArray_t tempOutputsFulfilled, int numOutputsFulfilled, enum Type_Sort output, int tempFrames, int viableItems) {
+void tryTossInventoryItem(BranchPath *curNode, Inventory tempInventory, MoveDescription useDescription, const outputCreatedArray_t tempOutputsFulfilled, int numOutputsFulfilled, enum Type_Sort output, int viableItems) {
 	for (int tossedIndex = 0; tossedIndex < 10; tossedIndex++) {
 		enum Type_Sort tossedItem = tempInventory.inventory[tossedIndex];
 
@@ -1783,16 +1780,14 @@ void tryTossInventoryItem(BranchPath *curNode, Inventory tempInventory, MoveDesc
 			continue;
 		}
 
-		// Calculate the additional tossed frames.
-		int tossFrames = invFrames[viableItems][tossedIndex + 1];
-		int replacedFrames = tempFrames + tossFrames;
-
 		MoveDescription tempUseDescription = useDescription;
 
+		// Calculate the additional tossed frames.
+		int tossFrames = invFrames[viableItems][tossedIndex + 1];
 		tempUseDescription.framesTaken += tossFrames;
 		tempUseDescription.totalFramesTaken += tossFrames;
 
-		finalizeLegalMove(curNode, replacedFrames, tempUseDescription, replacedInventory, tempOutputsFulfilled, numOutputsFulfilled, TossOther, tossedItem, tossedIndex);
+		finalizeLegalMove(curNode, tempUseDescription, replacedInventory, tempOutputsFulfilled, numOutputsFulfilled, TossOther, tossedItem, tossedIndex);
 	}
 }
 
