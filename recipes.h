@@ -1,13 +1,17 @@
 #ifndef RECIPES_H
 #define RECIPES_H
 
-#include <stdbool.h>
+#include "types.h"
 
-// These model Paper Mario TTYD game behavior. Do not edit these.
-#define NUM_RECIPES 58      // Including Chapter 5 representation and Dried Bouquet trade
+#include "absl/base/attributes.h"
 
-typedef bool outputCreatedArray_t[NUM_RECIPES];
+ABSL_MUST_USE_RESULT  // Output is newly allocated and needs to be freed at some point
+struct Recipe* getRecipeList();
 
 void copyDependentRecipes(int *newDependentRecipes, const int *dependentRecipes);
+int	getIndexOfRecipe(Type_Sort item);
+ItemCombination	parseCombo(int itemCount, Type_Sort item1, Type_Sort item2);
+void placeInventoryInMakeableItems(int* makeableItems, Inventory inventory);
+int	stateOK(Inventory inventory, const outputCreatedArray_t outputsCreated, Recipe* recipeList);
 
 #endif

@@ -4,22 +4,7 @@
 #include <stdbool.h>
 #include "absl/base/attributes.h"
 #include "inventory.h"
-#include "recipes.h"
 #include "start.h"
-
-typedef struct Result Result;
-
-// Represent the action at a particular node in the roadmap
-typedef enum Action Action;
-enum Action {
-	EBegin = 0,
-	ECook = 1,
-	ESort_Alpha_Asc = 2,
-	ESort_Alpha_Des = 3,
-	ESort_Type_Asc = 4,
-	ESort_Type_Des = 5,
-	ECh5 = 6
-};
 
 // What do we do with the produced item after crafting a recipe?
 enum HandleOutput  {
@@ -73,41 +58,11 @@ struct CH5_Eval {
 	enum Action sort;
 };
 
-// Overall data pertaining to what we did at a particular point in the roadmap
-typedef struct MoveDescription MoveDescription;
-struct MoveDescription {
-	enum Action action;		// Cook, sort, handle CH5,...
-	void *data;				// This data may be either of type Cook, CH5, or NULL if we are just sorting
-	int framesTaken;		// How many frames were wasted to perform this move
-	int totalFramesTaken;	// Cummulative frame loss
-};
-
-typedef struct Serial Serial;
-struct Serial {
-	uint8_t length;
-	void *data;
-};
-
-typedef struct BranchPath BranchPath;
-struct BranchPath {
-	int moves;							// Represents how many nodes we've traversed down a particular branch (0 for root, 57 for leaf node)
-	struct Inventory inventory;
-	struct MoveDescription description;
-	struct BranchPath *prev;
-	struct BranchPath *next;
-	outputCreatedArray_t outputCreated;					// Array of 58 items, true if item was produced, false if not; indexed by recipe ordering
-	int numOutputsCreated;				// Number of valid outputCreated entries to eliminate a lengthy for-loop
-	struct BranchPath **legalMoves;		// Represents possible next paths to take
-	int numLegalMoves;
-	int totalSorts;
-	struct Serial serial;
-};
-
 // Structure to return the head and tail of an optimized roadmap
 typedef struct OptimizeResult OptimizeResult;
 struct OptimizeResult {
-	struct BranchPath *root;
-	struct BranchPath *last;
+	BranchPath *root;
+	BranchPath *last;
 };
 
 // optimizeRoadmap functions
@@ -154,7 +109,6 @@ CH5* createChapter5Struct(CH5_Eval eval, int lateSort);
 // Initialization functions
 void initializeInvFrames();
 void initializeRecipeList();
-void initCacheWriteLock();
 
 // Select and random methodology functions
 void handleSelectAndRandom(BranchPath* curNode, int select, int randomise);
@@ -180,25 +134,6 @@ void swapItems(int* ingredientLoc);
 void freeAllNodes(BranchPath* node);
 void freeNode(BranchPath *node, bool cache);
 BranchPath* initializeRoot();
-
-// Serial functions
-uint32_t	indexToInsert(Serial serial, int low, int high, int threadID);
-void		insertIntoCache(Serial serial, uint32_t index, uint32_t deletedChildren, int threadID);
-uint32_t	deleteAndFreeChildSerials(Serial serial, uint32_t index, int threadID);
-int			searchVisitedNodes(Serial serial, int low, int high, int threadID);
-void 		cacheSerial(BranchPath *node);
-void 		serializeNode(BranchPath *node);
-uint8_t 	serializeCookNode(BranchPath *node, void **data);
-uint8_t 	serializeSortNode(BranchPath *node, void **data);
-uint8_t 	serializeCH5Node(BranchPath *node, void **data);
-bool		legalMoveHasBeenTraversed(BranchPath* newLegalMove);
-void		writeVisitedNodesToDisk(int threadID);
-uint32_t	readVisitedNodesFromDisk(int threadID, Serial** arr);
-void		initializeVisitedNodes(int workerCount);
-uint32_t	writeSerialsToDisk(FILE* fp, int threadID);
-uint32_t	readSerialsFromDisk(FILE* fp, Serial* arr, uint32_t numVisited);
-//void		consolidateThreadVisitedNodes(int workerCount);
-uint32_t	mergeThreadSerials(Serial** combined, uint32_t combinedLen, Serial* threadSerials, uint32_t threadLen);
 
 
 // Other

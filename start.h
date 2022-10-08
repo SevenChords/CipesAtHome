@@ -1,18 +1,9 @@
 #ifndef START_H
 #define START_H
 
-#include "inventory.h"
-#include "recipes.h"
-#include "config.h"
-#include "calculator.h"
+#include "types.h"
 
-struct Result {
-	int frames;
-	int callNumber;
-};
-
-// May get a value <0 if local record was corrupt.
-int getLocalRecord();
+int getLocalRecord(); // May get a value <0 if local record was corrupt.
 void setLocalRecord(int frames);
 const char* getLocalVersion();
 

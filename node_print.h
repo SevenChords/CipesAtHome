@@ -1,3 +1,6 @@
+#ifndef NODE_PRINT_H
+#define NODE_PRINT_H
+
 #include "calculator.h"
 
 void printCh5Data(const BranchPath* curNode, const MoveDescription desc, FILE* fp);
@@ -9,3 +12,5 @@ void printOutputsCreated(const BranchPath* curNode, FILE* fp);
 void printNodeDescription(const BranchPath * curNode, FILE * fp);
 void printResults(const char* filename, const BranchPath* path);
 void printSortData(FILE* fp, enum Action curNodeAction);
+
+#endif

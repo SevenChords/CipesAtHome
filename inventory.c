@@ -2,8 +2,12 @@
 #include <stdio.h>
 #include <string.h>
 #include "inventory.h"
-#include "logger.h"
+
+#include "types.h"
+
 #include "base.h"
+#include "logger.h"
+
 
 #define VOLATILE_INVENTORY_SIZE 10
 #define INVENTORY_SIZE 20

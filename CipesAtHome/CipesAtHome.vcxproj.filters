@@ -39,6 +39,9 @@
     <ClCompile Include="..\FTPManagement.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+	<ClCompile Include="..\serialization.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\start.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -77,10 +80,16 @@
     <ClInclude Include="..\recipes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+	<ClInclude Include="..\serialization.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\start.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\shutdown.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+	<ClInclude Include="..\types.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\node_print.h">

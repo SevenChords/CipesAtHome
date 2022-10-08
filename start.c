@@ -1,24 +1,21 @@
+#include "start.h"
+
+#include <curl/curl.h>
+#include <omp.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <omp.h>
-#include <libconfig.h>
-#include "base.h"
-#include "inventory.h"
-#include "config.h"
-#include "recipes.h"
-#include "FTPManagement.h"
-#include "start.h"
-#include "calculator.h"
-#include <time.h>
-#include "cJSON.h"
-#include <curl/curl.h>
-#include "logger.h"
-#include "shutdown.h"
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <signal.h>
 #include <string.h>
+#include <sys/stat.h>
+
 #include "absl/base/port.h"
+#include "base.h"
+#include "calculator.h"
+#include "config.h"
+#include "FTPManagement.h"
+#include "logger.h"
+#include "serialization.h"
+#include "shutdown.h"
 
 #if _IS_WINDOWS
 #include <windows.h>

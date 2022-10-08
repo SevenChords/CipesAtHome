@@ -1,12 +1,13 @@
-#include <stdlib.h>
 #include <stdio.h>
-#include "recipes.h"
+#include <stdlib.h>
 #include <string.h>
+
+#include "types.h"
+
+#include "absl/base/port.h"
 #include "inventory.h"
 #include "recipes.h"
-#include "absl/base/port.h"
 
-#define NUM_RECIPES 58 // Including Dried Bouquet trade
 #define NUM_ITEMS 107 // All listed items
 
 /*-------------------------------------------------------------------
@@ -566,17 +567,6 @@ int getIndexOfRecipe(enum Type_Sort item) {
 		: item == Mistake ? 57
 		: item  < Shroom_Fry ? -1
 		: item - Shroom_Fry;
-}
-
-/*-------------------------------------------------------------------
- * Function : copyDependentRecipes
- * Inputs	: int *newDependentRecipes
- *			  int *dependentRecipes
- *
- * A simple memcpy to duplicate a previous instance of dependentRecipes.
- -------------------------------------------------------------------*/
-void copyDependentRecipes(int *newDependentRecipes, const int *dependentRecipes) {
-	memcpy((void *)newDependentRecipes, (const void *)dependentRecipes, sizeof(int) * NUM_RECIPES);
 }
 
 /*-------------------------------------------------------------------
