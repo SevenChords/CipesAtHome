@@ -208,7 +208,7 @@ int main() {
 	// persist through all parallel calls to calculator.c
 	initializeInvFrames();
 	initializeRecipeList();
-	readVisitedNodesFromDisk();
+	initializeVisitedNodes(workerCount);
 
 	setSignalHandlers();
 
