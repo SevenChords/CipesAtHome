@@ -92,37 +92,6 @@ void writeVisitedNodesToDisk(int threadID) {
 }
 
 /*-------------------------------------------------------------------
- * Function : void readSerialsFromDisk
- *
- * Loop so long as we can continue reading bytes up to the expected
- * numVisitedBranches serials in the binary file.
- * CAUTION: This function assumes that fp seek position is at the
- * first serial, i.e. we've already fread'd numVisitedBranches
- -------------------------------------------------------------------*/
-uint32_t readSerialsFromDisk(FILE* fp, Serial* arr, uint32_t numVisited) {
-	size_t ret = 0;
-	uint32_t i = 0;
-	for (i = 0; i < numVisited; i++) {
-		Serial serial = (Serial){ 0, NULL };
-		ret = fread(&serial.length, sizeof(uint8_t), 1, fp);
-		if (ret != 1)
-			break;
-
-		serial.data = malloc(serial.length * sizeof(char));
-		checkMallocFailed(serial.data);
-
-		ret = fread(serial.data, sizeof(char), serial.length, fp);
-		if (ret != serial.length) {
-			free(serial.data);
-			break;
-		}
-		arr[i] = serial;
-	}
-
-	return i;
-}
-
-/*-------------------------------------------------------------------
  * Function : deepCopy
  *
  * Copy src to dest, using a new heap ptr for the serial data.
@@ -143,6 +112,29 @@ Serial* deepCopy(Serial* src, uint32_t len)
 	return dest;
 }
 
+Serial readNextSerial(FILE* fp)
+{
+	Serial nextSerial = (Serial){ 0, NULL };
+	size_t ret = fread(&nextSerial.length, sizeof(uint8_t), 1, fp);
+	if (ret == 0)
+	{
+		nextSerial.length = 0;
+		return nextSerial;
+	}
+
+	nextSerial.data = malloc(nextSerial.length * sizeof(char));
+	checkMallocFailed(nextSerial.data);
+
+	ret = fread(nextSerial.data, sizeof(char), nextSerial.length, fp);
+	if (ret == 0)
+	{
+		free(nextSerial.data);
+		nextSerial = (Serial){ 0, NULL };
+	}
+
+	return nextSerial;
+}
+
 /*-------------------------------------------------------------------
  * Function : nextInsert
  *
@@ -154,24 +146,21 @@ Serial* deepCopy(Serial* src, uint32_t len)
  * We return the threadID but also set the value pointed to by nextIndex
  * so that the caller can retrieve the value at the index from the given threadID.
  -------------------------------------------------------------------*/
-int nextInsert(Serial** threadVisitedArr, uint32_t* numThreadVisited, uint32_t* indices, int workerCount, uint32_t* nextIndex)
+Serial nextInsert(Serial* curSerials, FILE** fp, int workerCount)
 {
 	int nextWorker = -1;
 	Serial lowestSerial = (Serial){ 0, NULL };
 
 	for (int i = 0; i < workerCount; i++)
 	{
-		uint32_t curThreadIdx = indices[i];
-		// Skip thread if we've traversed the entire array
-		if (curThreadIdx == numThreadVisited[i])
-			continue;
+		Serial curSerial = curSerials[i];
 
-		Serial curSerial = threadVisitedArr[i][curThreadIdx];
+		if (curSerial.length == 0)
+			continue;
 
 		// If this is our first serial in loop, then just set this as lowest
 		if (lowestSerial.length == 0)
 		{
-			*nextIndex = curThreadIdx;
 			nextWorker = i;
 			lowestSerial = curSerial;
 			continue;
@@ -183,7 +172,6 @@ int nextInsert(Serial** threadVisitedArr, uint32_t* numThreadVisited, uint32_t* 
 		if (cmp < 0)
 		{
 			// New lowest
-			*nextIndex = curThreadIdx;
 			nextWorker = i;
 			lowestSerial = curSerial;
 		}
@@ -191,14 +179,16 @@ int nextInsert(Serial** threadVisitedArr, uint32_t* numThreadVisited, uint32_t* 
 		{
 			// This is a duplicate node, free the duplicate data
 			free(curSerial.data);
-			indices[i]++;
+
+			// Read in the next Serial for next time this function is called
+			curSerials[i] = readNextSerial(fp[i]);
 		}
 	}
 
 	if (nextWorker >= 0)
-		indices[nextWorker]++;
+		curSerials[nextWorker] = readNextSerial(fp[nextWorker]);
 	
-	return nextWorker;
+	return lowestSerial;
 }
 
 /*-------------------------------------------------------------------
@@ -217,55 +207,122 @@ static inline bool isChild(Serial parent, Serial child)
 }
 
 /*-------------------------------------------------------------------
+ * Function : getCacheFilePtrs
+ *
+ * Get file pointers to each thread-specific cache file on disk.
+ -------------------------------------------------------------------*/
+FILE** getCacheFilePtrs(int workerCount)
+{
+	FILE** fp = malloc(workerCount * sizeof(FILE*));
+	checkMallocFailed(fp);
+
+	for (int i = 0; i < workerCount; i++)
+	{
+		char filename[50] = { 0 };
+		sprintf(filename, "results/visitedNodes_%d.dat", i);
+
+		fp[i] = fopen(filename, "rb");
+	}
+
+	return fp;
+}
+
+/*-------------------------------------------------------------------
+ * Function : sumVisited
+ *
+ * Helper function to sum the number of nodes visited by all threads.
+ -------------------------------------------------------------------*/
+int sumVisited(uint32_t* visitedArr, int workerCount)
+{
+	int sum = 0;
+	for (int i = 0; i < workerCount; i++)
+		sum += visitedArr[i];
+
+	return sum;
+}
+
+/*-------------------------------------------------------------------
  * Function : mergeThreadSerials
  *
- * Merge workerCount Serial arrays together into output, taking care
- * to prevent children from being merged to the global array.
+ * Referencing file pointers, merge all serials into one combined arr.
  -------------------------------------------------------------------*/
-uint32_t mergeThreadSerials(Serial** output, Serial** threadVisitedArr, uint32_t* numThreadVisited, int workerCount)
+uint32_t mergeThreadSerials(Serial** combined, FILE** fp, int workerCount)
 {
-	uint32_t totalNodesCombined = 0;
+	// For each thread, store the number of expected serials
+	uint32_t* numThreadVisited = malloc(workerCount * sizeof(uint32_t));
+	checkMallocFailed(numThreadVisited);
 
-	uint32_t* indices = calloc(workerCount, sizeof(uint32_t));
-	checkMallocFailed(indices);
+	// Keep track of the most recently read serial from each fp so we can determine which one to insert next
+	Serial* curSerials = malloc(workerCount * sizeof(Serial));
+	checkMallocFailed(curSerials);
+
+	// For each file, read in number of nodes visited AND the first serial in the file
+	for (int i = 0; i < workerCount; i++)
+	{
+		// Set to empty Serial in case something goes wrong in this loop
+		curSerials[i] = (Serial){ 0, NULL };
+
+		if (fp[i] == NULL)
+			continue;
+
+		size_t ret = fread(numThreadVisited + i, sizeof(uint32_t), 1, fp[i]);
+		if (ret == 0)
+			continue;
+		
+		Serial serial = (Serial){ 0, NULL };
+		ret = fread(&serial.length, sizeof(uint8_t), 1, fp[i]);
+		if (ret == 0)
+		{
+			numThreadVisited[i] = 0;
+			continue;
+		}
+
+		serial.data = malloc(serial.length * sizeof(char));
+		checkMallocFailed(serial.data);
+
+		ret = fread(serial.data, sizeof(char), serial.length, fp[i]);
+		if (ret != serial.length) {
+			free(serial.data);
+			numThreadVisited[i] = 0;
+			continue;
+		}
+
+		curSerials[i] = serial;
+	}
+
+	// Sum the number of visited nodes so we can malloc the combined array
+	// We will certainly never use this full length as there will be duplicate nodes,
+	// but this will prevent constant reallocs
+	uint32_t totalNodesExpected = sumVisited(numThreadVisited, workerCount);
+	*combined = malloc(totalNodesExpected * sizeof(Serial));
+	checkMallocFailed(*combined);
 
 	// Used to track if we are about to insert a child node based off what we have previously inserted
 	Serial prevSerial = (Serial){ 0, NULL };
+	uint32_t totalNodesCombined = 0;
 
-	uint32_t nextIndex = 0;
-	int nextWorkerCount = -1;
-	while ((nextWorkerCount = nextInsert(threadVisitedArr, numThreadVisited, indices, workerCount, &nextIndex)) >= 0)
+	// Keep reading serials in so long as there are serials present in curSerials
+	Serial nextSerial = (Serial){ 0, NULL };
+	while ((nextSerial = nextInsert(curSerials, fp, workerCount)).length > 0)
 	{
-		// We now know what node to insert next
-		// Inserting from threadID nextWorkerCount, at index nextIndex
-		Serial newInsertSerial = threadVisitedArr[nextWorkerCount][nextIndex];
-
-		// Allocate output if not already
-		if (*output == NULL)
+		// We only want to add the serial if we are inserting a new parent node
+		// Detect based off of the prevSerial to see if this new node is a child
+		if (prevSerial.length > 0 && isChild(prevSerial, nextSerial))
 		{
-			*output = malloc(++totalNodesCombined * sizeof(Serial));
-			checkMallocFailed(*output);
-		}
-		else
-		{
-			// We only want to realloc if we are inserting a new parent node
-			// Detect based off of the prevSerial to see if this new node is a child
-			if (prevSerial.length > 0 && isChild(prevSerial, newInsertSerial))
-			{
-				// Free the node and continue the while loop
-				free(newInsertSerial.data);
-				continue;
-			}
-
-			*output = realloc(*output, ++totalNodesCombined * sizeof(Serial));
-			checkMallocFailed(*output);
+			free(nextSerial.data);
+			continue;
 		}
 
-		prevSerial = newInsertSerial;
-		(*output)[totalNodesCombined - 1] = newInsertSerial;
+		prevSerial = nextSerial;
+		(*combined)[totalNodesCombined++] = nextSerial;
 	}
 
-	free(indices);
+	// realloc if we read in fewer nodes than expected
+	if (totalNodesCombined < totalNodesExpected)
+		*combined = realloc(*combined, totalNodesCombined * sizeof(Serial));
+
+	free(numThreadVisited);
+	free(curSerials);
 
 	return totalNodesCombined;
 }
@@ -286,23 +343,11 @@ void initializeVisitedNodes(int workerCount)
 	// Serials from all thread files will be combined into one array
 	Serial* combined = NULL;
 
-	// Temp arrays that will be free'd later
-	// These are used to temporarily store serials/counts for each individual thread
-	Serial** threadVisitedArr = malloc(workerCount * sizeof(Serial*));
-	uint32_t* numThreadVisited = malloc(workerCount * sizeof(uint32_t));
-	checkMallocFailed(threadVisitedArr);
-	checkMallocFailed(numThreadVisited);
+	// Obtain file pointers to the file for each of the workerCount threads
+	FILE** fp = getCacheFilePtrs(workerCount);
 
-	// Read in data from file for each thread
-	for (int i = 0; i < workerCount; i++)
-		numThreadVisited[i] = readVisitedNodesFromDisk(i, threadVisitedArr);
-
-	// Merge the arrays together
-	uint32_t combinedLen = mergeThreadSerials(&combined, threadVisitedArr, numThreadVisited, workerCount);
-
-	// Free the temp arrays
-	free(threadVisitedArr);
-	free(numThreadVisited);
+	// Read in data from file for each thread and merge to a combined array
+	uint32_t combinedLen = mergeThreadSerials(&combined, fp, workerCount);
 
 	// Initialize global array of arrays, one for each thread
 	visitedBranches = malloc(workerCount * sizeof(Serial*));
@@ -323,48 +368,6 @@ void initializeVisitedNodes(int workerCount)
 	char result[100];
 	sprintf(result, "Found %d serials from disk", combinedLen);
 	recipeLog(2, "Startup", "Cache", "Visited Nodes", result);
-}
-
-/*-------------------------------------------------------------------
- * Function : void readVisitedNodesFromDisk
- *
- * Check if results/visitedNodes.dat exists.
- * If so, populate visitedBranches with the data
- -------------------------------------------------------------------*/
-uint32_t readVisitedNodesFromDisk(int threadID, Serial** arr) {
-	char filename[50] = { 0 };
-	sprintf(filename, "results/visitedNodes_%d.dat", threadID);
-
-	FILE* fp = fopen(filename, "rb");
-	if (fp == NULL)
-		return 0;
-
-	// The first 4 bytes represent the number of visited nodes to expect. malloc enough space to contain this
-	uint32_t threadVisited = 0;
-	size_t ret = fread(&threadVisited, sizeof(uint32_t), 1, fp);
-	if (ret != 1) {
-		recipeLog(2, "Startup", "Cache", filename, "There was an error reading the cache file. Size not recognized");
-		fclose(fp);
-		return 0;
-	}
-
-	arr[threadID] = malloc(threadVisited * sizeof(Serial));
-	checkMallocFailed(arr[threadID]);
-
-	uint32_t serialsRead = readSerialsFromDisk(fp, arr[threadID], threadVisited);
-
-	fclose(fp);
-
-	if (serialsRead < threadVisited) {
-		// We reached EOF before expected. Keep what was read thus far
-		char result[100];
-		sprintf(result, "WARNING: Expected %d cached serials, only found %d", threadVisited, serialsRead);
-		recipeLog(2, "Startup", "Cache", filename, result);
-		arr[threadID] = realloc(arr[threadID], serialsRead * sizeof(Serial));
-		checkMallocFailed(arr[threadID]);
-	}
-
-	return serialsRead;
 }
 
 /*-------------------------------------------------------------------

@@ -8,10 +8,10 @@
 
 // Startup
 void		initializeVisitedNodes(int workerCount);
-uint32_t	readVisitedNodesFromDisk(int threadID, Serial** arr);
-uint32_t	readSerialsFromDisk(FILE* fp, Serial* arr, uint32_t numVisited);
-uint32_t	mergeThreadSerials(Serial** output, Serial** threadVisitedArr, uint32_t* numThreadVisited, int workerCount);
-int			nextInsert(Serial** threadVisitedArr, uint32_t* numThreadVisited, uint32_t* indices, int workerCount, uint32_t* nextIndex);
+FILE**		getCacheFilePtrs(int workerCount);
+uint32_t	mergeThreadSerials(Serial** combined, FILE** fp, int workerCount);
+int			sumVisited(uint32_t* visitedArr, int workerCount);
+Serial		nextInsert(Serial* curSerials, FILE** fp, int workerCount);
 Serial*		deepCopy(Serial* src, uint32_t len);
 
 // mid-run
