@@ -144,6 +144,133 @@ Serial* deepCopy(Serial* src, uint32_t len)
 }
 
 /*-------------------------------------------------------------------
+ * Function : nextInsert
+ *
+ * Given workerCount number of serial arrays pointed to by threadVisitedArr,
+ * determine which Serial should be inserted into the combined array next.
+ * To keep track of our walk along each thread-specific array, we keep
+ * track of an array of indexes, incrementing a thread's index when we've
+ * determined the next Serial to be added will be from that thread.
+ * We return the threadID but also set the value pointed to by nextIndex
+ * so that the caller can retrieve the value at the index from the given threadID.
+ -------------------------------------------------------------------*/
+int nextInsert(Serial** threadVisitedArr, uint32_t* numThreadVisited, uint32_t* indices, int workerCount, uint32_t* nextIndex)
+{
+	int nextWorker = -1;
+	Serial lowestSerial = (Serial){ 0, NULL };
+
+	for (int i = 0; i < workerCount; i++)
+	{
+		uint32_t curThreadIdx = indices[i];
+		// Skip thread if we've traversed the entire array
+		if (curThreadIdx == numThreadVisited[i])
+			continue;
+
+		Serial curSerial = threadVisitedArr[i][curThreadIdx];
+
+		// If this is our first serial in loop, then just set this as lowest
+		if (lowestSerial.length == 0)
+		{
+			*nextIndex = curThreadIdx;
+			nextWorker = i;
+			lowestSerial = curSerial;
+			continue;
+		}
+
+		// Otherwise, perform a serialcmp to see if it's lower than the others so far
+		int cmp = serialcmp(curSerial, lowestSerial);
+
+		if (cmp < 0)
+		{
+			// New lowest
+			*nextIndex = curThreadIdx;
+			nextWorker = i;
+			lowestSerial = curSerial;
+		}
+		else if (cmp == 0)
+		{
+			// This is a duplicate node, free the duplicate data
+			free(curSerial.data);
+			indices[i]++;
+		}
+	}
+
+	if (nextWorker >= 0)
+		indices[nextWorker]++;
+	
+	return nextWorker;
+}
+
+/*-------------------------------------------------------------------
+ * Function : isChild
+ *
+ * Helper function that determines if a Serial represents a node further
+ * down in the tree from the parent, in which case we won't want to
+ * insert the child in the global array of visited nodes.
+ -------------------------------------------------------------------*/
+static inline bool isChild(Serial parent, Serial child)
+{
+	if (child.length < parent.length)
+		return false;
+
+	return (memcmp(parent.data, child.data, parent.length) == 0);
+}
+
+/*-------------------------------------------------------------------
+ * Function : mergeThreadSerials
+ *
+ * Merge workerCount Serial arrays together into output, taking care
+ * to prevent children from being merged to the global array.
+ -------------------------------------------------------------------*/
+uint32_t mergeThreadSerials(Serial** output, Serial** threadVisitedArr, uint32_t* numThreadVisited, int workerCount)
+{
+	uint32_t totalNodesCombined = 0;
+
+	uint32_t* indices = calloc(workerCount, sizeof(uint32_t));
+	checkMallocFailed(indices);
+
+	// Used to track if we are about to insert a child node based off what we have previously inserted
+	Serial prevSerial = (Serial){ 0, NULL };
+
+	uint32_t nextIndex = 0;
+	int nextWorkerCount = -1;
+	while ((nextWorkerCount = nextInsert(threadVisitedArr, numThreadVisited, indices, workerCount, &nextIndex)) >= 0)
+	{
+		// We now know what node to insert next
+		// Inserting from threadID nextWorkerCount, at index nextIndex
+		Serial newInsertSerial = threadVisitedArr[nextWorkerCount][nextIndex];
+
+		// Allocate output if not already
+		if (*output == NULL)
+		{
+			*output = malloc(++totalNodesCombined * sizeof(Serial));
+			checkMallocFailed(*output);
+		}
+		else
+		{
+			// We only want to realloc if we are inserting a new parent node
+			// Detect based off of the prevSerial to see if this new node is a child
+			if (prevSerial.length > 0 && isChild(prevSerial, newInsertSerial))
+			{
+				// Free the node and continue the while loop
+				free(newInsertSerial.data);
+				continue;
+			}
+
+			*output = realloc(*output, ++totalNodesCombined * sizeof(Serial));
+			checkMallocFailed(*output);
+		}
+
+		prevSerial = newInsertSerial;
+		(*output)[totalNodesCombined - 1] = newInsertSerial;
+	}
+
+	free(indices);
+
+	return totalNodesCombined;
+}
+
+/*-------------------------------------------------------------------
  * Function : initializeVisitedNodes
  *
  * This is the top-level function that is called during start-up.
@@ -156,47 +283,45 @@ void initializeVisitedNodes(int workerCount)
 {
 	recipeLog(2, "Startup", "Cache", "Visited Nodes", "Reading visited nodes from disk... This may take a few seconds.");
 
-	// Initialize array of arrays, one for each thread
+	// Serials from all thread files will be combined into one array
+	Serial* combined = NULL;
+
+	// Temp arrays that will be free'd later
+	// These are used to temporarily store serials/counts for each individual thread
+	Serial** threadVisitedArr = malloc(workerCount * sizeof(Serial*));
+	uint32_t* numThreadVisited = malloc(workerCount * sizeof(uint32_t));
+	checkMallocFailed(threadVisitedArr);
+	checkMallocFailed(numThreadVisited);
+
+	// Read in data from file for each thread
+	for (int i = 0; i < workerCount; i++)
+		numThreadVisited[i] = readVisitedNodesFromDisk(i, threadVisitedArr);
+
+	// Merge the arrays together
+	uint32_t combinedLen = mergeThreadSerials(&combined, threadVisitedArr, numThreadVisited, workerCount);
+
+	// Free the temp arrays
+	free(threadVisitedArr);
+	free(numThreadVisited);
+
+	// Initialize global array of arrays, one for each thread
 	visitedBranches = malloc(workerCount * sizeof(Serial*));
 	checkMallocFailed(visitedBranches);
 	numVisitedBranches = calloc(workerCount, sizeof(uint32_t));
 	checkMallocFailed(numVisitedBranches);
 
-	// Maintain one array of serials, which we will constantly add to for every thread
-	// This way on start-up, all threads will start with the same combined list of visited nodes
-	Serial* combined = NULL;
-
-	uint32_t sumVisitedBranches = 0;
-	for (int i = 0; i < workerCount; i++)
-	{
-		Serial* temp = NULL;
-		uint32_t threadVisited = readVisitedNodesFromDisk(i, &temp);
-		if (temp != NULL)
-		{
-			// Now merge temp with combined
-			sumVisitedBranches = mergeThreadSerials(&combined, sumVisitedBranches, temp, threadVisited);
-		}
-	}
-
-	// TODO: Can children accidentally exist in this merged array? Does it really matter?
-
-	// Now that all thread files have been consolidated to one in-memory array,
-	// perform a deep copy on the array and assign to each of the thread-specific in-memory arrays
-
+	// Perform deep copies so each thread can manage visited nodes independently
 	// First thread can just use the array
 	visitedBranches[0] = combined;
 
 	for (int i = 1; i < workerCount; i++)
 	{
-		visitedBranches[i] = deepCopy(combined, sumVisitedBranches);
-		numVisitedBranches[i] = sumVisitedBranches;
+		visitedBranches[i] = deepCopy(combined, combinedLen);
+		numVisitedBranches[i] = combinedLen;
 	}
 
-	if (sumVisitedBranches == 0)
-		recipeLog(2, "Startup", "Cache", "Visited Nodes", "No cached visited nodes on disk.");
-
 	char result[100];
-	sprintf(result, "Found %d serials from disk", sumVisitedBranches);
+	sprintf(result, "Found %d serials from disk", combinedLen);
 	recipeLog(2, "Startup", "Cache", "Visited Nodes", result);
 }
 
@@ -223,10 +348,10 @@ uint32_t readVisitedNodesFromDisk(int threadID, Serial** arr) {
 		return 0;
 	}
 
-	*arr = malloc(threadVisited * sizeof(Serial));
-	checkMallocFailed(*arr);
+	arr[threadID] = malloc(threadVisited * sizeof(Serial));
+	checkMallocFailed(arr[threadID]);
 
-	uint32_t serialsRead = readSerialsFromDisk(fp, *arr, threadVisited);
+	uint32_t serialsRead = readSerialsFromDisk(fp, arr[threadID], threadVisited);
 
 	fclose(fp);
 
@@ -235,69 +360,11 @@ uint32_t readVisitedNodesFromDisk(int threadID, Serial** arr) {
 		char result[100];
 		sprintf(result, "WARNING: Expected %d cached serials, only found %d", threadVisited, serialsRead);
 		recipeLog(2, "Startup", "Cache", filename, result);
-		*arr = realloc(*arr, serialsRead * sizeof(Serial));
+		arr[threadID] = realloc(arr[threadID], serialsRead * sizeof(Serial));
+		checkMallocFailed(arr[threadID]);
 	}
 
 	return serialsRead;
-}
-
-/*-------------------------------------------------------------------
- * Function : void mergeThreadSerials
- *
- * Walk along both arrays and determine where to insert all thread serials.
- -------------------------------------------------------------------*/
-uint32_t mergeThreadSerials(Serial** combined, uint32_t combinedLen, Serial* threadSerials, uint32_t threadLen)
-{
-	// If this is the first array we're "combining" then there's nothing to do
-	if (combinedLen == 0)
-	{
-		*combined = threadSerials;
-		return threadLen;
-	}
-
-	uint32_t i = 0, j = 0;
-
-	while (i < threadLen && j < combinedLen)
-	{
-		Serial threadSerial = threadSerials[i];
-		int ret = serialcmp(threadSerial, (*combined)[j]);
-
-		if (ret == 0)
-		{
-			// These are identical, so just free this node and skip the insert
-			free(threadSerials[i++].data);
-		}
-		else if (ret < 0)
-		{
-			// Copy serial to index i in the combined array
-			*combined = realloc(*combined, (combinedLen + 1) * sizeof(Serial));
-			// Only need to move if we're not inserting at the end of the array
-			if (j < combinedLen - 1)
-			{
-				Serial* dest = *combined + j + 1;
-				Serial* src = *combined + j;
-				uint32_t serialsToMove = combinedLen - j;
-				memmove(dest, src, serialsToMove * sizeof(Serial));
-			}
-
-			(*combined)[j] = threadSerial;
-			i++;
-			combinedLen++;
-		}
-
-		j++;
-	}
-
-	// Copy any leftovers from thread array to end of consolidated array
-	if (i < threadLen)
-	{
-		uint32_t serialsToCopy = threadLen - i;
-		combinedLen += serialsToCopy;
-		*combined = realloc(*combined, combinedLen * sizeof(Serial));
-		memcpy(*combined + j, threadSerials + i, serialsToCopy * sizeof(Serial));
-	}
-
-	return combinedLen;
 }
 
 /*-------------------------------------------------------------------
