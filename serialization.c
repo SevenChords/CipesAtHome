@@ -223,7 +223,7 @@ FILE** getCacheFilePtrs(int workerCount)
 uint32_t mergeThreadSerials(Serial** combined, FILE** fp, int workerCount)
 {
 	// For each thread, store the number of expected serials
-	uint32_t* numThreadVisited = malloc(workerCount * sizeof(uint32_t));
+	uint32_t* numThreadVisited = calloc(workerCount, sizeof(uint32_t));
 	checkMallocFailed(numThreadVisited);
 
 	// Keep track of the most recently read serial from each fp so we can determine which one to insert next
