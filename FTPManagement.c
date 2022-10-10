@@ -11,13 +11,14 @@
 #include "logger.h"
 #include "base.h"
 
-struct memory {
-	char *data;
-	size_t size;
-};
-
 const char* local_ver;
 
+/*-------------------------------------------------------------------
+ * Function : setLocalVer
+ * 
+ * Stores the version of Recipes@Home the user is running, to compare
+ * against the Github repo for future updates.
+ -------------------------------------------------------------------*/
 void setLocalVer(const char* ver)
 {
 	local_ver = ver;
@@ -25,11 +26,6 @@ void setLocalVer(const char* ver)
 
 /*-------------------------------------------------------------------
  * Function 	: write_data
- * Inputs	: char 	 *contents
- *		  size_t 	 size
- *		  size_t 	 nmemb
- *		  void 	 *userdata
- * Outputs	: static size_t realsize
  *
  * This is a child function called by handle_get. This function writes
  * data to a buffer as data is received by a cURL request.
@@ -50,13 +46,10 @@ static size_t write_data(char *contents, size_t size, size_t nmemb, void *userda
 
 /*-------------------------------------------------------------------
  * Function 	: handle_get
- * Inputs	: char	*url
- * Outputs	: char	*data
  *
- * This is the main cURL GET function. Communicate with either GitHub
- * or the Blob server to obtain either the latest program version or
+ * This is the main cURL GET function. Communicate with GitHub
+ * or the Blob server to obtain the latest program version or
  * the current fastest frame record respectively.
- * The returning value (if non-NULL) MUST be freed.
  -------------------------------------------------------------------*/
 ABSL_MUST_USE_RESULT char *handle_get(char* url) {
 	CURL *curl;
@@ -84,9 +77,7 @@ ABSL_MUST_USE_RESULT char *handle_get(char* url) {
 }
 
 /*-------------------------------------------------------------------
- * Function 	: getFastestRecordOnBlob
- * Inputs	:
- * Outputs	: int record
+ * Function : getFastestRecordOnBlob
  *
  * Retrieve the server's current fastest roadmap length.
  -------------------------------------------------------------------*/
@@ -107,14 +98,9 @@ int getFastestRecordOnBlob() {
 }
 
 /*-------------------------------------------------------------------
- * Function 	: handle_post
- * Inputs	: char	*url
- *		  FILE	*fp
- *		  int	localRecord
- *		  char	*nickname
- * Outputs	: int 	status
+ * Function : handle_post
  *
- * Retrieve the server's current fastest roadmap length.
+ * Used to submit a user's roadmap to the blob server.
  -------------------------------------------------------------------*/
 void handle_post(char* url, FILE *fp, int localRecord, char *nickname) {
 	struct memory wt;
@@ -125,7 +111,7 @@ void handle_post(char* url, FILE *fp, int localRecord, char *nickname) {
 	fseek(fp, 0, SEEK_END);
 	long fsize = ftell(fp);
 	fseek(fp, 0, SEEK_SET);
-	wt.data = malloc(fsize+ strlen(nickname) + 50); // Offer enough padding for postfields
+	wt.data = malloc(fsize + strlen(nickname) + 50); // Offer enough padding for postfields
 
 	checkMallocFailed(wt.data);
 
@@ -170,14 +156,10 @@ void handle_post(char* url, FILE *fp, int localRecord, char *nickname) {
 	free(rt.data);
 }
 
-
 /*-------------------------------------------------------------------
- * Function 	: testRecord
- * Inputs	: int localRecord
- * Outputs	: -1 - error locating the text file
- *		  0  - successful submission to the server
+ * Function : testRecord
  *
- * Retrieve the server's current fastest roadmap length.
+ * Read the user's fastest record and submit to the Blob server
  -------------------------------------------------------------------*/
 int testRecord(int localRecord) {
 	if (localRecord < 0) {
@@ -206,13 +188,9 @@ int testRecord(int localRecord) {
 }
 
 /*-------------------------------------------------------------------
- * Function 	: checkForUpdates
- * Inputs	: const char *local_ver
- * Outputs	: 1  - outdated local version
- *		  -1 - unable to retrieve server version
- *		  0  - up-to-date
+ * Function : checkForUpdates
  *
- * Retrieve the server's current fastest roadmap length.
+ * Compare the user's local version versus the most recent Github release.
  -------------------------------------------------------------------*/
 int checkForUpdates(const char *local_ver) {
 	char *url = "https://api.github.com/repos/SevenChords/CipesAtHome/releases/latest";
@@ -245,13 +223,14 @@ int checkGithubVer()
 {
 	int update = checkForUpdates(local_ver);
 	if (update == -1) {
-		printf("Could not check version on Github. Please check your internet connection.\n");
-		printf("Otherwise, we can't submit completed roadmaps to the server!\n");
-		printf("Alternatively you may have been rate-limited. Please wait a while and try again.\n");
+		printf("Could not check version on Github. Please check your internet connection.\n" \
+			"Otherwise, we can't submit completed roadmaps to the server!\n" \
+			"Alternatively you may have been rate-limited. Please wait a while and try again.\n");
 	}
 	else if (update == 1) {
-		printf("There is a newer version of Recipes@Home.\nTo continue, please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!\n");
-		printf("Press ENTER to quit.\n");
+		printf("There is a newer version of Recipes@Home.\n" \
+			"To continue, please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!\n" \
+			"Press ENTER to quit.\n");
 		awaitKeyFromUser();
 	}
 
