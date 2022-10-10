@@ -1184,14 +1184,8 @@ OptimizeResult optimizeRoadmap(const BranchPath *root) {
  * of all but the fastest legal move.
  -------------------------------------------------------------------*/
 void popAllButFirstLegalMove(struct BranchPath *node) {
-	// First case, we may need to set the final slot to NULL (the one _after_ the last element)
-	// Which is handled by the full freeLegalMoves (in the shiftUpLegalMoves inner call).
-	int i = node->numLegalMoves - 1;
-	freeAndShiftLegalMove(node, i--, true);
-	for (; i > 0 ; --i) {
-		// Now we don't need to check final slot.
-		freeLegalMove(node, i, true);
-	}
+	while (node->numLegalMoves > 1)
+		freeLegalMove(node, node->numLegalMoves - 1, false);
 }
 
 /*-------------------------------------------------------------------
