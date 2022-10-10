@@ -2146,7 +2146,8 @@ Result calculateOrder(const int ID) {
 
 		// Period check for Github update (only perform on thread 0)
 		if (total_dives % 10000 == 0 && omp_get_thread_num() == 0) {
-			periodicGithubCheck();
+			if (checkGithubVer() == 1)
+				exit(1);
 		}
 
 		// Periodically write visited nodes to disk so we don't rely on a clean shutdown
@@ -2200,25 +2201,4 @@ void writePersonalBest(Result *result)
 		fprintf(fp, "%d", result->frames);
 	}
 	fclose(fp);
-}
-
-/*-------------------------------------------------------------------
- * Function : periodicGithubCheck
- *
- * Check for the most recent Github repository release version. If there
- * is a newer version, alert the user.
- -------------------------------------------------------------------*/
-void periodicGithubCheck() {
-	// Double check the latest release on Github
-	int update = checkForUpdates(getLocalVersion());
-	if (update == -1) {
-		printf("Could not check version on Github. Please check your internet connection.\n");
-		printf("Otherwise, completed roadmaps may be inaccurate!\n");
-	}
-	else if (update == 1) {
-		printf("Please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!\n");
-		printf("Press ENTER to exit the program.\n");
-		awaitKeyFromUser();
-		exit(1);
-	}
 }

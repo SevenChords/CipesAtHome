@@ -38,14 +38,10 @@ int getLocalRecord() {
 }
 void setLocalRecord(int frames) {
 	if (ABSL_PREDICT_FALSE(frames < 0)) {
-		printf("Got corrupt PB if %d frames. Ignoring\n", frames);
+		printf("Got corrupt PB of %d frames. Ignoring\n", frames);
 		return;
 	}
 	current_frame_record = frames;
-}
-
-const char *getLocalVersion() {
-	return local_ver;
 }
 
 int numTimesExitRequest = 0;
@@ -132,7 +128,6 @@ int main() {
 	int workerCount = (getConfigInt("select") || getConfigInt("randomise"))
 					  && !getConfigInt("debug") ? getConfigInt("workerCount") : 1;
 
-	local_ver = getConfigStr("Version"); // Recipes@Home version
 	init_level_cfg(); // set log level from config
 	curl_global_init(CURL_GLOBAL_DEFAULT);	// Initialize libcurl
 
@@ -151,22 +146,10 @@ int main() {
 		printf("The current fastest record is %d frames. Happy cooking!\n", blob_record);
 	}
 
-	// Reference the Github for the latest release version
-	int update = checkForUpdates(local_ver);
-	if (update == -1) {
-		printf("Could not check version on Github. Please check your internet connection.\n");
-		printf("Otherwise, we can't submit completed roadmaps to the server!\n");
-		printf("Alternatively you may have been rate-limited. Please wait a while and try again.\n");
-		printf("Press ENTER to quit.\n");
-		awaitKeyFromUser();
+	// Quit if new version available
+	setLocalVer(getConfigStr("Version"));
+	if (checkGithubVer() == 1)
 		return -1;
-	}
-	else if (update == 1) {
-		printf("There is a newer version of Recipes@Home.\nTo continue, please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!\n");
-		printf("Press ENTER to quit.\n");
-		awaitKeyFromUser();
-		return -1;
-	}
 
 	checkDefaultUsername();
 

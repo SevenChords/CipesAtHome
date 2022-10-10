@@ -16,6 +16,13 @@ struct memory {
 	size_t size;
 };
 
+const char* local_ver;
+
+void setLocalVer(const char* ver)
+{
+	local_ver = ver;
+}
+
 /*-------------------------------------------------------------------
  * Function 	: write_data
  * Inputs	: char 	 *contents
@@ -232,4 +239,21 @@ int checkForUpdates(const char *local_ver) {
 	// Add logs
 	cJSON_Delete(json);
 	return 0;
+}
+
+int checkGithubVer()
+{
+	int update = checkForUpdates(local_ver);
+	if (update == -1) {
+		printf("Could not check version on Github. Please check your internet connection.\n");
+		printf("Otherwise, we can't submit completed roadmaps to the server!\n");
+		printf("Alternatively you may have been rate-limited. Please wait a while and try again.\n");
+	}
+	else if (update == 1) {
+		printf("There is a newer version of Recipes@Home.\nTo continue, please visit https://github.com/SevenChords/CipesAtHome/releases to download the newest version of this program!\n");
+		printf("Press ENTER to quit.\n");
+		awaitKeyFromUser();
+	}
+
+	return update;
 }
