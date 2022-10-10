@@ -26,6 +26,7 @@ bool		legalMoveHasBeenTraversed(BranchPath* newLegalMove);
 int			searchVisitedNodes(Serial serial, int low, int high, int threadID);
 void 		serializeNode(BranchPath* node);
 uint8_t 	serializeCookNode(BranchPath* node, void** data);
+uint8_t		getRecipeIndex(Cook* pCook);
 uint8_t 	serializeSortNode(BranchPath* node, void** data);
 uint8_t 	serializeCH5Node(BranchPath* node, void** data);
 void		writeVisitedNodesToDisk(int threadID);

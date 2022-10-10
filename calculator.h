@@ -3,41 +3,11 @@
 
 #include <stdbool.h>
 #include "absl/base/attributes.h"
+
+#include "types.h"
+
 #include "inventory.h"
 #include "start.h"
-
-// What do we do with the produced item after crafting a recipe?
-enum HandleOutput  {
-	Toss,		// Toss the recipe itself
-	Autoplace,	// The recipe is placed in an empty slot
-	TossOther	// Toss a different item to make room
-};
-
-// Information pertaining to cooking a recipe
-typedef struct Cook Cook;
-struct Cook {
-	int numItems;
-	enum Type_Sort item1;
-	int itemIndex1;
-	enum Type_Sort item2;
-	int itemIndex2;
-	enum Type_Sort output;
-	enum HandleOutput handleOutput;
-	enum Type_Sort toss;
-	int indexToss;
-};
-
-// Information pertaining to the Chapter 5 intermission
-typedef struct CH5 CH5;
-struct CH5 {
-	int indexDriedBouquet;	// index of item we toss to make room for Dried Bouquet
-	int indexCoconut;		// index of item we toss to make room for Coconut
-	enum Action ch5Sort;	// The sort type we perform after Coconut
-	int indexKeelMango;		// index of item we toss to make room for Keel Mango
-	int indexCourageShell;	// index of item we toss to make room for Courage Shell
-	int indexThunderRage;	// index of Thunder Rage when we use it during Smorg (if 0-9, TR is removed)
-	int lateSort;			// 0 - sort after Coconut, 1 - sort after Keel Mango
-};
 
 // Information pertaining to the evaluation of Chapter 5 intermission moves
 typedef struct CH5_Eval CH5_Eval;

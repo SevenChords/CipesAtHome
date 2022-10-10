@@ -5,8 +5,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <types.h>
+
 #include "base.h"
 #include "logger.h"
+#include "recipes.h"
 
 #ifdef WIN32
 #include <io.h>
@@ -18,6 +21,14 @@
 
 Serial** visitedBranches = NULL;
 uint32_t* numVisitedBranches = NULL;
+extern Recipe* recipeList;
+
+// Used to uniquely identify a particular item combination for serialization purposes
+static int recipeOffsetLookup[57] = {
+	0, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15, 16, 17, 18, 23, 24, 25,
+	26, 28, 31, 35, 37, 39, 40, 41, 44, 45, 46, 48, 50, 52,
+	59, 60, 61, 62, 63, 64, 66, 68, 71, 77, 82, 83, 85, 86,
+	87, 88, 89, 90, 92, 147, 148, 149, 152, 153, 154, 155 };
 
 /*-------------------------------------------------------------------
  * Function : serialcmp
@@ -426,6 +437,243 @@ int searchVisitedNodes(Serial serial, int low, int high, int threadID)
 	}
 
 	return -1;
+}
+
+/*-------------------------------------------------------------------
+ * Function : getRecipeIndex
+ *
+ * Finds a unique identifier for a particular recipe combination.
+ * For a particular recipe combination, sum all of the combinations
+ * of cooking lower-index outputs, then add all earlier combinations
+ * of cooking the output in question. This utilizes recipeOffSetLookup
+ * to prevent complex lookup times.
+ -------------------------------------------------------------------*/
+uint8_t getRecipeIndex(Cook* pCook)
+{
+	int i = getOutputIndex(pCook->output);
+	int offset = recipeOffsetLookup[i];
+
+	for (int j = 0; j < recipeList[i].countCombos; j++)
+	{
+		ItemCombination listCombo = recipeList[i].combos[j];
+
+		if (listCombo.numItems != pCook->numItems)
+			continue;
+
+		bool bFirstItemMatch = listCombo.item1 == pCook->item1 || (pCook->numItems == 2 && listCombo.item1 == pCook->item2);
+		bool bSecondItemMatch = listCombo.item2 == pCook->item2 || (pCook->numItems == 2 && listCombo.item2 == pCook->item1);
+
+		if (bFirstItemMatch && (pCook->numItems == 1 || bSecondItemMatch))
+			return offset + j;
+	}
+
+	return UINT8_MAX;
+}
+
+/*-------------------------------------------------------------------
+ * Function : serializeCookNode
+ *
+ * Generates a unique set of bytes to represent the cook action performed.
+ * Returns the length of bytes required to represent the action.
+ * Note that we skip representing the Mistake, as it's always the last recipe,
+ * and the Dried Bouquet, as the that is considered part of the CH5 sequence.
+ -------------------------------------------------------------------*/
+uint8_t serializeCookNode(BranchPath* node, void** data)
+{
+	uint8_t dataLen = 0;
+	Cook* pCook = (Cook*)node->description.data;
+	Serial parentSerial = node->prev->serial;
+
+	// Don't really need to hash Mistake, and removing all recipe combos for mistakes saves space for our serialization
+	if (pCook->output == Mistake)
+	{
+		*data = NULL;
+		return 0;
+	}
+	else if (pCook->output == Dried_Bouquet)
+	{
+		// This shouldn't happen
+		exit(1);
+	}
+
+	uint8_t recipeIdx = getRecipeIndex(pCook);
+	assert(recipeIdx != UINT8_MAX);
+
+	dataLen = 1;
+
+	int8_t outputPlace = pCook->indexToss;
+	bool bAutoplace = (outputPlace == -1);
+
+	if (!bAutoplace)
+		dataLen = 2;
+
+	if (parentSerial.length == 0)
+	{
+		// We have nothing to copy. Just malloc 3 bytes
+		*data = malloc(dataLen);
+		checkMallocFailed(*data);
+	}
+	else
+	{
+		*data = malloc(parentSerial.length + dataLen);
+		checkMallocFailed(*data);
+
+		memcpy(*data, parentSerial.data, parentSerial.length);
+	}
+
+	memset((char*)*data + parentSerial.length, recipeIdx, 1);
+
+	if (!bAutoplace)
+		memset((char*)*data + parentSerial.length + 1, (uint8_t)outputPlace, 1);
+
+	return dataLen;
+}
+
+/*-------------------------------------------------------------------
+ * Function : serializeSortNode
+ *
+ * Generates a unique set of bytes to represent the sort performed.
+ * Returns the length of bytes required to represent the action.
+ -------------------------------------------------------------------*/
+uint8_t serializeSortNode(BranchPath* node, void** data)
+{
+	uint8_t dataLen = 1;
+	Serial parentSerial = node->prev->serial;
+
+	if (parentSerial.length == 0)
+	{
+		*data = malloc(dataLen);
+		checkMallocFailed(*data);
+	}
+	else
+	{
+		*data = malloc(parentSerial.length + dataLen);
+		checkMallocFailed(*data);
+		memcpy(*data, parentSerial.data, parentSerial.length);
+	}
+
+	uint8_t actionValue = (node->description.action - 2) + recipeOffsetLookup[56];
+	memset((char*)*data + parentSerial.length, actionValue, 1);
+
+	return dataLen;
+}
+
+/*-------------------------------------------------------------------
+ * Function : serializeCH5Node
+ *
+ * Generates a unique set of bytes to represent the CH5 sequence.
+ * Returns the length of bytes required to represent the action.
+ -------------------------------------------------------------------*/
+uint8_t serializeCH5Node(BranchPath* node, void** data)
+{
+	uint8_t actionValue = recipeOffsetLookup[56] + 4;
+	Serial parentSerial = node->prev->serial;
+
+	CH5* pCH5 = (CH5*)node->description.data;
+	uint8_t lateSort = (uint8_t)pCH5->lateSort;
+	uint8_t sort = (uint8_t)pCH5->ch5Sort - 2;
+	uint8_t uCS = (uint8_t)pCH5->indexCourageShell;
+	int iDB = pCH5->indexDriedBouquet;
+	int iCO = pCH5->indexCoconut;
+	int iKM = pCH5->indexKeelMango;
+
+	if (lateSort == 1)
+		actionValue += 40;
+
+	actionValue += (sort * 10);
+	actionValue += uCS;
+
+	uint8_t dataLen = 1;
+
+	// Tack on additional bits for each item that is not autoplaced
+	uint8_t optionalByte1 = 0;
+	uint8_t optionalByte2 = 0;
+
+	if (iDB > -1)
+	{
+		dataLen = 2;
+		optionalByte1 = ((uint8_t)(iDB)) << 4;
+	}
+	if (iCO > -1)
+	{
+		dataLen = 2;
+		if (iDB > -1)
+			optionalByte1 |= (uint8_t)(iCO);
+		else
+			optionalByte1 = ((uint8_t)(iCO)) << 4;
+	}
+	if (iKM > -1)
+	{
+		dataLen = 2;
+		if (iDB > -1 && iCO > -1)
+		{
+			dataLen = 3;
+			optionalByte2 = ((uint8_t)(iKM)) << 4;
+		}
+		else if (iDB > -1 || iCO > -1)
+			optionalByte1 |= (uint8_t)(iKM);
+		else
+			optionalByte1 = ((uint8_t)(iKM)) << 4;
+	}
+
+	*data = malloc(parentSerial.length + dataLen);
+	checkMallocFailed(*data);
+	if (parentSerial.length > 0)
+		memcpy(*data, parentSerial.data, parentSerial.length);
+
+	memset((char*)*data + parentSerial.length, actionValue, 1);
+
+	if (dataLen >= 2)
+		memset((char*)*data + parentSerial.length + 1, optionalByte1, 1);
+	if (dataLen == 3)
+		memset((char*)*data + parentSerial.length + 2, optionalByte2, 1);
+
+	return dataLen;
+}
+
+/*-------------------------------------------------------------------
+ * Function : serializeNode
+ *
+ * Observes the action taken in this node, generates unique bytes to
+ * represent it, and saves it within the node struct to be referenced later.
+ -------------------------------------------------------------------*/
+void serializeNode(BranchPath* node)
+{
+	if (node->moves == 0)
+	{
+		node->serial = (Serial){ 0, NULL };
+		return;
+	}
+
+	void* data = NULL;
+	uint8_t dataLen = 0; // in bytes
+	Serial parentSerial = node->prev->serial;
+	Action nodeAction = node->description.action;
+
+	switch (nodeAction)
+	{
+	case EBegin:
+
+	case ECook:
+		dataLen = serializeCookNode(node, &data);
+		break;
+	case ESort_Alpha_Asc:
+	case ESort_Alpha_Des:
+	case ESort_Type_Asc:
+	case ESort_Type_Des:
+		dataLen = serializeSortNode(node, &data);
+		break;
+	case ECh5:
+		dataLen = serializeCH5Node(node, &data);
+		break;
+	default:
+		exit(1);
+	}
+
+	if (dataLen == 0)
+		node->serial = (Serial){ 0, NULL };
+	else
+		node->serial = (Serial){ parentSerial.length + dataLen, data };
 }
 
 /*-------------------------------------------------------------------
