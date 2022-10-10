@@ -132,7 +132,7 @@ ABSL_MUST_USE_RESULT BranchPath* initializeRoot() {
  -------------------------------------------------------------------*/
 uint8_t getRecipeIndex(Cook *pCook)
 {
-	int i = getIndexOfRecipe(pCook->output);
+	int i = getOutputIndex(pCook->output);
 	int offset = recipeOffsetLookup[i];
 
 	for (int j = 0; j < recipeList[i].countCombos; j++)
@@ -716,7 +716,7 @@ void fulfillChapter5(BranchPath *curNode) {
 	// to ensure that the produced inventory can fulfill all remaining recipes
 	outputCreatedArray_t tempOutputsFulfilled;
 	copyOutputsFulfilled(tempOutputsFulfilled, curNode->outputCreated);
-	tempOutputsFulfilled[getIndexOfRecipe(Dried_Bouquet)] = true;
+	tempOutputsFulfilled[getOutputIndex(Dried_Bouquet)] = true;
 	int numOutputsFulfilled = curNode->numOutputsCreated + 1;
 
 	Inventory newInventory = curNode->inventory;
@@ -772,7 +772,7 @@ void fulfillRecipes(BranchPath *curNode) {
 
 		// Dried Bouquet (Recipe index 56) represents the Chapter 5 intermission
 		// Don't actually use the specified recipe, as it is handled later
-		if (recipeIndex == getIndexOfRecipe(Dried_Bouquet)) {
+		if (recipeIndex == getOutputIndex(Dried_Bouquet)) {
 			continue;
 		}
 
@@ -1463,7 +1463,7 @@ void reallocateRecipes(BranchPath* newRoot, const enum Type_Sort* rearranged_rec
 		Cook temp_description = {0};
 
 		// Evaluate all recipes and determine the optimal recipe and location
-		int recipe_index = getIndexOfRecipe(rearranged_recipes[recipe_offset]);
+		int recipe_index = getOutputIndex(rearranged_recipes[recipe_offset]);
 		Recipe recipe = recipeList[recipe_index];
 		for (int recipe_combo_index = 0; recipe_combo_index < recipe.countCombos; recipe_combo_index++) {
 			ItemCombination combo = recipe.combos[recipe_combo_index];
@@ -1626,7 +1626,7 @@ int removeRecipesForReallocation(BranchPath* node, enum Type_Sort *rearranged_re
 		// First update subsequent nodes to remove this item from outputCreated
 		BranchPath* newNode = node->next;
 		while (newNode != NULL) {
-			newNode->outputCreated[getIndexOfRecipe(tossed_item)] = 0;
+			newNode->outputCreated[getOutputIndex(tossed_item)] = 0;
 			newNode->numOutputsCreated--;
 			newNode = newNode->next;
 		}
@@ -2011,7 +2011,7 @@ Result calculateOrder(const int ID) {
 				// The first item is trading the Mousse Cake and 2 Hot Dogs for a Dried Bouquet
 				// Inventory must contain both items, and Hot Dog must be in a slot such that it can be duplicated
 				// The Mousse Cake and Hot Dog cannot be in a slot such that it is "hidden" due to NULLs in the inventory
-				if (!curNode->outputCreated[getIndexOfRecipe(Dried_Bouquet)]
+				if (!curNode->outputCreated[getOutputIndex(Dried_Bouquet)]
 					&& indexOfItemInInventory(curNode->inventory, Mousse_Cake) != -1
 					&& indexOfItemInInventory(curNode->inventory, Hot_Dog) >= 10) {
 					fulfillChapter5(curNode);

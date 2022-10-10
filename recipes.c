@@ -12,10 +12,6 @@
 
 /*-------------------------------------------------------------------
  * Function : parseCombo
- * Inputs	: int itemCount
- *			  enum Type_Sort		 item1
- *			  enum Type_Sort		 item2
- * Outputs	: struct ItemCombination combo
  *
  * Small helper function which takes two items and creates a combo struct.
  -------------------------------------------------------------------*/
@@ -27,11 +23,9 @@ struct ItemCombination parseCombo(int itemCount, enum Type_Sort item1, enum Type
 
 /*-------------------------------------------------------------------
  * Function : getRecipeList
- * Inputs	:
- * Outputs	: struct Recipe *recipeList
  *
- * Hard-coded array which tracks all recipes, the number of combinations
- * for each recipe, and the items that make up each of those combos.
+ * Returns hard-coded array which tracks all recipes, the number of
+ * combinations for each recipe, and the items that make up each of those combos.
  -------------------------------------------------------------------*/
 ABSL_MUST_USE_RESULT struct Recipe* getRecipeList() {
 	struct Recipe* recipes = malloc(sizeof(struct Recipe) * NUM_RECIPES);
@@ -551,21 +545,19 @@ ABSL_MUST_USE_RESULT struct Recipe* getRecipeList() {
 }
 
 /*-------------------------------------------------------------------
- * Function : getRecipeList
- * Inputs	: enum Type_Sort item
- * Outputs	: int			 index
+ * Function : getOutputIndex
  *
- * Triple ternary operators to determine the index of a particular recipe
+ * Triple ternary operators to determine the index of a particular output
  * in the recipeList. This exploits the fact that all recipes (besides
  * the fake Dried Bouquet recipe) are adjacent to one another in the
  * order listed in recipeList.
  -------------------------------------------------------------------*/
-int getIndexOfRecipe(enum Type_Sort item) {
+int getOutputIndex(enum Type_Sort item) {
 	// Conveniently, all recipes are stored as the same "type",
 	// so their t_key's are adjacent to one another
 	return item == Dried_Bouquet ? 56
 		: item == Mistake ? 57
-		: item  < Shroom_Fry ? -1
+		: item < Shroom_Fry ? -1
 		: item - Shroom_Fry;
 }
 
@@ -592,7 +584,7 @@ int checkRecipe(struct ItemCombination combo, int *makeableItems, const outputCr
 			continue;
 		}
 
-		int recipeIndex = getIndexOfRecipe(ingredient);
+		int recipeIndex = getOutputIndex(ingredient);
 
 		if (recipeIndex == -1) {
 			// The item cannot ever be created
@@ -657,7 +649,7 @@ int stateOK(struct Inventory inventory, const outputCreatedArray_t outputsCreate
 	// With the given inventory, can the remaining recipes be fulfilled?
 
 	// If Chapter 5 has not been done, verify that Thunder Rage is in the inventory
-	if (!outputsCreated[getIndexOfRecipe(Dried_Bouquet)] && indexOfItemInInventory(inventory, Thunder_Rage) == -1) {
+	if (!outputsCreated[getOutputIndex(Dried_Bouquet)] && indexOfItemInInventory(inventory, Thunder_Rage) == -1) {
 		return 0;
 	}
 
@@ -666,7 +658,7 @@ int stateOK(struct Inventory inventory, const outputCreatedArray_t outputsCreate
 	placeInventoryInMakeableItems(makeableItems, inventory);
 
 	// If Chapter 5 has not been done, add the items it gives
-	if (outputsCreated[getIndexOfRecipe(Dried_Bouquet)] == 0) {
+	if (outputsCreated[getOutputIndex(Dried_Bouquet)] == 0) {
 		makeableItems[Keel_Mango] = 1;
 		makeableItems[Coconut] = 1;
 	 	makeableItems[Dried_Bouquet] = 1;
