@@ -369,6 +369,7 @@ void initializeVisitedNodes(int workerCount)
 	// Perform deep copies so each thread can manage visited nodes independently
 	// First thread can just use the array
 	visitedBranches[0] = combined;
+	numVisitedBranches[0] = combinedLen;
 
 	for (int i = 1; i < workerCount; i++)
 	{
