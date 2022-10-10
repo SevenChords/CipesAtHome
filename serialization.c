@@ -713,10 +713,7 @@ void consolidateThreadSerialsOnShutdown(int workerCount)
 		char filename[50];
 		sprintf(filename, "results/visitedNodes_%d.dat", i);
 
-		int removeRet = remove(filename);
-
-		if (removeRet != 0)
-			printf("Uh");
+		remove(filename);
 	}
 
 	char result[100];
