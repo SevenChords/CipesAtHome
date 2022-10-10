@@ -11,7 +11,7 @@
 #include "logger.h"
 #include "recipes.h"
 
-#ifdef _IS_WINDOWS
+#if _IS_WINDOWS
 #include <io.h>
 #define F_OK 0
 #define access _access
