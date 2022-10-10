@@ -61,7 +61,7 @@ void createCookDescription2Items(const BranchPath* node, Recipe recipe, ItemComb
 void createCookDescription1Item(const BranchPath* node, Recipe recipe, ItemCombination combo, Inventory* tempInventory, int* ingredientLoc, int viableItems, MoveDescription* useDescription);
 MoveDescription createCookDescription(const BranchPath* node, Recipe recipe, ItemCombination combo, Inventory *tempInventory, int viableItems);
 void fulfillRecipes(BranchPath* curNode);
-void generateCook(MoveDescription* description, const ItemCombination combo, const Recipe recipe, const int* ingredientLoc, int swap);
+void generateCook(MoveDescription* description, const ItemCombination combo, const Recipe recipe, const int* ingredientLoc);
 void handleRecipeOutput(BranchPath* curNode, Inventory tempInventory, MoveDescription useDescription, const outputCreatedArray_t tempOutputsFulfilled, int numOutputsFulfilled, enum Type_Sort output, int viableItems);
 void tryTossInventoryItem(BranchPath* curNode, Inventory tempInventory, MoveDescription useDescription, const outputCreatedArray_t tempOutputsFulfilled, int numOutputsFulfilled, enum Type_Sort output, int viableItems);
 
@@ -98,7 +98,7 @@ void applyJumpStorageFramePenalty(BranchPath *node);
 void generateFramesTaken(MoveDescription* description, const BranchPath* node, int framesTaken);
 int outputOrderIsSlower(int location_1, int location_2, int inventoryLength);
 int selectSecondItemFirst(const int* ingredientLoc, int nulls, int viableItems);
-void swapItems(int* ingredientLoc);
+void swapItems(int* ingredientLoc, ItemCombination* combo);
 
 // General node functions
 void freeAllNodes(BranchPath* node);

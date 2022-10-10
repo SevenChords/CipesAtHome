@@ -195,7 +195,7 @@ void createCookDescription1Item(const BranchPath *node, Recipe recipe, ItemCombi
 		*tempInventory = removeItem(*tempInventory, ingredientLoc[0]);
 	}
 
-	generateCook(useDescription, combo, recipe, ingredientLoc, 0);
+	generateCook(useDescription, combo, recipe, ingredientLoc);
 	generateFramesTaken(useDescription, node, framesTaken);
 }
 
@@ -214,10 +214,8 @@ void createCookDescription2Items(const BranchPath *node, Recipe recipe, ItemComb
 	// Swap ingredient order if necessary. There are some configurations where
 	// it is 2 frames faster to pick the ingredients in the reverse order or
 	// only one order is possible.
-	int swap = 0;
 	if (selectSecondItemFirst(ingredientLoc, tempInventory->nulls, viableItems)) {
-		swapItems(ingredientLoc);
-		swap = 1;
+		swapItems(ingredientLoc, &combo);
 	}
 
 	int visibleLoc0 = ingredientLoc[0] - tempInventory->nulls;
@@ -269,7 +267,7 @@ void createCookDescription2Items(const BranchPath *node, Recipe recipe, ItemComb
 	}
 
 	// Describe what items were used
-	generateCook(useDescription, combo, recipe, ingredientLoc, swap);
+	generateCook(useDescription, combo, recipe, ingredientLoc);
 	generateFramesTaken(useDescription, node, framesTaken);
 }
 
@@ -575,21 +573,15 @@ void fulfillRecipes(BranchPath *curNode) {
  * Given input parameters, generate Cook structure to represent
  * what was cooked and how.
  -------------------------------------------------------------------*/
-void generateCook(MoveDescription *description, const ItemCombination combo, const Recipe recipe, const int *ingredientLoc, int swap) {
+void generateCook(MoveDescription *description, const ItemCombination combo, const Recipe recipe, const int *ingredientLoc) {
 	Cook *cook = malloc(sizeof(Cook));
 
 	checkMallocFailed(cook);
 
 	description->action = ECook;
 	cook->numItems = combo.numItems;
-	if (swap) {
-		cook->item1 = combo.item2;
-		cook->item2 = combo.item1;
-	}
-	else {
-		cook->item1 = combo.item1;
-		cook->item2 = combo.item2;
-	}
+	cook->item1 = combo.item1;
+	cook->item2 = combo.item2;
 
 	cook->itemIndex1 = ingredientLoc[0];
 	cook->itemIndex2 = ingredientLoc[1];
@@ -1511,12 +1503,14 @@ void shuffleLegalMoves(BranchPath *node) {
  * the first for a given recipe (based on the state of our inventory),
  * swap the item slot locations and offsets (for printing purposes).
  -------------------------------------------------------------------*/
-void swapItems(int *ingredientLoc) {
-	int locTemp;
-
-	locTemp = ingredientLoc[0];
+void swapItems(int *ingredientLoc, ItemCombination* combo) {
+	int locTemp = ingredientLoc[0];
 	ingredientLoc[0] = ingredientLoc[1];
 	ingredientLoc[1] = locTemp;
+
+	Type_Sort temp = combo->item1;
+	combo->item1 = combo->item2;
+	combo->item2 = temp;
 }
 
 /*-------------------------------------------------------------------
