@@ -2202,3 +2202,10 @@ void writePersonalBest(Result *result)
 	}
 	fclose(fp);
 }
+
+void shutdownCalculator()
+{
+	free(recipeList);
+	for (int i = 0; i < INVENTORY_MAX_SIZE; i++)
+		free(invFrames[i]);
+}

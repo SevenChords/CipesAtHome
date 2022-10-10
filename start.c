@@ -212,6 +212,9 @@ int main() {
 		}
 	}
 
+	shutdownConfig();
+	shutdownCalculator();
+
 	// On shutdown, try to consolidate thread-specific cache files into one unified file
 	consolidateThreadSerialsOnShutdown(workerCount);
 

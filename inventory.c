@@ -11,7 +11,6 @@
 
 #define VOLATILE_INVENTORY_SIZE 10
 #define INVENTORY_SIZE 20
-#define INVENTORY_MAX_SIZE 21
 #define NUM_ITEMS 107
 
 typedef enum Alpha_Sort Alpha_Sort;

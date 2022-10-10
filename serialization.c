@@ -672,6 +672,10 @@ void consolidateThreadSerialsOnShutdown(int workerCount)
 		combined[totalNodesCombined++] = nextSerial;
 	}
 
+	// Free the global arrays now that everything has been consolidated into one array
+	free(visitedBranches);
+	free(numVisitedBranches);
+
 	// Begin writing to file
 	size_t ret = fwrite(&totalNodesCombined, sizeof(uint32_t), 1, fp);
 

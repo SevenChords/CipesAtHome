@@ -140,5 +140,6 @@ BranchPath* initializeRoot();
 void periodicGithubCheck();
 Result calculateOrder(const int ID);
 void writePersonalBest(Result *result);
+void shutdownCalculator();
 
 #endif

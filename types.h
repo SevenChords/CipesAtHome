@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #define NUM_RECIPES 58      // Including Chapter 5 representation and Dried Bouquet trade
+#define INVENTORY_MAX_SIZE 21
 
 typedef struct Result Result;
 struct Result {

@@ -38,3 +38,8 @@ int getConfigInt(char* str) {
 	config_lookup_int(config, str, &temp);
 	return temp;
 }
+
+void shutdownConfig() {
+	config_destroy(config);
+	free(config);
+}
