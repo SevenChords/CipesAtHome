@@ -8,6 +8,8 @@
 
 // Startup
 void		initializeVisitedNodes(int workerCount);
+uint32_t	ReadConsolidatedFile(Serial** combined);
+Serial		readNextSerial(FILE* fp);
 FILE**		getCacheFilePtrs(int workerCount);
 uint32_t	mergeThreadSerials(Serial** combined, FILE** fp, int workerCount);
 int			sumVisited(uint32_t* visitedArr, int workerCount);
@@ -28,5 +30,9 @@ uint8_t 	serializeSortNode(BranchPath* node, void** data);
 uint8_t 	serializeCH5Node(BranchPath* node, void** data);
 void		writeVisitedNodesToDisk(int threadID);
 uint32_t	writeSerialsToDisk(FILE* fp, int threadID);
+
+// Shutdown
+void		consolidateThreadSerialsOnShutdown(int workerCount);
+Serial		nextInsertFromMemory(uint32_t* indices, int workerCount);
 
 #endif

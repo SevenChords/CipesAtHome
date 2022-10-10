@@ -8,6 +8,14 @@
 #include "base.h"
 #include "logger.h"
 
+#ifdef WIN32
+#include <io.h>
+#define F_OK 0
+#define access _access
+#else
+#include <unistd.h>
+#endif
+
 Serial** visitedBranches = NULL;
 uint32_t* numVisitedBranches = NULL;
 
@@ -34,84 +42,124 @@ inline int serialcmp(Serial s1, Serial s2)
 }
 
 /*-------------------------------------------------------------------
- * Function : void writeSerialsToDisk
+ * Function : consolidatedFileExists
  *
- * Walk across a given thread's visitedBranches and store the serial
- * length and data to file. This assumes we've already written numVisitedBranches
+ * This helper function just checks to see if the consolidated cache file exists.
  -------------------------------------------------------------------*/
-uint32_t writeSerialsToDisk(FILE* fp, int threadID) {
-	uint32_t i;
-	size_t ret;
-	for (i = 0; i < numVisitedBranches[threadID]; i++) {
-		Serial serial = visitedBranches[threadID][i];
-		ret = fwrite(&serial.length, sizeof(uint8_t), 1, fp);
-		if (ret != 1)
-			break;
-		ret = fwrite(serial.data, sizeof(char), serial.length, fp);
-		if (ret != serial.length)
-			break;
-	}
-
-	return i;
+ABSL_ATTRIBUTE_ALWAYS_INLINE
+static inline bool consolidatedFileExists()
+{
+	return (access("results/visitedNodes.dat", F_OK) == 0);
 }
 
 /*-------------------------------------------------------------------
- * Function : void writeVisitedNodesToDisk
+ * Function : isChild
  *
- * Create/overwrite thread-specific cache file and populate with visitedBranches data
+ * Helper function that determines if a Serial represents a node further
+ * down in the tree from the parent, in which case we won't want to
+ * insert the child in the global array of visited nodes.
  -------------------------------------------------------------------*/
-void writeVisitedNodesToDisk(int threadID) {
+static inline bool isChild(Serial parent, Serial child)
+{
+	if (child.length < parent.length)
+		return false;
 
-	recipeLog(3, "Serialization", "Cache", "Visited Nodes", "Saving visited nodes to disk... This may take a few seconds.");
+	return (memcmp(parent.data, child.data, parent.length) == 0);
+}
 
-	char filename[50] = { 0 };
-	sprintf(filename, "results/visitedNodes_%d.dat", threadID);
+/*-------------------------------------------------------------------
+ * Function : initializeVisitedNodes
+ *
+ * This is the top-level function that is called during start-up.
+ * Allocates arrays for each thread, and attempts to read cache file
+ * for each thread. Afterwards, merges all serials from disk into one
+ * in-memory array, which is then deep-copied so that all threads
+ * start with the conjoined list of visited nodes.
+ -------------------------------------------------------------------*/
+void initializeVisitedNodes(int workerCount)
+{
+	recipeLog(2, "Startup", "Cache", "Visited Nodes", "Reading visited nodes from disk... This may take a few seconds.");
 
-	FILE* fp = fopen(filename, "wb");
-	if (fp == NULL)
+	// Serials from all thread files will be combined into one array
+	Serial* combined = NULL;
+	uint32_t combinedLen = 0;
+
+	// Check to see if the consolidated file is present for patient users who let shutdown finish properly
+	if (consolidatedFileExists())
+		combinedLen = ReadConsolidatedFile(&combined);
+	else
 	{
-		recipeLog(3, "Serialization", "Cache", filename, "Error opening results/visitedNodes.dat for writing.");
-		return;
+		// Obtain file pointers to the file for each of the workerCount threads
+		FILE** fp = getCacheFilePtrs(workerCount);
+
+		// Read in data from file for each thread and merge to a combined array
+		combinedLen = mergeThreadSerials(&combined, fp, workerCount);
+
+		closeCacheFilePtrs(fp, workerCount);
 	}
 
-	uint32_t serialsWritten = 0;
+	// Initialize global array of arrays, one for each thread
+	visitedBranches = malloc(workerCount * sizeof(Serial*));
+	checkMallocFailed(visitedBranches);
+	numVisitedBranches = calloc(workerCount, sizeof(uint32_t));
+	checkMallocFailed(numVisitedBranches);
 
-	// First write the number of serials so we know how much memory to malloc when we read in the file
-	fwrite(&numVisitedBranches[threadID], sizeof(uint32_t), 1, fp);
+	// Perform deep copies so each thread can manage visited nodes independently
+	// First thread can just use the array
+	visitedBranches[0] = combined;
+	numVisitedBranches[0] = combinedLen;
 
-	serialsWritten = writeSerialsToDisk(fp, threadID);
+	for (int i = 1; i < workerCount; i++)
+	{
+		visitedBranches[i] = deepCopy(combined, combinedLen);
+		numVisitedBranches[i] = combinedLen;
+	}
 
 	char result[100];
-	if (serialsWritten == numVisitedBranches[threadID])
-		sprintf(result, "Successfully wrote %d serials to disk", serialsWritten);
-	else
-		sprintf(result, "Only able to write %d of %d serials to disk", serialsWritten, numVisitedBranches[threadID]);
-	recipeLog(3, "Serialization", "Cache", filename, result);
-
-	fclose(fp);
+	sprintf(result, "Found %d serials from disk", combinedLen);
+	recipeLog(2, "Startup", "Cache", "Visited Nodes", result);
 }
 
 /*-------------------------------------------------------------------
- * Function : deepCopy
+ * Function : ReadConsolidatedFile
  *
- * Copy src to dest, using a new heap ptr for the serial data.
+ * If the user was patient and waited for complete shutdown,
+ * then they're rewarded with less disk space consumption and faster
+ * bootup times on subsequent launches.
  -------------------------------------------------------------------*/
-Serial* deepCopy(Serial* src, uint32_t len)
+uint32_t ReadConsolidatedFile(Serial** combined)
 {
-	Serial* dest = malloc(len * sizeof(Serial));
-	for (uint32_t i = 0; i < len; i++)
+	uint32_t readSerials = 0;
+
+	FILE* fp = NULL;
+	fp = fopen("results/visitedNodes.dat", "rb");
+	if (fp == NULL)
+		return 0;
+
+	uint32_t expectedSerialsToRead;
+	size_t ret = fread(&expectedSerialsToRead, sizeof(uint32_t), 1, fp);
+	if (ret == 0)
 	{
-		Serial serial = src[i];
-		void* dataCpy = malloc(serial.length * sizeof(char));
-		checkMallocFailed(dataCpy);
-		memcpy(dataCpy, serial.data, serial.length * sizeof(char));
-		serial.data = dataCpy;
-		dest[i] = serial;
+		fclose(fp);
+		return 0;
 	}
 
-	return dest;
+	*combined = malloc(expectedSerialsToRead * sizeof(Serial));
+
+	Serial nextSerial = (Serial){ 0, NULL };
+	while ((nextSerial = readNextSerial(fp)).length > 0)
+		(*combined)[readSerials++] = nextSerial;
+
+	fclose(fp);
+
+	return readSerials;
 }
 
+/*-------------------------------------------------------------------
+ * Function : readNextSerial
+ *
+ * Given a file ptr, read in the next serial in the file.
+ -------------------------------------------------------------------*/
 Serial readNextSerial(FILE* fp)
 {
 	Serial nextSerial = (Serial){ 0, NULL };
@@ -136,77 +184,6 @@ Serial readNextSerial(FILE* fp)
 }
 
 /*-------------------------------------------------------------------
- * Function : nextInsert
- *
- * Given workerCount number of serial arrays pointed to by threadVisitedArr,
- * determine which Serial should be inserted into the combined array next.
- * To keep track of our walk along each thread-specific array, we keep
- * track of an array of indexes, incrementing a thread's index when we've
- * determined the next Serial to be added will be from that thread.
- * We return the threadID but also set the value pointed to by nextIndex
- * so that the caller can retrieve the value at the index from the given threadID.
- -------------------------------------------------------------------*/
-Serial nextInsert(Serial* curSerials, FILE** fp, int workerCount)
-{
-	int nextWorker = -1;
-	Serial lowestSerial = (Serial){ 0, NULL };
-
-	for (int i = 0; i < workerCount; i++)
-	{
-		Serial curSerial = curSerials[i];
-
-		if (curSerial.length == 0)
-			continue;
-
-		// If this is our first serial in loop, then just set this as lowest
-		if (lowestSerial.length == 0)
-		{
-			nextWorker = i;
-			lowestSerial = curSerial;
-			continue;
-		}
-
-		// Otherwise, perform a serialcmp to see if it's lower than the others so far
-		int cmp = serialcmp(curSerial, lowestSerial);
-
-		if (cmp < 0)
-		{
-			// New lowest
-			nextWorker = i;
-			lowestSerial = curSerial;
-		}
-		else if (cmp == 0)
-		{
-			// This is a duplicate node, free the duplicate data
-			free(curSerial.data);
-
-			// Read in the next Serial for next time this function is called
-			curSerials[i] = readNextSerial(fp[i]);
-		}
-	}
-
-	if (nextWorker >= 0)
-		curSerials[nextWorker] = readNextSerial(fp[nextWorker]);
-	
-	return lowestSerial;
-}
-
-/*-------------------------------------------------------------------
- * Function : isChild
- *
- * Helper function that determines if a Serial represents a node further
- * down in the tree from the parent, in which case we won't want to
- * insert the child in the global array of visited nodes.
- -------------------------------------------------------------------*/
-static inline bool isChild(Serial parent, Serial child)
-{
-	if (child.length < parent.length)
-		return false;
-
-	return (memcmp(parent.data, child.data, parent.length) == 0);
-}
-
-/*-------------------------------------------------------------------
  * Function : getCacheFilePtrs
  *
  * Get file pointers to each thread-specific cache file on disk.
@@ -225,20 +202,6 @@ FILE** getCacheFilePtrs(int workerCount)
 	}
 
 	return fp;
-}
-
-/*-------------------------------------------------------------------
- * Function : sumVisited
- *
- * Helper function to sum the number of nodes visited by all threads.
- -------------------------------------------------------------------*/
-int sumVisited(uint32_t* visitedArr, int workerCount)
-{
-	int sum = 0;
-	for (int i = 0; i < workerCount; i++)
-		sum += visitedArr[i];
-
-	return sum;
 }
 
 /*-------------------------------------------------------------------
@@ -268,7 +231,7 @@ uint32_t mergeThreadSerials(Serial** combined, FILE** fp, int workerCount)
 		size_t ret = fread(numThreadVisited + i, sizeof(uint32_t), 1, fp[i]);
 		if (ret == 0)
 			continue;
-		
+
 		Serial serial = (Serial){ 0, NULL };
 		ret = fread(&serial.length, sizeof(uint8_t), 1, fp[i]);
 		if (ret == 0)
@@ -327,6 +290,67 @@ uint32_t mergeThreadSerials(Serial** combined, FILE** fp, int workerCount)
 	return totalNodesCombined;
 }
 
+/*-------------------------------------------------------------------
+ * Function : nextInsert
+ *
+ * Given workerCount number of serial arrays pointed to by threadVisitedArr,
+ * determine which Serial should be inserted into the combined array next.
+ * To keep track of our walk along each thread-specific array, we keep
+ * track of an array of indexes, incrementing a thread's index when we've
+ * determined the next Serial to be added will be from that thread.
+ * We return the threadID but also set the value pointed to by nextIndex
+ * so that the caller can retrieve the value at the index from the given threadID.
+ -------------------------------------------------------------------*/
+Serial nextInsert(Serial* curSerials, FILE** fp, int workerCount)
+{
+	int nextWorker = -1;
+	Serial lowestSerial = (Serial){ 0, NULL };
+
+	for (int i = 0; i < workerCount; i++)
+	{
+		Serial curSerial = curSerials[i];
+
+		if (curSerial.length == 0)
+			continue;
+
+		// If this is our first serial in loop, then just set this as lowest
+		if (lowestSerial.length == 0)
+		{
+			nextWorker = i;
+			lowestSerial = curSerial;
+			continue;
+		}
+
+		// Otherwise, perform a serialcmp to see if it's lower than the others so far
+		int cmp = serialcmp(curSerial, lowestSerial);
+
+		if (cmp < 0)
+		{
+			// New lowest
+			nextWorker = i;
+			lowestSerial = curSerial;
+		}
+		else if (cmp == 0)
+		{
+			// This is a duplicate node, free the duplicate data
+			free(curSerial.data);
+
+			// Read in the next Serial for next time this function is called
+			curSerials[i] = readNextSerial(fp[i]);
+		}
+	}
+
+	if (nextWorker >= 0)
+		curSerials[nextWorker] = readNextSerial(fp[nextWorker]);
+
+	return lowestSerial;
+}
+
+/*-------------------------------------------------------------------
+ * Function : closeCacheFilePtrs
+ *
+ * Close all thread-specific cache file pointers.
+ -------------------------------------------------------------------*/
 void closeCacheFilePtrs(FILE** fp, int workerCount)
 {
 	for (int i = 0; i < workerCount; i++)
@@ -337,76 +361,41 @@ void closeCacheFilePtrs(FILE** fp, int workerCount)
 }
 
 /*-------------------------------------------------------------------
- * Function : initializeVisitedNodes
+ * Function : deepCopy
  *
- * This is the top-level function that is called during start-up.
- * Allocates arrays for each thread, and attempts to read cache file
- * for each thread. Afterwards, merges all serials from disk into one
- * in-memory array, which is then deep-copied so that all threads
- * start with the conjoined list of visited nodes.
+ * Copy src to dest, using a new heap ptr for the serial data.
  -------------------------------------------------------------------*/
-void initializeVisitedNodes(int workerCount)
+Serial* deepCopy(Serial* src, uint32_t len)
 {
-	recipeLog(2, "Startup", "Cache", "Visited Nodes", "Reading visited nodes from disk... This may take a few seconds.");
-
-	// Serials from all thread files will be combined into one array
-	Serial* combined = NULL;
-
-	// Obtain file pointers to the file for each of the workerCount threads
-	FILE** fp = getCacheFilePtrs(workerCount);
-
-	// Read in data from file for each thread and merge to a combined array
-	uint32_t combinedLen = mergeThreadSerials(&combined, fp, workerCount);
-
-	closeCacheFilePtrs(fp, workerCount);
-
-	// Initialize global array of arrays, one for each thread
-	visitedBranches = malloc(workerCount * sizeof(Serial*));
-	checkMallocFailed(visitedBranches);
-	numVisitedBranches = calloc(workerCount, sizeof(uint32_t));
-	checkMallocFailed(numVisitedBranches);
-
-	// Perform deep copies so each thread can manage visited nodes independently
-	// First thread can just use the array
-	visitedBranches[0] = combined;
-	numVisitedBranches[0] = combinedLen;
-
-	for (int i = 1; i < workerCount; i++)
+	Serial* dest = malloc(len * sizeof(Serial));
+	for (uint32_t i = 0; i < len; i++)
 	{
-		visitedBranches[i] = deepCopy(combined, combinedLen);
-		numVisitedBranches[i] = combinedLen;
+		Serial serial = src[i];
+		void* dataCpy = malloc(serial.length * sizeof(char));
+		checkMallocFailed(dataCpy);
+		memcpy(dataCpy, serial.data, serial.length * sizeof(char));
+		serial.data = dataCpy;
+		dest[i] = serial;
 	}
 
-	char result[100];
-	sprintf(result, "Found %d serials from disk", combinedLen);
-	recipeLog(2, "Startup", "Cache", "Visited Nodes", result);
+	return dest;
 }
 
 /*-------------------------------------------------------------------
- * Function : indexToInsert
+ * Function : legalMoveHasBeenTraversed
  *
- * Perform a binary search to determine
- * where we should insert the given serial.
- * Used an iterative approach because of concerns over stack overflow
- * with a sufficiently large enough array.
+ * Perform a binary search on the global visitedBranches array,
+ * and observe if the provided node's serial is present.
  -------------------------------------------------------------------*/
-uint32_t indexToInsert(Serial serial, int low, int high, int threadID)
+bool legalMoveHasBeenTraversed(BranchPath* newLegalMove)
 {
-	while (high > low)
-	{
-		int mid = (low + high) / 2;
+	// Handle the Mistake case
+	if (newLegalMove->serial.data == NULL)
+		return false;
 
-		int cmpMid = serialcmp(serial, visitedBranches[threadID][mid]);
-		if (cmpMid == 0)
-			return mid + 1;
-
-		if (cmpMid > 0)
-			low = mid + 1;
-		else
-			high = mid - 1;
-	}
-
-	return (serialcmp(serial, visitedBranches[threadID][low]) > 0) ? low + 1 : low;
+	int threadID = omp_get_thread_num();
+	int index = searchVisitedNodes(newLegalMove->serial, 0, numVisitedBranches[threadID] - 1, threadID);
+	return (index >= 0);
 }
 
 /*-------------------------------------------------------------------
@@ -440,44 +429,60 @@ int searchVisitedNodes(Serial serial, int low, int high, int threadID)
 }
 
 /*-------------------------------------------------------------------
- * Function : insertIntoCache
+ * Function : cacheSerial
  *
- * Insert the given serial into the global array at index provided,
- * while factoring in how many children we have free'd via deleteAndFreeChildSerials
+ * Insert the given node's serial into the global sorted array.
  -------------------------------------------------------------------*/
-void insertIntoCache(Serial serial, uint32_t index, uint32_t deletedChildren, int threadID)
+void cacheSerial(BranchPath* node)
 {
-	// Handle the case where our array is empty
-	if (numVisitedBranches[threadID] == 0)
-	{
-		visitedBranches[threadID] = malloc((++numVisitedBranches[threadID]) * sizeof(Serial)); // numVisitedBranches should be 0 here
-		visitedBranches[threadID][index] = serial;
+	// ignore root node and Mistake
+	if (node->serial.length == 0 || node->serial.data == NULL)
 		return;
+
+	if (node->serial.data == NULL)
+		exit(2);
+
+	void* cachedData = malloc(node->serial.length);
+	memcpy(cachedData, node->serial.data, node->serial.length);
+
+	Serial cachedSerial = (Serial){ node->serial.length, cachedData };
+
+	uint32_t index = 0;
+
+	int threadID = omp_get_thread_num();
+	if (numVisitedBranches[threadID] > 0)
+		index = indexToInsert(cachedSerial, 0, numVisitedBranches[threadID] - 1, threadID);
+
+	// Free and note how many children we are freeing
+	int childrenFreed = deleteAndFreeChildSerials(cachedSerial, index, threadID);
+	insertIntoCache(cachedSerial, index, childrenFreed, threadID);
+}
+
+/*-------------------------------------------------------------------
+ * Function : indexToInsert
+ *
+ * Perform a binary search to determine
+ * where we should insert the given serial.
+ * Used an iterative approach because of concerns over stack overflow
+ * with a sufficiently large enough array.
+ -------------------------------------------------------------------*/
+uint32_t indexToInsert(Serial serial, int low, int high, int threadID)
+{
+	while (high > low)
+	{
+		int mid = (low + high) / 2;
+
+		int cmpMid = serialcmp(serial, visitedBranches[threadID][mid]);
+		if (cmpMid == 0)
+			return mid + 1;
+
+		if (cmpMid > 0)
+			low = mid + 1;
+		else
+			high = mid - 1;
 	}
 
-	// Handle the case where we are deleting children
-	if (deletedChildren > 0)
-	{
-		visitedBranches[threadID][index] = serial;
-
-		// We're just replacing the child with the parent
-		if (deletedChildren == 1)
-			return;
-
-		// We will realloc with a smaller space, but we need to perform the memmove first
-		memmove(visitedBranches[threadID] + index + 1, visitedBranches[threadID] + index + deletedChildren, (numVisitedBranches[threadID] - index - deletedChildren) * sizeof(Serial));
-		numVisitedBranches[threadID] = numVisitedBranches[threadID] - deletedChildren + 1;
-		visitedBranches[threadID] = realloc(visitedBranches[threadID], numVisitedBranches[threadID] * sizeof(Serial));
-		return;
-	}
-
-	// We are increasing the arr size
-	visitedBranches[threadID] = realloc(visitedBranches[threadID], (++numVisitedBranches[threadID]) * sizeof(Serial));
-
-	if (index < numVisitedBranches[threadID] - 1)
-		memmove(&visitedBranches[threadID][index + 1], &visitedBranches[threadID][index], (numVisitedBranches[threadID] - index - 1) * sizeof(Serial));
-
-	visitedBranches[threadID][index] = serial;
+	return (serialcmp(serial, visitedBranches[threadID][low]) > 0) ? low + 1 : low;
 }
 
 /*-------------------------------------------------------------------
@@ -522,48 +527,250 @@ uint32_t deleteAndFreeChildSerials(Serial serial, uint32_t index, int threadID)
 }
 
 /*-------------------------------------------------------------------
- * Function : cacheSerial
+ * Function : insertIntoCache
  *
- * Insert the given node's serial into the global sorted array.
+ * Insert the given serial into the global array at index provided,
+ * while factoring in how many children we have free'd via deleteAndFreeChildSerials
  -------------------------------------------------------------------*/
-void cacheSerial(BranchPath* node)
+void insertIntoCache(Serial serial, uint32_t index, uint32_t deletedChildren, int threadID)
 {
-	// ignore root node and Mistake
-	if (node->serial.length == 0 || node->serial.data == NULL)
+	// Handle the case where our array is empty
+	if (numVisitedBranches[threadID] == 0)
+	{
+		visitedBranches[threadID] = malloc((++numVisitedBranches[threadID]) * sizeof(Serial)); // numVisitedBranches should be 0 here
+		visitedBranches[threadID][index] = serial;
 		return;
+	}
 
-	if (node->serial.data == NULL)
-		exit(2);
+	// Handle the case where we are deleting children
+	if (deletedChildren > 0)
+	{
+		visitedBranches[threadID][index] = serial;
 
-	void* cachedData = malloc(node->serial.length);
-	memcpy(cachedData, node->serial.data, node->serial.length);
+		// We're just replacing the child with the parent
+		if (deletedChildren == 1)
+			return;
 
-	Serial cachedSerial = (Serial){ node->serial.length, cachedData };
+		// We will realloc with a smaller space, but we need to perform the memmove first
+		memmove(visitedBranches[threadID] + index + 1, visitedBranches[threadID] + index + deletedChildren, (numVisitedBranches[threadID] - index - deletedChildren) * sizeof(Serial));
+		numVisitedBranches[threadID] = numVisitedBranches[threadID] - deletedChildren + 1;
+		visitedBranches[threadID] = realloc(visitedBranches[threadID], numVisitedBranches[threadID] * sizeof(Serial));
+		return;
+	}
 
-	uint32_t index = 0;
+	// We are increasing the arr size
+	visitedBranches[threadID] = realloc(visitedBranches[threadID], (++numVisitedBranches[threadID]) * sizeof(Serial));
 
-	int threadID = omp_get_thread_num();
-	if (numVisitedBranches[threadID] > 0)
-		index = indexToInsert(cachedSerial, 0, numVisitedBranches[threadID] - 1, threadID);
+	if (index < numVisitedBranches[threadID] - 1)
+		memmove(&visitedBranches[threadID][index + 1], &visitedBranches[threadID][index], (numVisitedBranches[threadID] - index - 1) * sizeof(Serial));
 
-	// Free and note how many children we are freeing
-	int childrenFreed = deleteAndFreeChildSerials(cachedSerial, index, threadID);
-	insertIntoCache(cachedSerial, index, childrenFreed, threadID);
+	visitedBranches[threadID][index] = serial;
 }
 
 /*-------------------------------------------------------------------
- * Function : legalMoveHasBeenTraversed
+ * Function : writeVisitedNodesToDisk
  *
- * Perform a binary search on the global visitedBranches array,
- * and observe if the provided node's serial is present.
+ * Create/overwrite thread-specific cache file and populate with visitedBranches data
  -------------------------------------------------------------------*/
-bool legalMoveHasBeenTraversed(BranchPath* newLegalMove)
-{
-	// Handle the Mistake case
-	if (newLegalMove->serial.data == NULL)
-		return false;
+void writeVisitedNodesToDisk(int threadID) {
 
-	int threadID = omp_get_thread_num();
-	int index = searchVisitedNodes(newLegalMove->serial, 0, numVisitedBranches[threadID] - 1, threadID);
-	return (index >= 0);
+	recipeLog(3, "Serialization", "Cache", "Visited Nodes", "Saving visited nodes to disk... This may take a few seconds.");
+
+	char filename[50] = { 0 };
+	sprintf(filename, "results/visitedNodes_%d.dat", threadID);
+
+	FILE* fp = fopen(filename, "wb");
+	if (fp == NULL)
+	{
+		recipeLog(3, "Serialization", "Cache", filename, "Error opening results/visitedNodes.dat for writing.");
+		return;
+	}
+
+	uint32_t serialsWritten = 0;
+
+	// First write the number of serials so we know how much memory to malloc when we read in the file
+	fwrite(&numVisitedBranches[threadID], sizeof(uint32_t), 1, fp);
+
+	serialsWritten = writeSerialsToDisk(fp, threadID);
+
+	char result[100];
+	if (serialsWritten == numVisitedBranches[threadID])
+		sprintf(result, "Successfully wrote %d serials to disk", serialsWritten);
+	else
+		sprintf(result, "Only able to write %d of %d serials to disk", serialsWritten, numVisitedBranches[threadID]);
+	recipeLog(3, "Serialization", "Cache", filename, result);
+
+	fclose(fp);
+}
+
+/*-------------------------------------------------------------------
+ * Function : writeSerialsToDisk
+ *
+ * Walk across a given thread's visitedBranches and store the serial
+ * length and data to file. This assumes we've already written numVisitedBranches
+ -------------------------------------------------------------------*/
+uint32_t writeSerialsToDisk(FILE* fp, int threadID) {
+	uint32_t i;
+	size_t ret;
+	for (i = 0; i < numVisitedBranches[threadID]; i++) {
+		Serial serial = visitedBranches[threadID][i];
+		ret = fwrite(&serial.length, sizeof(uint8_t), 1, fp);
+		if (ret != 1)
+			break;
+		ret = fwrite(serial.data, sizeof(char), serial.length, fp);
+		if (ret != serial.length)
+			break;
+	}
+
+	return i;
+}
+
+/*-------------------------------------------------------------------
+ * Function : consolidateThreadSerialsOnShutdown
+ *
+ * Take all visited nodes in memory and consolidate them into one
+ * disk file, taking care to not include duplicates or children.
+ -------------------------------------------------------------------*/
+void consolidateThreadSerialsOnShutdown(int workerCount)
+{
+	const char* tempFileName = "results/visitedNodes.temp";
+	const char* finalFileName = "results/visitedNodes.dat";
+
+	FILE* fp = NULL;
+	fp = fopen(tempFileName, "wb");
+	if (fp == NULL)
+	{
+		recipeLog(2, "Shutdown", "Cache", "Visited Nodes", "Unable to open results/visitedNodes.temp for writing");
+		return;
+	}
+
+	// Sum the number of visited nodes so we can malloc the combined array
+	// We will certainly never use this full length as there will be duplicate nodes,
+	// but this will prevent constant reallocs
+	uint32_t totalNodesExpected = sumVisited(numVisitedBranches, workerCount);
+	Serial* combined = malloc(totalNodesExpected * sizeof(Serial));
+	checkMallocFailed(combined);
+
+	// Keep track of which indices we are looking at for each thread
+	uint32_t* indices = calloc(workerCount, sizeof(uint32_t));
+	checkMallocFailed(indices);
+
+	// Used to track if we are about to insert a child node based off what we have previously inserted
+	Serial prevSerial = (Serial){ 0, NULL };
+	uint32_t totalNodesCombined = 0;
+
+	Serial nextSerial = (Serial){ 0, NULL };
+	while ((nextSerial = nextInsertFromMemory(indices, workerCount)).length > 0)
+	{
+		if (prevSerial.length > 0 && isChild(prevSerial, nextSerial))
+		{
+			free(nextSerial.data);
+			continue;
+		}
+
+		prevSerial = nextSerial;
+		combined[totalNodesCombined++] = nextSerial;
+	}
+
+	// Begin writing to file
+	size_t ret = fwrite(&totalNodesCombined, sizeof(uint32_t), 1, fp);
+
+	for (uint32_t i = 0; i < totalNodesCombined; i++) {
+		Serial serial = combined[i];
+		ret = fwrite(&serial.length, sizeof(uint8_t), 1, fp);
+		if (ret != 1)
+			break;
+		ret = fwrite(serial.data, sizeof(char), serial.length, fp);
+		if (ret != serial.length)
+			break;
+
+		free(serial.data);
+	}
+
+	fclose(fp);
+
+	free(combined);
+	free(indices);
+
+	// Delete the previous consolidated file, if it exists
+	int removeRet = remove(finalFileName);
+
+	// Now rename the temp file and nuke the thread-specific files
+	int renameRet = rename(tempFileName, finalFileName);
+	if (renameRet != 0)
+	{
+		recipeLog(2, "Shutdown", "Cache", "Visited Nodes", "Failed to rename temp file.");
+		return;
+	}
+
+	// Now nuke the thread-specific files
+	for (int i = 0; i < workerCount; i++)
+	{
+		char filename[50];
+		sprintf(filename, "results/visitedNodes_%d.dat", i);
+
+		int removeRet = remove(filename);
+
+		if (removeRet != 0)
+			printf("Uh");
+	}
+
+	char result[100];
+	sprintf(result, "Successfully consolidated %d unique nodes to disk.", totalNodesCombined);
+	recipeLog(2, "Shutdown", "Cache", "Visited Nodes", result);
+}
+
+/*-------------------------------------------------------------------
+ * Function : sumVisited
+ *
+ * Helper function to sum the number of nodes visited by all threads.
+ -------------------------------------------------------------------*/
+int sumVisited(uint32_t* visitedArr, int workerCount)
+{
+	int sum = 0;
+	for (int i = 0; i < workerCount; i++)
+		sum += visitedArr[i];
+
+	return sum;
+}
+
+Serial nextInsertFromMemory(uint32_t* indices, int workerCount)
+{
+	Serial lowestSerial = (Serial){ 0, NULL };
+	int lowestSerialThread = -1;
+
+	for (int i = 0; i < workerCount; i++)
+	{
+		uint32_t curIdx = indices[i];
+		if (curIdx == numVisitedBranches[i])
+			continue;
+
+		Serial curSerial = visitedBranches[i][curIdx];
+
+		if (lowestSerial.length == 0)
+		{
+			lowestSerial = curSerial;
+			lowestSerialThread = i;
+			continue;
+		}
+
+		int cmp = serialcmp(curSerial, lowestSerial);
+
+		if (cmp < 0)
+		{
+			lowestSerial = curSerial;
+			lowestSerialThread = i;
+		}
+		else if (cmp == 0)
+		{
+			// This is a duplicate node, free the duplicate data
+			free(curSerial.data);
+			indices[i]++;
+		}
+	}
+
+	if (lowestSerialThread >= 0)
+		indices[lowestSerialThread]++;
+
+	return lowestSerial;
 }
