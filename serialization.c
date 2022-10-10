@@ -327,6 +327,15 @@ uint32_t mergeThreadSerials(Serial** combined, FILE** fp, int workerCount)
 	return totalNodesCombined;
 }
 
+void closeCacheFilePtrs(FILE** fp, int workerCount)
+{
+	for (int i = 0; i < workerCount; i++)
+	{
+		if (fp[i] != NULL)
+			fclose(fp[i]);
+	}
+}
+
 /*-------------------------------------------------------------------
  * Function : initializeVisitedNodes
  *
@@ -348,6 +357,8 @@ void initializeVisitedNodes(int workerCount)
 
 	// Read in data from file for each thread and merge to a combined array
 	uint32_t combinedLen = mergeThreadSerials(&combined, fp, workerCount);
+
+	closeCacheFilePtrs(fp, workerCount);
 
 	// Initialize global array of arrays, one for each thread
 	visitedBranches = malloc(workerCount * sizeof(Serial*));

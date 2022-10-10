@@ -12,6 +12,7 @@ FILE**		getCacheFilePtrs(int workerCount);
 uint32_t	mergeThreadSerials(Serial** combined, FILE** fp, int workerCount);
 int			sumVisited(uint32_t* visitedArr, int workerCount);
 Serial		nextInsert(Serial* curSerials, FILE** fp, int workerCount);
+void		closeCacheFilePtrs(FILE** fp, int workerCount);
 Serial*		deepCopy(Serial* src, uint32_t len);
 
 // mid-run
