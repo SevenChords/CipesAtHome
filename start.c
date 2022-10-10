@@ -124,8 +124,6 @@ void checkDefaultUsername()
 }
 
 int main() {
-
-	int cycle_count = 1;
 	current_frame_record = UNSET_FRAME_RECORD;
 	initConfig();
 

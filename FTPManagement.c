@@ -124,8 +124,14 @@ void handle_post(char* url, FILE *fp, int localRecord, char *nickname) {
 
 	size_t bytes_written;
 	bytes_written = sprintf(wt.data, "{\"frames\":\"%d\",\"userName\":\"%s\",\"routeContent\":\"", localRecord, nickname);
-	fread(wt.data + bytes_written, 1, fsize, fp);
+	size_t fileBytesRead = fread(wt.data + bytes_written, 1, fsize, fp);
 	fclose(fp);
+	if (fileBytesRead != fsize)
+	{
+		recipeLog(1, "Server", "Upload", "Error", "Unable to read from file!");
+		free(wt.data);
+		return;
+	}
 	sprintf(wt.data + fsize + bytes_written, "\"}");
 
 	CURL *curl = curl_easy_init();
@@ -171,7 +177,7 @@ int testRecord(int localRecord) {
 		printf("Record submitted is invalid (less then 0). Likely due to corruption of the PB.txt file or unexpected error. Not submitting\n");
 		return -2;
 	}
-	int remoteRecord = getFastestRecordOnBlob();
+
 	char filename[32];
 	char *folder = "results/";
 	char *extension = ".txt";

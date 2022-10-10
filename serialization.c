@@ -693,7 +693,7 @@ void consolidateThreadSerialsOnShutdown(int workerCount)
 	free(indices);
 
 	// Delete the previous consolidated file, if it exists
-	int removeRet = remove(finalFileName);
+	remove(finalFileName);
 
 	// Now rename the temp file and nuke the thread-specific files
 	int renameRet = rename(tempFileName, finalFileName);
