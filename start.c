@@ -136,19 +136,19 @@ int main() {
 	printf("Leave this program running as long as you want to search for new recipe orders.\n");
 
 	// Try to retrieve the record from the Blob server
-	/*int blob_record = getFastestRecordOnBlob();
+	int blob_record = getFastestRecordOnBlob();
 	if (blob_record == 0) {
 		printf("There was an error contacting the server to retrieve the fastest time.\n");
 		printf("Please check your internet connection, but we'll continue for now.\n");
 	}
 	else {
 		printf("The current fastest record is %d frames. Happy cooking!\n", blob_record);
-	}*/
+	}
 
 	// Quit if new version available
 	setLocalVer(getConfigStr("Version"));
-	//if (checkGithubVer() == 1)
-	//	return -1;
+	if (checkGithubVer() == 1)
+		return -1;
 
 	checkDefaultUsername();
 
@@ -162,7 +162,7 @@ int main() {
 
 	// To avoid generating roadmaps that are slower than the user's record best,
 	// use PB.txt to identify the user's current best
-	/*FILE* fp = fopen("results/PB.txt", "r");
+	FILE* fp = fopen("results/PB.txt", "r");
 
 	// The PB file may not have been created yet, so ignore the case where it is missing
 	if (fp != NULL) {
@@ -178,7 +178,7 @@ int main() {
 			}
 		}
 		fclose(fp);
-	}*/
+	}
 
 	// Initialize global variables in calculator.c
 	// This does not need to be done in parallel, as these globals will
