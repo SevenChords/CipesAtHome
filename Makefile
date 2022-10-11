@@ -17,6 +17,7 @@ ifeq ($(UNAME), Darwin)
 	MACPREFIX:=$(shell brew --prefix)
 	CC:=$(MACPREFIX)/opt/llvm/bin/clang
 	CFLAGS:=-I$(MACPREFIX)/include -L$(MACPREFIX)/lib $(CFLAGS)
+	FINAL_TARGET_CFLAGS:=$(subst --gc-sections,-dead_strip,$(FINAL_TARGET_CFLAGS))
 endif
 
 default: $(TARGET)
