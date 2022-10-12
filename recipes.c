@@ -648,10 +648,18 @@ int checkRecipe(struct ItemCombination combo, int *makeableItems, const outputCr
 int stateOK(struct Inventory inventory, const outputCreatedArray_t outputsCreated, struct Recipe *recipeList) {
 	// With the given inventory, can the remaining recipes be fulfilled?
 
-	// If Chapter 5 has not been done, verify that Thunder Rage is in the inventory
-	if (!outputsCreated[getOutputIndex(Dried_Bouquet)] && indexOfItemInInventory(inventory, Thunder_Rage) == -1) {
-		return 0;
+	// If Chapter 5 has not been done, verify that Thunder Rage and Hot Dog is in the inventory
+	// Checking for the Hot Dog here isn't entirely necessary, as checkRecipe would catch it,
+	// but this performs better because we can avoid entering into the double for-loops below
+	if (!outputsCreated[getOutputIndex(Dried_Bouquet)])
+	{
+		bool bMissingThunderRage = indexOfItemInInventory(inventory, Thunder_Rage) == -1;
+		bool bMissingHotDog = indexOfItemInInventory(inventory, Hot_Dog) == -1;
+
+		if (bMissingThunderRage || bMissingHotDog)
+			return 0;
 	}
+
 
 	int makeableItems[NUM_ITEMS] = {0};
 
