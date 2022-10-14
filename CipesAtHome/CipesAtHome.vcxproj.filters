@@ -39,9 +39,6 @@
     <ClCompile Include="..\FTPManagement.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-	<ClCompile Include="..\serialization.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\start.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -78,9 +75,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\recipes.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-	<ClInclude Include="..\serialization.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\start.h">

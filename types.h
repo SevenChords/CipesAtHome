@@ -13,12 +13,6 @@ struct Result {
 	int callNumber;
 };
 
-typedef struct Serial Serial;
-struct Serial {
-	uint8_t length;
-	void* data;
-};
-
 typedef bool outputCreatedArray_t[NUM_RECIPES];
 
 enum Alpha_Sort {
@@ -285,7 +279,6 @@ struct BranchPath {
 	BranchPath** legalMoves;		// Represents possible next paths to take
 	int numLegalMoves;
 	int totalSorts;
-	Serial serial;
 };
 
 // What do we do with the produced item after crafting a recipe?

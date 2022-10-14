@@ -173,7 +173,6 @@
     <ClCompile Include="..\recipes.c" />
     <ClCompile Include="..\shutdown.c" />
     <ClCompile Include="..\node_print.c" />
-	<ClCompile Include="..\serialization.c" />
     <ClCompile Include="..\start.c" />
   </ItemGroup>
   <ItemGroup>
@@ -188,7 +187,6 @@
     <ClInclude Include="..\recipes.h" />
     <ClInclude Include="..\shutdown.h" />
     <ClInclude Include="..\node_print.h" />
-	<ClInclude Include="..\serialization.h" />
     <ClInclude Include="..\start.h" />
 	<ClInclude Include="..\types.h" />
     <ClInclude Include="..\absl\base\attributes.h" />

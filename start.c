@@ -14,7 +14,6 @@
 #include "config.h"
 #include "FTPManagement.h"
 #include "logger.h"
-#include "serialization.h"
 #include "shutdown.h"
 
 #if _IS_WINDOWS
@@ -185,7 +184,6 @@ int main() {
 	// persist through all parallel calls to calculator.c
 	initializeInvFrames();
 	initializeRecipeList();
-	initializeVisitedNodes(workerCount);
 
 	setSignalHandlers();
 
@@ -213,9 +211,6 @@ int main() {
 
 	shutdownConfig();
 	shutdownCalculator();
-
-	// On shutdown, try to consolidate thread-specific cache files into one unified file
-	consolidateThreadSerialsOnShutdown(workerCount);
 
 	return 0;
 }

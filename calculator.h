@@ -48,7 +48,7 @@ BranchPath* createLegalMove(BranchPath* node, Inventory inventory, MoveDescripti
 void filterOut2Ingredients(BranchPath* node);
 void finalizeChapter5Eval(BranchPath* node, Inventory inventory, CH5* ch5Data, int temp_frame_sum, const outputCreatedArray_t outputsFulfilled, int numOutputsFulfilled);
 void finalizeLegalMove(BranchPath* node, MoveDescription useDescription, Inventory tempInventory, const outputCreatedArray_t tempOutputsFulfilled, int numOutputsFulfilled, enum HandleOutput tossType, enum Type_Sort toss, int tossIndex);
-void freeAndShiftLegalMove(BranchPath* node, int index, bool cache);
+void freeAndShiftLegalMove(BranchPath* node, int index);
 int getInsertionIndex(const BranchPath* node, int frames);
 void insertIntoLegalMoves(int insertIndex, BranchPath* newLegalMove, BranchPath* curNode);
 void popAllButFirstLegalMove(BranchPath* node);
@@ -102,7 +102,7 @@ void swapItems(int* ingredientLoc, ItemCombination* combo);
 
 // General node functions
 void freeAllNodes(BranchPath* node);
-void freeNode(BranchPath *node, bool cache);
+void freeNode(BranchPath *node);
 BranchPath* initializeRoot();
 
 

@@ -13,7 +13,6 @@
 #include "logger.h"
 #include "node_print.h"
 #include "recipes.h"
-#include "serialization.h"
 #include "shutdown.h"
 #include "start.h"
 
@@ -35,7 +34,6 @@
 #define DEFAULT_ITERATION_LIMIT 100000 // Cutoff for iterations explored before resetting
 #define ITERATION_LIMIT_INCREASE 100000000 // Amount to increase the iteration limit by when finding a new record
 #define CHECK_SHUTDOWN_INTERVAL 30000
-#define SERIAL_CACHE_INTERVAL 200 // number of dives should elapse before writing the serials to disk
 
 static const int INT_OUTPUT_ARRAY_SIZE_BYTES = sizeof(outputCreatedArray_t);
 static const outputCreatedArray_t EMPTY_RECIPES = {0};
@@ -110,7 +108,6 @@ ABSL_MUST_USE_RESULT BranchPath* initializeRoot() {
 	root->legalMoves = NULL;
 	root->numLegalMoves = 0;
 	root->totalSorts = 0;
-	serializeNode(root);
 	return root;
 }
 
@@ -297,8 +294,6 @@ BranchPath *createLegalMove(BranchPath *node, Inventory inventory, MoveDescripti
 	else {
 		newLegalMove->totalSorts = node->totalSorts;
 	}
-	
-	serializeNode(newLegalMove);
 
 	return newLegalMove;
 }
@@ -315,7 +310,7 @@ void filterOut2Ingredients(BranchPath *node) {
 		if (node->legalMoves[i]->description.action == ECook) {
 			Cook *cook = node->legalMoves[i]->description.data;
 			if (cook->numItems == 2)
-				freeAndShiftLegalMove(node, i--, true);
+				freeAndShiftLegalMove(node, i--);
 		}
 	}
 }
@@ -387,7 +382,7 @@ void freeAllNodes(BranchPath *node) {
 	do {
 		prevNode = node->prev;
 
-		freeNode(node, false);
+		freeNode(node);
 
 		// Delete node in nextNode's list of legal moves to prevent a double free
 		if (prevNode != NULL && prevNode->legalMoves != NULL) {
@@ -410,8 +405,8 @@ void freeAllNodes(BranchPath *node) {
  * caller can assure such consistency is not needed (For example,
  * freeing the last legal move or freeing all legal moves).
  -------------------------------------------------------------------*/
-static void freeLegalMove(BranchPath *node, int index, bool cache) {
-	freeNode(node->legalMoves[index], cache);
+static void freeLegalMove(BranchPath *node, int index) {
+	freeNode(node->legalMoves[index]);
 	node->legalMoves[index] = NULL;
 	node->numLegalMoves--;
 	node->next = NULL;
@@ -424,8 +419,8 @@ static void freeLegalMove(BranchPath *node, int index, bool cache) {
  * and shift the existing legal moves after the index to fill the gap.
  -------------------------------------------------------------------*/
 
-void freeAndShiftLegalMove(BranchPath *node, int index, bool cache) {
-	freeLegalMove(node, index, cache);
+void freeAndShiftLegalMove(BranchPath *node, int index) {
+	freeLegalMove(node, index);
 	shiftUpLegalMoves(node, index + 1);
 }
 
@@ -434,10 +429,7 @@ void freeAndShiftLegalMove(BranchPath *node, int index, bool cache) {
  *
  * Free the current node and all legal moves within the node
  -------------------------------------------------------------------*/
-void freeNode(BranchPath *node, bool cache) {
-	if (cache)
-		cacheSerial(node);
-
+void freeNode(BranchPath *node) {
 	if (node->description.data != NULL) {
 		free(node->description.data);
 	}
@@ -448,13 +440,10 @@ void freeNode(BranchPath *node, bool cache) {
 			// Don't need to worry about shifting up when we do this.
 			// Or resetting slots to NULL.
 			// We are blowing it all away anyways.
-			freeLegalMove(node, i++, cache);
+			freeLegalMove(node, i++);
 		}
 		free(node->legalMoves);
 	}
-
-	if (node->serial.length > 0)
-		free(node->serial.data);
 	
 	free(node);
 }
@@ -1037,14 +1026,6 @@ void handleSorts(BranchPath *curNode) {
  * it takes to complete the legal move.
  -------------------------------------------------------------------*/
 void insertIntoLegalMoves(int insertIndex, BranchPath *newLegalMove, BranchPath *curNode) {
-	// Determine if the move has been fully traversed before, in which case we don't want to add it
-	if (legalMoveHasBeenTraversed(newLegalMove))
-	{
-		recipeLog(7, "Serialization", "Cache", "Visited Nodes", "Skipping over a node we've already visited");
-		freeNode(newLegalMove, false);
-		return;
-	}
-	
 	// Reallocate the legalMove array to make room for a new legal move
 	BranchPath **temp = realloc(curNode->legalMoves, sizeof(BranchPath*) * ((size_t)curNode->numLegalMoves + 1));
 
@@ -1114,7 +1095,6 @@ BranchPath *copyAllNodes(BranchPath *newNode, const BranchPath *oldNode) {
 		newNode->numOutputsCreated = oldNode->numOutputsCreated;
 		newNode->legalMoves = NULL;
 		newNode->numLegalMoves = 0;
-		serializeNode(newNode);
 		if (newNode->numOutputsCreated < NUM_RECIPES) {
 			newNode->next = malloc(sizeof(BranchPath));
 
@@ -1185,7 +1165,7 @@ OptimizeResult optimizeRoadmap(const BranchPath *root) {
  -------------------------------------------------------------------*/
 void popAllButFirstLegalMove(struct BranchPath *node) {
 	while (node->numLegalMoves > 1)
-		freeLegalMove(node, node->numLegalMoves - 1, false);
+		freeLegalMove(node, node->numLegalMoves - 1);
 }
 
 /*-------------------------------------------------------------------
@@ -1325,7 +1305,6 @@ void reallocateRecipes(BranchPath* newRoot, const enum Type_Sort* rearranged_rec
 		insertNode->numOutputsCreated = record_placement_node->numOutputsCreated + 1;
 		insertNode->legalMoves = NULL;
 		insertNode->numLegalMoves = 0;
-		insertNode->serial = (Serial) {0, NULL};
 
 		// Update all subsequent nodes with
 		for (BranchPath *node = insertNode->next; node!= NULL; node = node->next) {
@@ -1378,7 +1357,7 @@ int removeRecipesForReallocation(BranchPath* node, enum Type_Sort *rearranged_re
 		node->prev->next = node->next;
 		node->next->prev = node->prev;
 		newNode = node->prev;
-		freeNode(node, false);
+		freeNode(node);
 		node = newNode;
 	}
 
@@ -1739,7 +1718,7 @@ Result calculateOrder(const int ID) {
 
 				// Regardless of record status, it's time to go back up and find new endstates
 				curNode = curNode->prev;
-				freeAndShiftLegalMove(curNode, 0, true);
+				freeAndShiftLegalMove(curNode, 0);
 				curNode->next = NULL;
 				stepIndex--;
 				continue;
@@ -1793,12 +1772,12 @@ Result calculateOrder(const int ID) {
 
 					// Handle the case where the root node runs out of legal moves
 					if (curNode->prev == NULL) {
-						freeNode(curNode, false);
+						freeNode(curNode);
 						return (Result) {-1, -1};
 					}
 
 					curNode = curNode->prev;
-					freeAndShiftLegalMove(curNode, 0, true);
+					freeAndShiftLegalMove(curNode, 0);
 					curNode->next = NULL;
 					stepIndex--;
 					continue;
@@ -1848,12 +1827,12 @@ Result calculateOrder(const int ID) {
 
 					// Handle the case where the root node runs out of legal moves
 					if (curNode->prev == NULL) {
-						freeNode(curNode, false);
+						freeNode(curNode);
 						return (Result) {-1, -1};
 					}
 
 					curNode = curNode->prev;
-					freeAndShiftLegalMove(curNode, 0, true);
+					freeAndShiftLegalMove(curNode, 0);
 					curNode->next = NULL;
 					stepIndex--;
 					continue;
@@ -1893,11 +1872,6 @@ Result calculateOrder(const int ID) {
 			if (checkGithubVer() == 1)
 				exit(1);
 		}
-
-		// Periodically write visited nodes to disk so we don't rely on a clean shutdown
-		// Only need to perform this on one thread
-		if (total_dives % SERIAL_CACHE_INTERVAL == 0)
-			writeVisitedNodesToDisk(ID);
 		
 		// For profiling
 		/*if (total_dives == 100) {
