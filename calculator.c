@@ -1681,9 +1681,9 @@ Result calculateOrder(const int ID) {
 
 		if (total_dives % branchInterval == 0) {
 			char temp1[30];
-			char temp2[40];
-			sprintf(temp1, "Call %d", ID);
-			sprintf(temp2, "Searching New Branch %d", total_dives);
+			char temp2[75];
+			sprintf(temp1, "Thread %d", ID);
+			sprintf(temp2, "Iteration Limit Reached: Backing Out and Searching New Branch %d", total_dives);
 			recipeLog(3, "Calculator", "Info", temp1, temp2);
 		}
 
