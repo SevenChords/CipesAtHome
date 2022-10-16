@@ -382,13 +382,13 @@ int **getInventoryFrames() {
  *
  * Returns a pointer to an array which contains all items we start with
  -------------------------------------------------------------------*/
-struct Inventory getStartingInventory() {
-	static struct Inventory inventory;
+Inventory getStartingInventory() {
+	static Inventory inventory;
 	inventory.nulls = 0;
 	inventory.length = 20;
-	inventory.inventory[0] = Golden_Leaf;
-	inventory.inventory[1] = Peachy_Peach;
-	inventory.inventory[2] = Shooting_Star;
+	inventory.inventory[0] = Shooting_Star;
+	inventory.inventory[1] = Golden_Leaf;
+	inventory.inventory[2] = Peachy_Peach;
 	inventory.inventory[3] = Ultra_Shroom;
 	inventory.inventory[4] = Cake_Mix;
 	inventory.inventory[5] = Thunder_Rage;
