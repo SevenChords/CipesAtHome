@@ -107,6 +107,9 @@
     <ClInclude Include="..\absl\base\port.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+	<ClInclude Include="..\pcg_basic.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\inventory.txt" />

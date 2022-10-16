@@ -111,5 +111,6 @@ void periodicGithubCheck();
 Result calculateOrder(const int ID);
 void writePersonalBest(Result *result);
 void shutdownCalculator();
+void seedThreadRNG(int workerCount);
 
 #endif

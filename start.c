@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 
 #include "absl/base/port.h"
+#include "pcg_basic.h"
 #include "base.h"
 #include "calculator.h"
 #include "config.h"
@@ -117,6 +118,42 @@ void checkDefaultUsername()
 		printf("WARNING: You haven't set your username in config.txt. You will not be identifiable on the leaderboards.\n");
 }
 
+uint64_t getSysRNG() {
+	uint64_t ret;
+
+#if _IS_WINDOWS
+	HCRYPTPROV hCryptProv = 0;
+	const DWORD dwLength = 8;
+	BYTE pbData[8];
+	bool bSuccess = false;
+
+	if (CryptAcquireContext(&hCryptProv, NULL, (LPCWSTR)L"Microsoft Base Cryptographic Provider v1.0",
+		PROV_RSA_FULL,
+		CRYPT_VERIFYCONTEXT)) {
+		if (CryptGenRandom(hCryptProv, dwLength, pbData))
+			bSuccess = true;
+	}
+
+	if (!bSuccess) {
+		// Log the issue as the user's window will likely close immediately
+		char errMsg[70];
+		sprintf(errMsg, "Windows random generator failed with error %lu", GetLastError());
+		recipeLog(1, "Startup", "PRNG", "Seeding", errMsg);
+		exit(1);
+	}
+
+	ret = *(uint64_t*)pbData;
+#else
+	FILE* fp;
+	int readRet;
+	if ((fp = fopen("/dev/random", "r")) == NULL || (readRet = fread(&ret, sizeof(uint64_t), 1, fp)) == 0) {
+		printf("Unable to access /dev/random for RNG seeding. Please submit a GitHub issue and include your OS version.");
+		exit(1);
+	}
+#endif
+	return ret;
+}
+
 int main() {
 	current_frame_record = UNSET_FRAME_RECORD;
 	initConfig();
@@ -187,14 +224,14 @@ int main() {
 
 	setSignalHandlers();
 
+	// Seed each thread's PRNG for the select and randomise config options
+	seedThreadRNG(workerCount);
+
 	// Create workerCount threads
 	omp_set_num_threads(workerCount);
 	#pragma omp parallel
 	{
 		int ID = omp_get_thread_num();
-
-		// Seed each thread's PRNG for the select and randomise config options
-		srand(((int)time(NULL)) ^ ID);
 
 		while (1) {
 			if (askedToShutdown()) {

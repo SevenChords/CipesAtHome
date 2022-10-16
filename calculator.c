@@ -5,8 +5,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "absl/base/port.h"
+#include "pcg_basic.h"
 #include "base.h"
 #include "config.h"
 #include "FTPManagement.h"
@@ -42,6 +44,7 @@ static const Cook EMPTY_COOK = {0};
 // globals
 int **invFrames;
 Recipe *recipeList;
+pcg32_random_t *rng;
 
 /*-------------------------------------------------------------------
  * Function 	: checkShutdownOnIndex
@@ -109,6 +112,23 @@ ABSL_MUST_USE_RESULT BranchPath* initializeRoot() {
 	root->numLegalMoves = 0;
 	root->totalSorts = 0;
 	return root;
+}
+
+void seedThreadRNG(int workerCount) {
+	rng = malloc(workerCount * sizeof(pcg32_random_t));
+	checkMallocFailed(rng);
+
+	uint64_t initstate = getSysRNG();
+
+	for (int i = 0; i < workerCount; i++) {
+		// argument 1 determines the starting RNG value
+		// argument 2 determines the RNG sequence
+		// See https://www.pcg-random.org/using-pcg-c-basic.html
+		uint64_t initseq = (intptr_t)(rng) + i;
+		
+		pcg32_srandom_r(rng + i, initstate, initseq);
+	}
+		
 }
 
 /*-------------------------------------------------------------------
@@ -968,7 +988,7 @@ void handleSelectAndRandom(BranchPath *curNode, int select, int randomise) {
 	// Arbitrarily skip over the fastest legal move with a given probability
 	if (select && curNode->moves < 55 && curNode->numLegalMoves > 0) {
 		int nextMoveIndex = 0;
-		while (nextMoveIndex < curNode->numLegalMoves - 1 && rand() % 100 < 50) {
+		while (nextMoveIndex < curNode->numLegalMoves - 1 && pcg32_random_r(&rng[omp_get_thread_num()]) % 2) {
 			nextMoveIndex++;
 		}
 
@@ -1461,8 +1481,8 @@ void shiftUpLegalMoves(struct BranchPath *node, int startIndex) {
 void shuffleLegalMoves(BranchPath *node) {
 	// Swap 2 legal moves a variable number of times
 	for (int i = 0; i < node->numLegalMoves; i++) {
-		int index1 = rand() % node->numLegalMoves;
-		int index2 = rand() % node->numLegalMoves;
+		int index1 = pcg32_boundedrand_r(&rng[omp_get_thread_num()], node->numLegalMoves);
+		int index2 = pcg32_boundedrand_r(&rng[omp_get_thread_num()], node->numLegalMoves);
 		BranchPath *temp = node->legalMoves[index1];
 		node->legalMoves[index1] = node->legalMoves[index2];
 		node->legalMoves[index2] = temp;
