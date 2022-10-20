@@ -38,10 +38,24 @@ void countAndSetShutdown(bool isSignal) {
 #if _IS_WINDOWS
 BOOL WINAPI windowsCtrlCHandler(DWORD fdwCtrlType) {
 	switch (fdwCtrlType) {
+	// For these events, returning TRUE is sufficient to prevent shutdown, so
+	// we can simply inform the threads to shut down.
 	case CTRL_C_EVENT: ABSL_FALLTHROUGH_INTENDED;
-	case CTRL_CLOSE_EVENT:
+	case CTRL_BREAK_EVENT:
 		countAndSetShutdown(false);
 		return TRUE;
+	// Returning TRUE for a CTRL_CLOSE_EVENT results in instant termination, so
+	// we have to wait until the threads are done.
+	case CTRL_CLOSE_EVENT:
+		countAndSetShutdown(false);
+		// Note that this does not cause closing to take 5 seconds. The program
+		// will actually shut down when main returns. 5 seconds is just the max
+		// time we could delay shutdown.
+		Sleep(5000);
+		return TRUE;
+	// CTRL_LOGOFF_EVENT and CTRL_SHUTDOWN_EVENT are not sent to interactive
+	// applications, only to services. Thus, there is no behavior to add in
+	// here.
 	default:
 		return FALSE;
 	}
