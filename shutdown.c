@@ -1,9 +1,10 @@
 #include "shutdown.h"
-#include <signal.h>
 #include "base.h"
 
 #if _IS_WINDOWS
 #include <windows.h>
+#else
+#include <signal.h>
 #endif
 
 bool _askedToShutdownVar = false;
@@ -34,10 +35,6 @@ void countAndSetShutdown(bool isSignal) {
 	}
 }
 
-void handleTermSignal(int signal) {
-	countAndSetShutdown(true);
-}
-
 #if _IS_WINDOWS
 BOOL WINAPI windowsCtrlCHandler(DWORD fdwCtrlType) {
 	switch (fdwCtrlType) {
@@ -49,14 +46,19 @@ BOOL WINAPI windowsCtrlCHandler(DWORD fdwCtrlType) {
 		return FALSE;
 	}
 }
+#else
+void handleTermSignal(int signal) {
+	countAndSetShutdown(true);
+}
 #endif
 
 void setSignalHandlers() {
-	signal(SIGTERM, handleTermSignal);
-	signal(SIGINT, handleTermSignal);
 #if _IS_WINDOWS
 	if (!SetConsoleCtrlHandler(windowsCtrlCHandler, TRUE)) {
 		printf("Unable to set CTRL-C handler. CTRL-C may cause unclean shutdown.\n");
 	}
+#else
+	signal(SIGTERM, handleTermSignal);
+	signal(SIGINT, handleTermSignal);
 #endif
 }
