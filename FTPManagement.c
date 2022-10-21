@@ -148,7 +148,6 @@ void handle_post(char* url, FILE *fp, int localRecord, char *nickname) {
 
 		curl_easy_cleanup(curl);
 	}
-	curl_global_cleanup();
 	free(wt.data);
 
 	// Log the body of the return of the POST request
