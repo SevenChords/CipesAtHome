@@ -182,8 +182,9 @@ int main() {
 			}
 			Result result = calculateOrder(ID);
 
-			// result might store -1 frames for errors that might be recoverable
-			if (result.frames > -1) {
+			// Multiple threads might have discovered a record, so make sure
+			// result is still the best we have.
+			if (result.frames == getLocalRecord()) {
 				testRecord(result.frames);
 			}
 		}
