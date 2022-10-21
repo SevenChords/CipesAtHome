@@ -197,15 +197,15 @@ int main() {
 	// The PB file may not have been created yet, so ignore the case where it is missing
 	if (fp != NULL) {
 		int PB_record;
-		if (fscanf(fp, "%d", &PB_record) == 1) {
-			if (PB_record < 1000) {
-				printf("The record stored in PB.txt can't be right... Ignoring.\n");
-			} else {
-				current_frame_record = PB_record;
-				// Submit the user's fastest roadmap to the server for leaderboard purposes
-				// in case this was not submitted upon initial discovery
-				testRecord(current_frame_record);
-			}
+		if (fscanf(fp, "%d", &PB_record) == 1 && PB_record > 1000) {
+			printf("Your local PB is %d. Re-uploading just in case.\n", PB_record);
+			current_frame_record = PB_record;
+			// Submit the user's fastest roadmap to the server for leaderboard purposes
+			// in case this was not submitted upon initial discovery
+			testRecord(current_frame_record);
+		}
+		else {
+			printf("Your local PB is corrupted. Using %d instead.\n", current_frame_record);
 		}
 		fclose(fp);
 	}
