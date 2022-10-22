@@ -111,9 +111,17 @@ void printAsciiGreeting()
 }
 
 // Warn the user if their Username is set as "DefaultUser"
-void checkDefaultUsername()
+// Quit if the username field is malformed or missing
+void checkUsername()
 {
 	const char* username = getConfigStr("Username");
+	if (username == NULL) {
+		printf("Username field is malformed or not present. Please verify that your username is within quotation marks next to \"Username = \"\n");
+		printf("Press ENTER to exit the program.\n");
+		char exitChar = getchar();
+		exit(1);
+	}
+
 	if (strncmp(username, "DefaultUser", 19) == 0)
 		printf("WARNING: You haven't set your username in config.txt. You will not be identifiable on the leaderboards.\n");
 }
@@ -186,7 +194,7 @@ int main() {
 	if (checkGithubVer() == 1)
 		return -1;
 
-	checkDefaultUsername();
+	checkUsername();
 
 	// Verify that the results folder exists
 	// If not, create the directory

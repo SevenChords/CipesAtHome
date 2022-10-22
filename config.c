@@ -28,7 +28,7 @@ void initConfig() {
 }
 
 const char *getConfigStr(char *str) {
-	const char *temp;
+	const char *temp = NULL;
 	config_lookup_string(config, str, &temp);
 	return temp;
 }
