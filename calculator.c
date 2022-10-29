@@ -1768,7 +1768,7 @@ Result calculateOrder(const int ID) {
 
 				// All legal moves evaluated and listed!
 
-				if (curNode->moves == 0) {
+				if (curNode->numOutputsCreated == 0) {
 					// Filter out all legal moves that use 2 ingredients in the very first legal move
 					filterOut2Ingredients(curNode);
 				}
