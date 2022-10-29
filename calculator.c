@@ -1762,7 +1762,7 @@ Result calculateOrder(const int ID) {
 
 				// Special handling of inventory sorting
 				// Avoid redundant searches
-				if (curNode->description.action == EBegin || curNode->description.action == ECook || curNode->description.action == ECh5) {
+				if (curNode->description.action == ECook || curNode->description.action == ECh5) {
 					handleSorts(curNode);
 				}
 
