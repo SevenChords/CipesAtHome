@@ -1762,13 +1762,13 @@ Result calculateOrder(const int ID) {
 
 				// Special handling of inventory sorting
 				// Avoid redundant searches
-				if (curNode->description.action == EBegin || curNode->description.action == ECook || curNode->description.action == ECh5) {
+				if (curNode->description.action == ECook || curNode->description.action == ECh5) {
 					handleSorts(curNode);
 				}
 
 				// All legal moves evaluated and listed!
 
-				if (curNode->moves == 0) {
+				if (curNode->numOutputsCreated == 0) {
 					// Filter out all legal moves that use 2 ingredients in the very first legal move
 					filterOut2Ingredients(curNode);
 				}
