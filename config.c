@@ -3,6 +3,7 @@
 #include <libconfig.h>
 #include "config.h"
 #include "base.h"
+#include "types.h"
 
 config_t *config;
 
@@ -155,14 +156,6 @@ void validateIntSettingMax(const char *path, int maxValue, int *errorCount) {
  -------------------------------------------------------------------*/
 void validateConfig() {
 	int errors = 0;
-	validateSetting("select", intSetting, &errors);
-	validateIntSettingMin("select", 0, &errors);
-	validateIntSettingMax("select", 1, &errors);
-
-	validateSetting("randomise", intSetting, &errors);
-	validateIntSettingMin("randomise", 0, &errors);
-	validateIntSettingMax("randomise", 1, &errors);
-
 	validateSetting("logLevel", intSetting, &errors);
 	validateIntSettingMin("logLevel", 0, &errors);
 	validateIntSettingMax("logLevel", 7, &errors);
@@ -175,13 +168,13 @@ void validateConfig() {
 
 	validateSetting("Username", stringSetting, &errors);
 
+	validateSetting("selectionMethod", intSetting, &errors);
+	validateIntSettingMin("selectionMethod", InOrder, &errors);
+	validateIntSettingMax("selectionMethod", Manual, &errors);
+
 	// Maybe we shouldn't bring the user's attention to the version setting.
 	// We definitely don't want users changing it in order to avoid updating.
 	validateSetting("Version", stringSetting, &errors);
-
-	validateSetting("debug", intSetting, &errors);
-	validateIntSettingMin("debug", 0, &errors);
-	validateIntSettingMax("debug", 1, &errors);
 
 	if (errors) {
 		printf("Press ENTER to exit.\n");

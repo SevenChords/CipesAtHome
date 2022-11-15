@@ -4,16 +4,6 @@ if [ ! -f /config/config.txt ]; then
     echo "Config file missing. Creating one."
 
     # Use sed to modify default values in config.txt if environment variables are set
-    if [ ! -z ${SELECT} ]; then
-        echo "Setting select to $SELECT"
-        sed -ie "/^\s*select =.*/ s/= \([0-9]\+\)/= $SELECT/" config.txt
-    fi
-
-    if [ ! -z ${RANDOMISE} ]; then
-        echo "Setting randomise to $RANDOMISE"
-        sed -ie "/^\s*randomise =.*/ s/= \([0-9]\+\)/= $RANDOMISE/" config.txt
-    fi
-
     if [ ! -z ${LOG_LEVEL} ]; then
         echo "Setting logLevel to $LOG_LEVEL"
         sed -ie "/^\s*logLevel =.*/ s/= \([0-9]\+\)/= $LOG_LEVEL/" config.txt
@@ -32,6 +22,11 @@ if [ ! -f /config/config.txt ]; then
     if [ ! -z ${USERNAME} ]; then
         echo "Setting Username to $USERNAME"
         sed -ie "/^\s*Username =.*/ s/= \".*\"/= \"$USERNAME\"/" config.txt
+    fi
+
+    if [ ! -z ${SELECTION_METHOD} ]; then
+        echo "Setting selectionMethod to $SELECTION_METHOD"
+        sed -ie "/^\s*selectionMethod =.*/ s/= \([0-9]\+\)/= $SELECTION_METHOD/" config.txt
     fi
 
     # Copy config to volume where it will be used

@@ -977,16 +977,15 @@ void handleRecipeOutput(BranchPath *curNode, Inventory tempInventory, MoveDescri
 }
 
 /*-------------------------------------------------------------------
- * Function : handleSelectAndRandom
+ * Function : handleLegalMoveSelection
  *
- * Based on configuration parameters select and randomise within config.txt,
- * manage the array of legal moves based on the designated behavior of the parameters.
+ * Using the given method, select a legal move to explore next and
+ * place it at the beginning of the array.
  -------------------------------------------------------------------*/
-void handleSelectAndRandom(BranchPath *curNode, int select, int randomise) {
-	// Old method of handling select
+void handleLegalMoveSelection(BranchPath *curNode, enum SelectionMethod method) {
 	// Somewhat random process of picking the quicker moves to recurse down
 	// Arbitrarily skip over the fastest legal move with a given probability
-	if (select && curNode->moves < 55 && curNode->numLegalMoves > 0) {
+	if (method == Exponential && curNode->moves < 55 && curNode->numLegalMoves > 0) {
 		int nextMoveIndex = 0;
 		while (nextMoveIndex < curNode->numLegalMoves - 1 && pcg32_random_r(&rng[omp_get_thread_num()]) % 2) {
 			nextMoveIndex++;
@@ -998,10 +997,8 @@ void handleSelectAndRandom(BranchPath *curNode, int select, int randomise) {
 		shiftDownLegalMoves(curNode, 0, nextMoveIndex);
 		curNode->legalMoves[0] = nextMove;
 	}
-
-	// When not doing the select methodology, and opting for randomize
-	// just shuffle the entire list of legal moves and pick the new first item
-	else if (randomise) {
+	// When opting for randomization, shuffle the entire list of legal moves
+	else if (method == Random) {
 		shuffleLegalMoves(curNode);
 	}
 }
@@ -1648,11 +1645,9 @@ void logIterations(int ID, int stepIndex, const BranchPath * curNode, int iterat
  * is passed back to start.c to try submitting to the server.
  -------------------------------------------------------------------*/
 Result calculateOrder(const int ID) {
-	int randomise = getConfigInt("randomise");
-	int select = getConfigInt("select");
-	int debug = getConfigInt("debug");
-	// The user may disable all randomization but not be debugging.
-	int freeRunning = !debug && !randomise && !select;
+	enum SelectionMethod selectionMethod = getConfigInt("selectionMethod");
+	// When performing in-order traversal, we never want to restart.
+	int freeRunning = selectionMethod == InOrder;
 	int branchInterval = getConfigInt("branchLogInterval");
 	int total_dives = 0;
 	BranchPath *curNode = NULL; // Deepest node at any particular point
@@ -1721,7 +1716,7 @@ Result calculateOrder(const int ID) {
 							sprintf(tmp, "New local fastest roadmap found! %d frames, saved %d after rearranging", optimizeResult.last->description.totalFramesTaken, curNode->description.totalFramesTaken - optimizeResult.last->description.totalFramesTaken);
 							recipeLog(1, "Calculator", "Info", "Roadmap", tmp);
 							free(filename);
-							if (debug) {
+							if (selectionMethod == Manual) {
 								testRecord(result_cache.frames);
 							}
 							result_cache = (Result){ optimizeResult.last->description.totalFramesTaken, ID };
@@ -1780,10 +1775,10 @@ Result calculateOrder(const int ID) {
 					// This saves on recursing down pointless states
 					popAllButFirstLegalMove(curNode);
 				}
-				// Apply randomization when not debugging or when done
-				// choosing moves
-				else if (!debug || freeRunning) {
-					handleSelectAndRandom(curNode, select, randomise);
+				// Now that all moves are added, bring the one we will explore
+				// next to the front.
+				else {
+					handleLegalMoveSelection(curNode, selectionMethod);
 				}
 
 				if (curNode->numLegalMoves == 0) {
@@ -1803,8 +1798,8 @@ Result calculateOrder(const int ID) {
 					continue;
 				}
 
-				// Allow the user to choose their path when in debugging mode
-				else if (debug && !freeRunning) {
+				// Allow the user to choose their path
+				else if (selectionMethod == Manual && !freeRunning) {
 					FILE *fp = stdout;
 					for (int move = 0; move < curNode->numLegalMoves; ++move) {
 						fprintf(fp, "%d - ", move);
@@ -1821,7 +1816,7 @@ Result calculateOrder(const int ID) {
 
 					if (moveToExplore == curNode->numLegalMoves) {
 						freeRunning = 1;
-						handleSelectAndRandom(curNode, select, randomise);
+						handleLegalMoveSelection(curNode, selectionMethod);
 					}
 					else {
 						// Take the legal move at nextMoveIndex and move it to the front of the array
@@ -1858,9 +1853,10 @@ Result calculateOrder(const int ID) {
 					continue;
 				}
 
-				// Moves would already be shuffled with randomise, but select
-				// would always choose the first one unless we select here
-				handleSelectAndRandom(curNode, select, 0);
+				// Moves are already shuffled if using Random, but Exponential
+				// needs to choose a new move every time we go back up.
+				if (selectionMethod == Exponential)
+					handleLegalMoveSelection(curNode, selectionMethod);
 
 				// Once the list is generated, choose the top-most (quickest) path and iterate downward
 				curNode->next = curNode->legalMoves[0];

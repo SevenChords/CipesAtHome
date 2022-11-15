@@ -281,6 +281,14 @@ struct BranchPath {
 	int totalSorts;
 };
 
+// Strategies for determining which legal move is explored next
+enum SelectionMethod {
+	InOrder,
+	Exponential,
+	Random,
+	Manual
+};
+
 // What do we do with the produced item after crafting a recipe?
 enum HandleOutput {
 	Toss,		// Toss the recipe itself
