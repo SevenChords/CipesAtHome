@@ -111,6 +111,42 @@ void validateSetting(const char *path, enum SettingType type, int *errorCount) {
 }
 
 /*-------------------------------------------------------------------
+ * Function: validateIntSettingMin
+ *
+ * For a given int setting in the config file, check that it is
+ * greater than or equal to minValue. If not, inform the user of the
+ * error and increment the count parameter.
+ -------------------------------------------------------------------*/
+void validateIntSettingMin(const char *path, int minValue, int *errorCount) {
+	int value;
+	// If path isn't an int setting, there's nothing to check, as that is
+	// handled elsewhere.
+	if (config_lookup_int(config, path, &value) == CONFIG_TRUE && value < minValue) {
+		++*errorCount;
+		printf("The integer setting %s's value %d is less than the minimum of %d.\n",
+		       path, value, minValue);
+	}
+}
+
+/*-------------------------------------------------------------------
+ * Function: validateIntSettingMax
+ *
+ * For a given int setting in the config file, check that it is
+ * less than or equal to maxValue. If not, inform the user of the
+ * error and increment the count parameter.
+ -------------------------------------------------------------------*/
+void validateIntSettingMax(const char *path, int maxValue, int *errorCount) {
+	int value;
+	// If path isn't an int setting, there's nothing to check, as that is
+	// handled elsewhere.
+	if (config_lookup_int(config, path, &value) == CONFIG_TRUE && value > maxValue) {
+		++*errorCount;
+		printf("The integer setting %s's value %d is more than the maximum of %d.\n",
+			path, value, maxValue);
+	}
+}
+
+/*-------------------------------------------------------------------
  * Function: validateConfig
  *
  * For each setting we expect in the config file, check that it is
@@ -120,15 +156,32 @@ void validateSetting(const char *path, enum SettingType type, int *errorCount) {
 void validateConfig() {
 	int errors = 0;
 	validateSetting("select", intSetting, &errors);
+	validateIntSettingMin("select", 0, &errors);
+	validateIntSettingMax("select", 1, &errors);
+
 	validateSetting("randomise", intSetting, &errors);
+	validateIntSettingMin("randomise", 0, &errors);
+	validateIntSettingMax("randomise", 1, &errors);
+
 	validateSetting("logLevel", intSetting, &errors);
+	validateIntSettingMin("logLevel", 0, &errors);
+	validateIntSettingMax("logLevel", 7, &errors);
+
 	validateSetting("branchLogInterval", intSetting, &errors);
+	validateIntSettingMin("branchLogInterval", 0, &errors);
+
 	validateSetting("workerCount", intSetting, &errors);
+	validateIntSettingMin("workerCount", 1, &errors);
+
 	validateSetting("Username", stringSetting, &errors);
+
 	// Maybe we shouldn't bring the user's attention to the version setting.
 	// We definitely don't want users changing it in order to avoid updating.
 	validateSetting("Version", stringSetting, &errors);
+
 	validateSetting("debug", intSetting, &errors);
+	validateIntSettingMin("debug", 0, &errors);
+	validateIntSettingMax("debug", 1, &errors);
 
 	if (errors) {
 		printf("Press ENTER to exit.\n");
