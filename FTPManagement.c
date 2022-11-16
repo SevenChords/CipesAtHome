@@ -11,18 +11,7 @@
 #include "logger.h"
 #include "base.h"
 
-const char* local_ver;
-
-/*-------------------------------------------------------------------
- * Function : setLocalVer
- * 
- * Stores the version of Recipes@Home the user is running, to compare
- * against the Github repo for future updates.
- -------------------------------------------------------------------*/
-void setLocalVer(const char* ver)
-{
-	local_ver = ver;
-}
+const char *local_ver = "1.13";
 
 /*-------------------------------------------------------------------
  * Function 	: write_data

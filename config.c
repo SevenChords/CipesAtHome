@@ -172,10 +172,6 @@ void validateConfig() {
 	validateIntSettingMin("selectionMethod", InOrder, &errors);
 	validateIntSettingMax("selectionMethod", Manual, &errors);
 
-	// Maybe we shouldn't bring the user's attention to the version setting.
-	// We definitely don't want users changing it in order to avoid updating.
-	validateSetting("Version", stringSetting, &errors);
-
 	if (errors) {
 		printf("Press ENTER to exit.\n");
 		awaitKeyFromUser();

@@ -195,7 +195,6 @@ int main() {
 	}
 
 	// Quit if new version available
-	setLocalVer(getConfigStr("Version"));
 	if (checkGithubVer() == 1)
 		return -1;
 
