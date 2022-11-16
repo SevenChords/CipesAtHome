@@ -58,9 +58,9 @@ Should there be any problems in the building process, please let us know by post
 ## Config Settings
 Below are a set of config parameters which can be changed by the user. These will affect how the algorithm handles legal moves, as well as check for the current program version on Github.
 
-- **logLevel**: This parameter specifies the degree of detail to which the program will output log information both to stdout and to the log file. The higher the number, the more detail will be output. If logLevel is 0, no data will be output. Specific thresholds are listed in config.txt.
-- **workerCount**: The number of threads to run simultaneously for the program. Generally, this can be as high as (# CPU Cores) - 2, though increasing the workerCount means that less CPU time can be dedicated to other programs running on your computer. If you are running any intensive program besides this program, then you should close the program, change the workerCount, and restart the program while using the other intensive program.
 - **Username**: This name will be submitted to the server to specify who found the roadmap. If you would like to be known for finding the fastest roadmap, change this name to a username of your choice. This is limited by 19 characters. A Discord bot in the TTYD speedrunning server will alert us with this Username when a new fastest roadmap is found.
+- **workerCount**: The number of threads to run simultaneously for the program. Generally, this can be as high as (# CPU Cores) - 2, though increasing the workerCount means that less CPU time can be dedicated to other programs running on your computer. If you are running any intensive program besides this program, then you should close the program, change the workerCount, and restart the program while using the other intensive program.
+- **logLevel**: This parameter specifies the degree of detail to which the program will output log information both to stdout and to the log file. The higher the number, the more detail will be output. If logLevel is 0, no data will be output. Specific thresholds are listed in config.txt.
 - **selectionMethod**: This is the methodology that chooses the legal move to explore from those in the array. Options are as follows:
    - In-order: always chooses the first legal move in the array.
    - Exponential: chooses the <em>i</em>th legal move in the array with arbitrary probability (0.5)<sup><em>i</em></sup>. This is used to effectively explore a different region of the search space in every branch while still generally choosing good moves.
@@ -82,6 +82,6 @@ If your system is set up with Docker, you can quickly run CipesAtHome with a Doc
 
 ### Docker Environment Variables
 Available variables:
-`LOG_LEVEL`, `BRANCH_LOG_INTERVAL`, `WORKER_COUNT`, `USERNAME`, `SELECTION_METHOD`
+`USERNAME`, `WORKER_COUNT`, `LOG_LEVEL`, `BRANCH_LOG_INTERVAL`, `SELECTION_METHOD`
 
 Environment variables are used to set `config.txt` values on first run. If config.txt already exists in the volume, the environment variables will do nothing.

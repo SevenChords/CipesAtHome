@@ -157,22 +157,22 @@ void validateIntSettingMax(const char *path, int maxValue, int *errorCount) {
  -------------------------------------------------------------------*/
 void validateConfig() {
 	int errors = 0;
-	validateSetting("logLevel", intSetting, &errors);
-	validateIntSettingMin("logLevel", 0, &errors);
-	validateIntSettingMax("logLevel", 7, &errors);
-
-	validateSetting("branchLogInterval", intSetting, &errors);
-	validateIntSettingMin("branchLogInterval", 0, &errors);
-
-	validateSetting("workerCount", intSetting, &errors);
-	validateIntSettingMin("workerCount", 1, &errors);
-
 	validateSetting("Username", stringSetting, &errors);
 	// Warn the user (but do not count it as an error) if they haven't changed
 	// their username from the default.
 	if (strncmp(getConfigStr("Username"), "DefaultUser", 19) == 0)
 		printf("Warning: You haven't set your username in config.txt. "
 		       "You will not be identifiable on the leaderboards.\n");
+
+	validateSetting("workerCount", intSetting, &errors);
+	validateIntSettingMin("workerCount", 1, &errors);
+
+	validateSetting("logLevel", intSetting, &errors);
+	validateIntSettingMin("logLevel", 0, &errors);
+	validateIntSettingMax("logLevel", 7, &errors);
+
+	validateSetting("branchLogInterval", intSetting, &errors);
+	validateIntSettingMin("branchLogInterval", 0, &errors);
 
 	validateSetting("selectionMethod", intSetting, &errors);
 	validateIntSettingMin("selectionMethod", InOrder, &errors);

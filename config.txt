@@ -1,4 +1,32 @@
 ###############################################
+#                   Username                  #
+###############################################
+# Your username under which your records are  #
+# Uploaded to the remote server               #
+  Username = "DefaultUser"                    #
+###############################################
+
+###############################################
+#               Multiprocessing               #
+###############################################
+# The worker count defines how many instances #
+# of the script will be running at the same   #
+# time.                                       #
+# It is recommended that you set it lower or  #
+# at maximum equal to the number of           #
+# cores/threads that your CPU has available.  #
+# Keep in mind that those threads will be at  #
+# around 85%~95% from running this script, if #
+# you need your computer for something else   #
+# at the same time, set the worker count to   #
+# 2 less than the number of cores/threads of  #
+# your CPU (depending on how many you need    #
+# for your other activities)                  #
+###############################################
+  workerCount = 4  #(default: 4)              #
+###############################################
+
+###############################################
 #                Logging Level                #
 ###############################################
 # This can be adjusted to your liking         #
@@ -28,34 +56,6 @@
 # interval as you increase the # of threads   #
 ###############################################
   branchLogInterval = 10 #(default: 10)       #
-###############################################
-
-###############################################
-#               Multiprocessing               #
-###############################################
-# The worker count defines how many instances #
-# of the script will be running at the same   #
-# time.                                       #
-# It is recommended that you set it lower or  #
-# at maximum equal to the number of           #
-# cores/threads that your CPU has available.  #
-# Keep in mind that those threads will be at  #
-# around 85%~95% from running this script, if #
-# you need your computer for something else   #
-# at the same time, set the worker count to   #
-# 2 less than the number of cores/threads of  #
-# your CPU (depending on how many you need    #
-# for your other activities)                  #
-###############################################
-  workerCount = 4  #(default: 4)              #
-###############################################
-
-###############################################
-#                   Username                  #
-###############################################
-# Your username under which your records are  #
-# Uploaded to the remote server               #
-  Username = "DefaultUser"                    #
 ###############################################
 
 ###############################################
