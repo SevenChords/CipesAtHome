@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <libconfig.h>
 #include "config.h"
 #include "base.h"
@@ -167,6 +168,11 @@ void validateConfig() {
 	validateIntSettingMin("workerCount", 1, &errors);
 
 	validateSetting("Username", stringSetting, &errors);
+	// Warn the user (but do not count it as an error) if they haven't changed
+	// their username from the default.
+	if (strncmp(getConfigStr("Username"), "DefaultUser", 19) == 0)
+		printf("Warning: You haven't set your username in config.txt. "
+		       "You will not be identifiable on the leaderboards.\n");
 
 	validateSetting("selectionMethod", intSetting, &errors);
 	validateIntSettingMin("selectionMethod", InOrder, &errors);

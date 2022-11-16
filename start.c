@@ -5,7 +5,6 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/stat.h>
 
 #include "absl/base/port.h"
@@ -111,22 +110,6 @@ void printAsciiGreeting()
 	fclose(fp);
 }
 
-// Warn the user if their Username is set as "DefaultUser"
-// Quit if the username field is malformed or missing
-void checkUsername()
-{
-	const char* username = getConfigStr("Username");
-	if (username == NULL) {
-		printf("Username field is malformed or not present. Please verify that your username is within quotation marks next to \"Username = \"\n");
-		printf("Press ENTER to exit the program.\n");
-		char exitChar = getchar();
-		exit(1);
-	}
-
-	if (strncmp(username, "DefaultUser", 19) == 0)
-		printf("WARNING: You haven't set your username in config.txt. You will not be identifiable on the leaderboards.\n");
-}
-
 uint64_t getSysRNG() {
 	uint64_t ret;
 
@@ -197,8 +180,6 @@ int main() {
 	// Quit if new version available
 	if (checkGithubVer() == 1)
 		return -1;
-
-	checkUsername();
 
 	// Verify that the results folder exists
 	// If not, create the directory
