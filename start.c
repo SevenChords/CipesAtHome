@@ -5,7 +5,6 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/stat.h>
 
 #include "absl/base/port.h"
@@ -16,6 +15,7 @@
 #include "FTPManagement.h"
 #include "logger.h"
 #include "shutdown.h"
+#include "types.h"
 
 #if _IS_WINDOWS
 #include <windows.h>
@@ -110,22 +110,6 @@ void printAsciiGreeting()
 	fclose(fp);
 }
 
-// Warn the user if their Username is set as "DefaultUser"
-// Quit if the username field is malformed or missing
-void checkUsername()
-{
-	const char* username = getConfigStr("Username");
-	if (username == NULL) {
-		printf("Username field is malformed or not present. Please verify that your username is within quotation marks next to \"Username = \"\n");
-		printf("Press ENTER to exit the program.\n");
-		char exitChar = getchar();
-		exit(1);
-	}
-
-	if (strncmp(username, "DefaultUser", 19) == 0)
-		printf("WARNING: You haven't set your username in config.txt. You will not be identifiable on the leaderboards.\n");
-}
-
 uint64_t getSysRNG() {
 	uint64_t ret;
 
@@ -165,11 +149,15 @@ uint64_t getSysRNG() {
 int main() {
 	current_frame_record = UNSET_FRAME_RECORD;
 	initConfig();
+	validateConfig();
 
-	// If select and randomise are both 0, the same roadmap will be calculated on every thread, so set threads = 1
-	// The debug setting can only be meaningfully used with one thread as well.
-	int workerCount = (getConfigInt("select") || getConfigInt("randomise"))
-					  && !getConfigInt("debug") ? getConfigInt("workerCount") : 1;
+	// When performing in-order traversal, the same roadmap will be calculated
+	// on every thread, so we should only use 1. When choosing moves manually,
+	// we should likewise use only 1, or else multiple threads will be
+	// interacting with the user at once.
+	enum SelectionMethod method = getConfigInt("selectionMethod");
+	int workerCount = (method == InOrder || method == Random) ? 1
+	                  : getConfigInt("workerCount");
 
 	init_level_cfg(); // set log level from config
 	curl_global_init(CURL_GLOBAL_DEFAULT);	// Initialize libcurl
@@ -190,11 +178,8 @@ int main() {
 	}
 
 	// Quit if new version available
-	setLocalVer(getConfigStr("Version"));
 	if (checkGithubVer() == 1)
 		return -1;
-
-	checkUsername();
 
 	// Verify that the results folder exists
 	// If not, create the directory
@@ -232,7 +217,7 @@ int main() {
 
 	setSignalHandlers();
 
-	// Seed each thread's PRNG for the select and randomise config options
+	// Seed each thread's PRNG for those selection methods that use it.
 	seedThreadRNG(workerCount);
 
 	// Create workerCount threads

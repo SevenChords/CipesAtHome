@@ -1,22 +1,29 @@
 ###############################################
-#          Options for picking moves          #
+#                   Username                  #
 ###############################################
-# It is recommended to set at least           #
-# one of them to 1                            #
+# Your username under which your records are  #
+# Uploaded to the remote server               #
+  Username = "DefaultUser"                    #
 ###############################################
-# An RNG approach that picks legal moves.     #
-# Biased towards picking moves near the start #
-# of the list that are typically faster:      #
-#                                             #
-  select = 1  #(Default: 1)                   #
-#                                             #
+
 ###############################################
-# Randomise completely shuffles legal moves   #
-# for first 60 moves. Randomise is ignored if #
-# Select is set to 'True'                     #
-#                                             #
-  randomise = 0  #(default: 0)                #
-#                                             #
+#               Multiprocessing               #
+###############################################
+# The worker count defines how many instances #
+# of the script will be running at the same   #
+# time.                                       #
+# It is recommended that you set it lower or  #
+# at maximum equal to the number of           #
+# cores/threads that your CPU has available.  #
+# Keep in mind that those threads will be at  #
+# around 85%~95% from running this script, if #
+# you need your computer for something else   #
+# at the same time, set the worker count to   #
+# 2 less than the number of cores/threads of  #
+# your CPU (depending on how many you need    #
+# for your other activities)                  #
+###############################################
+  workerCount = 4  #(default: 4)              #
 ###############################################
 
 ###############################################
@@ -52,44 +59,24 @@
 ###############################################
 
 ###############################################
-#               Multiprocessing               #
+#         Legal Move Selection Method         #
 ###############################################
-# The worker count defines how many instances #
-# of the script will be running at the same   #
-# time.                                       #
-# It is recommended that you set it lower or  #
-# at maximum equal to the number of           #
-# cores/threads that your CPU has available.  #
-# Keep in mind that those threads will be at  #
-# around 85%~95% from running this script, if #
-# you need your computer for something else   #
-# at the same time, set the worker count to   #
-# 2 less than the number of cores/threads of  #
-# your CPU (depending on how many you need    #
-# for your other activities)                  #
+# This is the method used to select which     #
+# moves are explored. It is highly recommend  #
+# to leave it on Exponential unless you know  #
+# what you're doing.                          #
 ###############################################
-  workerCount = 4  #(default: 4)              #
+# 0 - In-order (the fastest move is always    #
+#     chosen, but this means you will get the #
+#     same results as anyone else who uses    #
+#     this mode)                              #
+# 1 - Exponential (moves are chosen somewhat  #
+#     randomly but with a strong bias towards #
+#     faster moves)                           #
+# 2 - Random (the moves are shuffled)         #
+# 3 - Manual (you manually select every move, #
+#     though you can switch to running freely #
+#     at any time)                            #
 ###############################################
-
-###############################################
-#                   Username                  #
-###############################################
-# Your username under which your records are  #
-# Uploaded to the remote server               #
-  Username = "DefaultUser"                    #
-###############################################
-
-###############################################
-  Version = "1.13"
-###############################################
-
-###############################################
-#                  Debugging                  #
-###############################################
-# This mode lets you manually select which    #
-# move is performed out of those available.   #
-# At any point, you can switch to letting the #
-# program run freely.                         #
-###############################################
-  debug = 0 #(default: 0)
+  selectionMethod = 1  #(default: 1)          #
 ###############################################

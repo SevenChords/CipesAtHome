@@ -80,8 +80,9 @@ CH5* createChapter5Struct(CH5_Eval eval, int lateSort);
 void initializeInvFrames();
 void initializeRecipeList();
 
-// Select and random methodology functions
-void handleSelectAndRandom(BranchPath* curNode, int select, int randomise);
+// Legal move selection functions
+
+void handleLegalMoveSelection(BranchPath* curNode, enum SelectionMethod method);
 void shuffleLegalMoves(BranchPath* node);
 
 // Sorting functions
