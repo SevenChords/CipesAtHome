@@ -88,7 +88,7 @@ void validateSetting(const char *path, enum SettingType type, int *errorCount) {
 		long long llValue;
 		double floatValue;
 		int boolValue;
-		char *stringValue;
+		const char *stringValue;
 	case intSetting:
 		ret = config_lookup_int(config, path, &intValue);
 		break;
