@@ -147,6 +147,10 @@ uint64_t getSysRNG() {
 }
 
 int main() {
+	// Greeting message to user
+	printAsciiGreeting();
+	printf("Welcome to Recipes@Home!\n");
+
 	current_frame_record = UNSET_FRAME_RECORD;
 	initConfig();
 	validateConfig();
@@ -162,9 +166,6 @@ int main() {
 	init_level_cfg(); // set log level from config
 	curl_global_init(CURL_GLOBAL_DEFAULT);	// Initialize libcurl
 
-	// Greeting message to user
-	printAsciiGreeting();
-	printf("Welcome to Recipes@Home!\n");
 	printf("Leave this program running as long as you want to search for new recipe orders.\n");
 
 	// Try to retrieve the record from the Blob server
