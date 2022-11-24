@@ -166,8 +166,6 @@ int main() {
 	init_level_cfg(); // set log level from config
 	curl_global_init(CURL_GLOBAL_DEFAULT);	// Initialize libcurl
 
-	printf("Leave this program running as long as you want to search for new recipe orders.\n");
-
 	// Try to retrieve the record from the Blob server
 	int blob_record = getFastestRecordOnBlob();
 	if (blob_record == 0) {
@@ -181,6 +179,8 @@ int main() {
 	// Quit if new version available
 	if (checkGithubVer() == 1)
 		return -1;
+
+	printf("Leave this program running as long as you want to search for new recipe orders.\n");
 
 	// Verify that the results folder exists
 	// If not, create the directory
