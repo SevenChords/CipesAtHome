@@ -1249,10 +1249,7 @@ void reallocateRecipes(BranchPath* newRoot, const enum Type_Sort* rearranged_rec
 				}
 				else {
 					if (indexItem2 < 0) {
-						printf("Fatal error! indexItem2 was not set in a branch where it should have.\n");
-						printf("Press enter to quit.");
-						awaitKeyFromUser();
-						exit(1);
+						exitWithUserAcknowledgement("Fatal error! indexItem2 was not set in a branch where it should have.\n");
 					}
 					// Two ingredients to navigate to, but order matters
 					// Pick the larger-index number ingredient first, as it will reduce
