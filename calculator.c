@@ -1643,8 +1643,9 @@ void logIterations(int ID, int stepIndex, const BranchPath * curNode, int iterat
  -------------------------------------------------------------------*/
 Result calculateOrder(const int ID) {
 	enum SelectionMethod selectionMethod = getConfigInt("selectionMethod");
-	// When performing in-order traversal, we never want to restart.
-	int freeRunning = selectionMethod == InOrder;
+	// When performing in-order or manual traversal, we never want to restart.
+	bool noRestart = selectionMethod == InOrder || selectionMethod == Manual;
+	bool freeRunning = false;
 	int branchInterval = getConfigInt("branchLogInterval");
 	int total_dives = 0;
 	BranchPath *curNode = NULL; // Deepest node at any particular point
@@ -1679,7 +1680,7 @@ Result calculateOrder(const int ID) {
 
 		// If the user is not exploring only one branch, reset when it is time
 		// Start iteration loop
-		while (iterationCount < iterationLimit || freeRunning) {
+		while (iterationCount < iterationLimit || noRestart) {
 			if (checkShutdownOnIndex(iterationCount)) {
 				break;
 			}
@@ -1862,7 +1863,7 @@ Result calculateOrder(const int ID) {
 				// Logging for progress display
 				iterationCount++;
 				if (iterationCount % (branchInterval * DEFAULT_ITERATION_LIMIT) == 0
-					&& (freeRunning || iterationLimit != DEFAULT_ITERATION_LIMIT)) {
+					&& (noRestart || iterationLimit != DEFAULT_ITERATION_LIMIT)) {
 					logIterations(ID, stepIndex, curNode, iterationCount, 3);
 				}
 				else if (iterationCount % 10000 == 0) {
