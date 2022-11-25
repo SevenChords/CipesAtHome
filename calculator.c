@@ -1619,16 +1619,15 @@ Inventory getSortedInventory(Inventory inventory, enum Action sort) {
 /*-------------------------------------------------------------------
  * Function 	: logIterations
  *
- * Print out information to the user about how deep we are and
- * the frame cost at this point after a certain number of iterations.
+ * Print out information to the user about how far we are in the
+ * current branch.
  -------------------------------------------------------------------*/
-void logIterations(int ID, int stepIndex, const BranchPath * curNode, int iterationCount, int level)
+void logIterations(int ID, int iterationCount, int level)
 {
 	char callString[30];
-	char iterationString[100];
+	char iterationString[50];
 	sprintf(callString, "Thread %d", ID+1);
-	sprintf(iterationString, "%d steps currently taken, %d frames accumulated so far; %dk iterations",
-		stepIndex, curNode->description.totalFramesTaken, iterationCount / 1000);
+	sprintf(iterationString, "Explored %dk iterations", iterationCount / 1000);
 	recipeLog(level, "Calculator", "Info", callString, iterationString);
 }
 
@@ -1661,7 +1660,6 @@ Result calculateOrder(const int ID) {
 		if (askedToShutdown()) {
 			break;
 		}
-		int stepIndex = 0;
 		int iterationCount = 0;
 		int iterationLimit = DEFAULT_ITERATION_LIMIT;
 
@@ -1732,7 +1730,6 @@ Result calculateOrder(const int ID) {
 				curNode = curNode->prev;
 				freeAndShiftLegalMove(curNode, 0);
 				curNode->next = NULL;
-				stepIndex--;
 				continue;
 			}
 			// End condition not met. Check if this current level has something in the event queue
@@ -1791,7 +1788,6 @@ Result calculateOrder(const int ID) {
 					curNode = curNode->prev;
 					freeAndShiftLegalMove(curNode, 0);
 					curNode->next = NULL;
-					stepIndex--;
 					continue;
 				}
 
@@ -1829,7 +1825,6 @@ Result calculateOrder(const int ID) {
 
 				curNode->next = curNode->legalMoves[0];
 				curNode = curNode->next;
-				stepIndex++;
 
 			}
 			else {
@@ -1846,7 +1841,6 @@ Result calculateOrder(const int ID) {
 					curNode = curNode->prev;
 					freeAndShiftLegalMove(curNode, 0);
 					curNode->next = NULL;
-					stepIndex--;
 					continue;
 				}
 
@@ -1858,16 +1852,15 @@ Result calculateOrder(const int ID) {
 				// Once the list is generated, choose the top-most (quickest) path and iterate downward
 				curNode->next = curNode->legalMoves[0];
 				curNode = curNode->legalMoves[0];
-				stepIndex++;
 
 				// Logging for progress display
 				iterationCount++;
 				if (iterationCount % (branchInterval * DEFAULT_ITERATION_LIMIT) == 0
 					&& (noRestart || iterationLimit != DEFAULT_ITERATION_LIMIT)) {
-					logIterations(ID, stepIndex, curNode, iterationCount, 3);
+					logIterations(ID, iterationCount, 3);
 				}
 				else if (iterationCount % 10000 == 0) {
-					logIterations(ID, stepIndex, curNode, iterationCount, 6);
+					logIterations(ID, iterationCount, 6);
 				}
 			}
 		}
