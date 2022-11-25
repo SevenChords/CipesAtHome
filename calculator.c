@@ -1669,7 +1669,7 @@ Result calculateOrder(const int ID) {
 		curNode = initializeRoot();
 		root = curNode; // Necessary when printing results starting from root
 
-		if (total_dives % branchInterval == 0) {
+		if (total_dives % branchInterval == 0 && !noRestart) {
 			char temp1[30];
 			char temp2[75];
 			sprintf(temp1, "Thread %d", ID+1);
