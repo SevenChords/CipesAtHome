@@ -27,13 +27,10 @@ int recipeLog(int level, char *process, char *subProcess, char *activity, char *
 		char data[200];
 		sprintf(date, "[%d-%02d-%02d %02d:%02d:%02d]", year, month, day, hours, mins, secs);
 		sprintf(data, "[%s][%s][%s][%s]\n", process, subProcess, activity, entry);
-		printf("%s", date);
-		printf("%s", data);
+		printf("%s%s", date, data);
 
 		FILE* fp = fopen("recipes.log", "a");
-		fputs(date, fp);
-		fputs(data, fp);
-
+		fprintf(fp, "%s%s", date, data);
 		fclose(fp);
 	}
 	return 0;
