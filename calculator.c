@@ -1668,15 +1668,14 @@ Result calculateOrder(const int ID) {
 		curNode = initializeRoot();
 		root = curNode; // Necessary when printing results starting from root
 
-		total_dives++;
-
 		if (total_dives % branchInterval == 0) {
 			char temp1[30];
 			char temp2[75];
 			sprintf(temp1, "Thread %d", ID+1);
-			sprintf(temp2, "Iteration Limit Reached: Backing Out and Searching New Branch %d", total_dives);
+			sprintf(temp2, "Searching new random branch (%d searched so far)", total_dives);
 			recipeLog(3, "Calculator", "Info", temp1, temp2);
 		}
+		total_dives++;
 
 		// If the user is not exploring only one branch, reset when it is time
 		// Start iteration loop
