@@ -1626,7 +1626,7 @@ void logIterations(int ID, int stepIndex, const BranchPath * curNode, int iterat
 {
 	char callString[30];
 	char iterationString[100];
-	sprintf(callString, "Call %d", ID);
+	sprintf(callString, "Thread %d", ID+1);
 	sprintf(iterationString, "%d steps currently taken, %d frames accumulated so far; %dk iterations",
 		stepIndex, curNode->description.totalFramesTaken, iterationCount / 1000);
 	recipeLog(level, "Calculator", "Info", callString, iterationString);
@@ -1673,7 +1673,7 @@ Result calculateOrder(const int ID) {
 		if (total_dives % branchInterval == 0) {
 			char temp1[30];
 			char temp2[75];
-			sprintf(temp1, "Thread %d", ID);
+			sprintf(temp1, "Thread %d", ID+1);
 			sprintf(temp2, "Iteration Limit Reached: Backing Out and Searching New Branch %d", total_dives);
 			recipeLog(3, "Calculator", "Info", temp1, temp2);
 		}
