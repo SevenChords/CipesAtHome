@@ -1617,6 +1617,36 @@ Inventory getSortedInventory(Inventory inventory, enum Action sort) {
 }
 
 /*-------------------------------------------------------------------
+ * Function: takeNumericInputInRange
+ *
+ * Take a number from stdin, reprompting if it is misformatted or
+ * not between minimum and maximum, inclusive.
+ -------------------------------------------------------------------*/
+int takeNumericInputInRange(int minimum, int maximum) {
+	char userResponse[40];
+	// Keep asking forever until a valid input is given.
+	while (1) {
+		if (fgets(userResponse, sizeof(userResponse), stdin) != NULL) {
+			// If the response was too long, go ahead and clear anything else
+			// that was typed on that line.
+			if (strchr(userResponse, '\n') == NULL) {
+				int c;
+				while ((c = getchar()) != '\n' && c != EOF);
+			}
+			else {
+				int value;
+				// Parse the response as an integer and check that it is in the
+				// required range.
+				if (sscanf(userResponse, "%d", &value) == 1
+					&& value >= minimum && value <= maximum)
+					return value;
+			}
+		}
+		printf("Invalid value. Enter a number %d to %d. ", minimum, maximum);
+	}
+}
+
+/*-------------------------------------------------------------------
  * Function 	: logIterations
  *
  * Print out information to the user about how far we are in the
@@ -1803,8 +1833,7 @@ Result calculateOrder(const int ID) {
 					fprintf(fp, "%d - Run freely\n", curNode->numLegalMoves);
 
 					printf("Which move would you like to perform? ");
-					int moveToExplore;
-					ABSL_ATTRIBUTE_UNUSED int ignored = scanf("%d", &moveToExplore);  // For now, we are going to blindly assume it was written.
+					int moveToExplore = takeNumericInputInRange(0, curNode->numLegalMoves);
 					fprintf(fp, "\n");
 
 					if (moveToExplore == curNode->numLegalMoves) {
