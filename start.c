@@ -160,7 +160,7 @@ int main() {
 	// we should likewise use only 1, or else multiple threads will be
 	// interacting with the user at once.
 	enum SelectionMethod method = getConfigInt("selectionMethod");
-	int workerCount = (method == InOrder || method == Random) ? 1
+	int workerCount = (method == InOrder || method == Manual) ? 1
 	                  : getConfigInt("workerCount");
 
 	init_level_cfg(); // set log level from config
