@@ -2,6 +2,7 @@
 
 #include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "absl/base/port.h"
 
 #if defined(_MSC_FULL_VER) || defined(_MSC_VER) || defined(__MINGW32__)
