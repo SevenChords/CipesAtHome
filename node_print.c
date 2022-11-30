@@ -228,9 +228,7 @@ void printResults(const char *filename, const BranchPath *path) {
 	FILE *fp = fopen(filename, "w");
 	if (fp == NULL) {
 		printf("Could not locate %s... This is a bug.\n", filename);
-		printf("Press ENTER to exit.\n");
-		awaitKeyFromUser();
-		exit(1);
+		exitWithUserAcknowledgement("");
 	}
 	// Write header information
 	printFileHeader(fp);

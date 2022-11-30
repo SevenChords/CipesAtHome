@@ -23,11 +23,8 @@ void initConfig() {
 		// This covers the case where it is missing or in the wrong folder.
 		// If it's a permission problem, a user who created that problem should
 		// be able to figure it out based on this as well.
-		printf("Could not read config.txt file. Please ensure that the file is "
-		       "in the same folder as the program.\n");
-		printf("Press ENTER to exit.");
-		awaitKeyFromUser();
-		exit(1);
+		exitWithUserAcknowledgement("Could not read config.txt file. Please "
+			"ensure that the file is in the same folder as the program.\n");
 	}
 	// Now, parse the file to use throughout the program's lifetime.
 	config = malloc(sizeof(config_t));
@@ -36,9 +33,7 @@ void initConfig() {
 		printf("Could not read settings in config.txt file. Please ensure that "
 		       "the file is formatted correctly. Error occurred at line %d.\n",
 		       config_error_line(config));
-		printf("Press ENTER to exit.");
-		awaitKeyFromUser();
-		exit(1);
+		exitWithUserAcknowledgement("");
 	}
 	fclose(fp);
 }
@@ -193,9 +188,7 @@ void validateConfig() {
 	validateIntSettingMax("selectionMethod", Manual, &errors);
 
 	if (errors) {
-		printf("Press ENTER to exit.\n");
-		awaitKeyFromUser();
-		exit(1);
+		exitWithUserAcknowledgement("");
 	}
 }
 

@@ -109,6 +109,7 @@ BranchPath* initializeRoot();
 
 // Other
 void periodicGithubCheck();
+int takeNumericInputInRange(int minimum, int maximum);
 Result calculateOrder(const int ID);
 void writePersonalBest(Result *result);
 void shutdownCalculator();

@@ -2,7 +2,6 @@
 
 #include <curl/curl.h>
 #include <omp.h>
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -16,10 +15,6 @@
 #include "logger.h"
 #include "shutdown.h"
 #include "types.h"
-
-#if _IS_WINDOWS
-#include <windows.h>
-#endif
 
 #define UNSET_FRAME_RECORD 9999
 
@@ -41,52 +36,6 @@ void setLocalRecord(int frames) {
 		return;
 	}
 	current_frame_record = frames;
-}
-
-int numTimesExitRequest = 0;
-#define NUM_TIMES_EXITED_BEFORE_HARD_QUIT 3
-
-void countAndSetShutdown(bool isSignal) {
-	// On Windows, it is undefined behavior trying to use stdio.h functions in a signal handler (which this is called from).
-	// So for now, these messages are stifled on Windows. This may be revisited at a later point.
-	if (++numTimesExitRequest >= NUM_TIMES_EXITED_BEFORE_HARD_QUIT) {
-		if (!_IS_WINDOWS || !isSignal) {
-			printf("\nExit reqested %d times; shutting down now.\n", NUM_TIMES_EXITED_BEFORE_HARD_QUIT);
-		}
-		exit(1);
-	} else {
-		requestShutdown();
-		if (!_IS_WINDOWS || !isSignal) {
-			printf("\nExit requested, finishing up work. Should shutdown soon (CTRL-C %d times total to force exit)\n", NUM_TIMES_EXITED_BEFORE_HARD_QUIT);
-		}
-	}
-}
-
-void handleTermSignal(int signal) {
-	countAndSetShutdown(true);
-}
-
-#if _IS_WINDOWS
-BOOL WINAPI windowsCtrlCHandler(DWORD fdwCtrlType) {
-	switch (fdwCtrlType) {
-	case CTRL_C_EVENT: ABSL_FALLTHROUGH_INTENDED;
-	case CTRL_CLOSE_EVENT:
-		countAndSetShutdown(false);
-		return TRUE;
-	default:
-		return FALSE;
-	}
-}
-#endif
-
-void setSignalHandlers() {
-	signal(SIGTERM, handleTermSignal);
-	signal(SIGINT, handleTermSignal);
-#if _IS_WINDOWS
-	if (!SetConsoleCtrlHandler(windowsCtrlCHandler, TRUE)) {
-		printf("Unable to set CTRL-C handler. CTRL-C may cause unclean shutdown.\n");
-	}
-#endif
 }
 
 void printAsciiGreeting()
@@ -147,6 +96,10 @@ uint64_t getSysRNG() {
 }
 
 int main() {
+	// Greeting message to user
+	printAsciiGreeting();
+	printf("Welcome to Recipes@Home!\n");
+
 	current_frame_record = UNSET_FRAME_RECORD;
 	initConfig();
 	validateConfig();
@@ -156,16 +109,11 @@ int main() {
 	// we should likewise use only 1, or else multiple threads will be
 	// interacting with the user at once.
 	enum SelectionMethod method = getConfigInt("selectionMethod");
-	int workerCount = (method == InOrder || method == Random) ? 1
+	int workerCount = (method == InOrder || method == Manual) ? 1
 	                  : getConfigInt("workerCount");
 
 	init_level_cfg(); // set log level from config
 	curl_global_init(CURL_GLOBAL_DEFAULT);	// Initialize libcurl
-
-	// Greeting message to user
-	printAsciiGreeting();
-	printf("Welcome to Recipes@Home!\n");
-	printf("Leave this program running as long as you want to search for new recipe orders.\n");
 
 	// Try to retrieve the record from the Blob server
 	int blob_record = getFastestRecordOnBlob();
@@ -180,6 +128,8 @@ int main() {
 	// Quit if new version available
 	if (checkGithubVer() == 1)
 		return -1;
+
+	printf("Leave this program running as long as you want to search for new recipe orders.\n");
 
 	// Verify that the results folder exists
 	// If not, create the directory
@@ -196,15 +146,15 @@ int main() {
 	// The PB file may not have been created yet, so ignore the case where it is missing
 	if (fp != NULL) {
 		int PB_record;
-		if (fscanf(fp, "%d", &PB_record) == 1) {
-			if (PB_record < 1000) {
-				printf("The record stored in PB.txt can't be right... Ignoring.\n");
-			} else {
-				current_frame_record = PB_record;
-				// Submit the user's fastest roadmap to the server for leaderboard purposes
-				// in case this was not submitted upon initial discovery
-				testRecord(current_frame_record);
-			}
+		if (fscanf(fp, "%d", &PB_record) == 1 && PB_record > 1000) {
+			printf("Your local PB is %d. Re-uploading just in case.\n", PB_record);
+			current_frame_record = PB_record;
+			// Submit the user's fastest roadmap to the server for leaderboard purposes
+			// in case this was not submitted upon initial discovery
+			testRecord(current_frame_record);
+		}
+		else {
+			printf("Your local PB is corrupted. Using %d instead.\n", current_frame_record);
 		}
 		fclose(fp);
 	}
@@ -232,8 +182,9 @@ int main() {
 			}
 			Result result = calculateOrder(ID);
 
-			// result might store -1 frames for errors that might be recoverable
-			if (result.frames > -1) {
+			// Multiple threads might have discovered a record, so make sure
+			// result is still the best we have.
+			if (result.frames == getLocalRecord()) {
 				testRecord(result.frames);
 			}
 		}

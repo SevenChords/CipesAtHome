@@ -6,7 +6,7 @@
 
 extern bool _askedToShutdownVar;
 
-bool requestShutdown();
+void setSignalHandlers();
 
 ABSL_ATTRIBUTE_ALWAYS_INLINE inline bool askedToShutdown() {
 	return ABSL_PREDICT_FALSE(_askedToShutdownVar);

@@ -2,6 +2,7 @@
 
 #include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "absl/base/port.h"
 
 #if defined(_MSC_FULL_VER) || defined(_MSC_VER) || defined(__MINGW32__)
@@ -43,6 +44,19 @@ inline char awaitKeyFromUser() {
 	return getchar();
 }
 
+/*-------------------------------------------------------------------
+* Function: exitWithUserAcknowledgement
+*
+* Prints the given message, asks the user to press enter (not any
+* key due to typical line-buffered input), and once the message has
+* been acknowledged, exits with a non-zero status.
+-------------------------------------------------------------------*/
+inline void exitWithUserAcknowledgement(const char *const message) {
+	printf("%sPress ENTER to exit.\n", message);
+	awaitKeyFromUser();
+	exit(1);
+}
+
  /*-------------------------------------------------------------------
  * Function 	: checkMallocFailed
  * Inputs	: void* p
@@ -55,9 +69,6 @@ inline char awaitKeyFromUser() {
  -------------------------------------------------------------------*/
 inline void checkMallocFailed(const void* const p) {
 	if (ABSL_PREDICT_FALSE(p == NULL)) {
-		printf("Fatal error! Ran out of heap memory.\n");
-		printf("Press enter to quit.\n");
-		awaitKeyFromUser();
-		exit(1);
+		exitWithUserAcknowledgement("Fatal error! Ran out of heap memory.\n");
 	}
 }

@@ -1249,10 +1249,7 @@ void reallocateRecipes(BranchPath* newRoot, const enum Type_Sort* rearranged_rec
 				}
 				else {
 					if (indexItem2 < 0) {
-						printf("Fatal error! indexItem2 was not set in a branch where it should have.\n");
-						printf("Press enter to quit.");
-						awaitKeyFromUser();
-						exit(1);
+						exitWithUserAcknowledgement("Fatal error! indexItem2 was not set in a branch where it should have.\n");
 					}
 					// Two ingredients to navigate to, but order matters
 					// Pick the larger-index number ingredient first, as it will reduce
@@ -1620,18 +1617,47 @@ Inventory getSortedInventory(Inventory inventory, enum Action sort) {
 }
 
 /*-------------------------------------------------------------------
+ * Function: takeNumericInputInRange
+ *
+ * Take a number from stdin, reprompting if it is misformatted or
+ * not between minimum and maximum, inclusive.
+ -------------------------------------------------------------------*/
+int takeNumericInputInRange(int minimum, int maximum) {
+	char userResponse[40];
+	// Keep asking forever until a valid input is given.
+	while (1) {
+		if (fgets(userResponse, sizeof(userResponse), stdin) != NULL) {
+			// If the response was too long, go ahead and clear anything else
+			// that was typed on that line.
+			if (strchr(userResponse, '\n') == NULL) {
+				int c;
+				while ((c = getchar()) != '\n' && c != EOF);
+			}
+			else {
+				int value;
+				// Parse the response as an integer and check that it is in the
+				// required range.
+				if (sscanf(userResponse, "%d", &value) == 1
+					&& value >= minimum && value <= maximum)
+					return value;
+			}
+		}
+		printf("Invalid value. Enter a number %d to %d. ", minimum, maximum);
+	}
+}
+
+/*-------------------------------------------------------------------
  * Function 	: logIterations
  *
- * Print out information to the user about how deep we are and
- * the frame cost at this point after a certain number of iterations.
+ * Print out information to the user about how far we are in the
+ * current branch.
  -------------------------------------------------------------------*/
-void logIterations(int ID, int stepIndex, const BranchPath * curNode, int iterationCount, int level)
+void logIterations(int ID, int iterationCount, int level)
 {
 	char callString[30];
-	char iterationString[100];
-	sprintf(callString, "Call %d", ID);
-	sprintf(iterationString, "%d steps currently taken, %d frames accumulated so far; %dk iterations",
-		stepIndex, curNode->description.totalFramesTaken, iterationCount / 1000);
+	char iterationString[50];
+	sprintf(callString, "Thread %d", ID+1);
+	sprintf(iterationString, "Explored %dk iterations", iterationCount / 1000);
 	recipeLog(level, "Calculator", "Info", callString, iterationString);
 }
 
@@ -1646,8 +1672,9 @@ void logIterations(int ID, int stepIndex, const BranchPath * curNode, int iterat
  -------------------------------------------------------------------*/
 Result calculateOrder(const int ID) {
 	enum SelectionMethod selectionMethod = getConfigInt("selectionMethod");
-	// When performing in-order traversal, we never want to restart.
-	int freeRunning = selectionMethod == InOrder;
+	// When performing in-order or manual traversal, we never want to restart.
+	bool noRestart = selectionMethod == InOrder || selectionMethod == Manual;
+	bool freeRunning = false;
 	int branchInterval = getConfigInt("branchLogInterval");
 	int total_dives = 0;
 	BranchPath *curNode = NULL; // Deepest node at any particular point
@@ -1663,7 +1690,6 @@ Result calculateOrder(const int ID) {
 		if (askedToShutdown()) {
 			break;
 		}
-		int stepIndex = 0;
 		int iterationCount = 0;
 		int iterationLimit = DEFAULT_ITERATION_LIMIT;
 
@@ -1671,19 +1697,18 @@ Result calculateOrder(const int ID) {
 		curNode = initializeRoot();
 		root = curNode; // Necessary when printing results starting from root
 
-		total_dives++;
-
-		if (total_dives % branchInterval == 0) {
+		if (total_dives % branchInterval == 0 && !noRestart) {
 			char temp1[30];
 			char temp2[75];
-			sprintf(temp1, "Thread %d", ID);
-			sprintf(temp2, "Iteration Limit Reached: Backing Out and Searching New Branch %d", total_dives);
+			sprintf(temp1, "Thread %d", ID+1);
+			sprintf(temp2, "Searching new random branch (%d searched so far)", total_dives);
 			recipeLog(3, "Calculator", "Info", temp1, temp2);
 		}
+		total_dives++;
 
 		// If the user is not exploring only one branch, reset when it is time
 		// Start iteration loop
-		while (iterationCount < iterationLimit || freeRunning) {
+		while (iterationCount < iterationLimit || noRestart) {
 			if (checkShutdownOnIndex(iterationCount)) {
 				break;
 			}
@@ -1735,7 +1760,6 @@ Result calculateOrder(const int ID) {
 				curNode = curNode->prev;
 				freeAndShiftLegalMove(curNode, 0);
 				curNode->next = NULL;
-				stepIndex--;
 				continue;
 			}
 			// End condition not met. Check if this current level has something in the event queue
@@ -1794,7 +1818,6 @@ Result calculateOrder(const int ID) {
 					curNode = curNode->prev;
 					freeAndShiftLegalMove(curNode, 0);
 					curNode->next = NULL;
-					stepIndex--;
 					continue;
 				}
 
@@ -1810,8 +1833,7 @@ Result calculateOrder(const int ID) {
 					fprintf(fp, "%d - Run freely\n", curNode->numLegalMoves);
 
 					printf("Which move would you like to perform? ");
-					int moveToExplore;
-					ABSL_ATTRIBUTE_UNUSED int ignored = scanf("%d", &moveToExplore);  // For now, we are going to blindly assume it was written.
+					int moveToExplore = takeNumericInputInRange(0, curNode->numLegalMoves);
 					fprintf(fp, "\n");
 
 					if (moveToExplore == curNode->numLegalMoves) {
@@ -1832,7 +1854,6 @@ Result calculateOrder(const int ID) {
 
 				curNode->next = curNode->legalMoves[0];
 				curNode = curNode->next;
-				stepIndex++;
 
 			}
 			else {
@@ -1849,7 +1870,6 @@ Result calculateOrder(const int ID) {
 					curNode = curNode->prev;
 					freeAndShiftLegalMove(curNode, 0);
 					curNode->next = NULL;
-					stepIndex--;
 					continue;
 				}
 
@@ -1861,16 +1881,15 @@ Result calculateOrder(const int ID) {
 				// Once the list is generated, choose the top-most (quickest) path and iterate downward
 				curNode->next = curNode->legalMoves[0];
 				curNode = curNode->legalMoves[0];
-				stepIndex++;
 
 				// Logging for progress display
 				iterationCount++;
 				if (iterationCount % (branchInterval * DEFAULT_ITERATION_LIMIT) == 0
-					&& (freeRunning || iterationLimit != DEFAULT_ITERATION_LIMIT)) {
-					logIterations(ID, stepIndex, curNode, iterationCount, 3);
+					&& (noRestart || iterationLimit != DEFAULT_ITERATION_LIMIT)) {
+					logIterations(ID, iterationCount, 3);
 				}
 				else if (iterationCount % 10000 == 0) {
-					logIterations(ID, stepIndex, curNode, iterationCount, 6);
+					logIterations(ID, iterationCount, 6);
 				}
 			}
 		}
